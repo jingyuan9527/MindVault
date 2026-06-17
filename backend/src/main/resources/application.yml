@@ -1,0 +1,64 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: mindvault
+
+  # 虚拟线程（JDK 21 特性）
+  threads:
+    virtual:
+      enabled: true
+
+  # 数据源配置
+  datasource:
+    url: jdbc:postgresql://localhost:5432/mindvault
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+
+  # JPA 配置
+  jpa:
+    hibernate:
+      ddl-auto: validate  # 由 Flyway 管理表结构，JPA 只做验证
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          batch_size: 50
+        format_sql: true
+    show-sql: true
+
+  # Flyway 数据库迁移
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  # Jackson JSON 序列化
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    serialization:
+      write-dates-as-timestamps: false
+
+  # 允许文件上传
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+# AgentScope 配置
+agentscope:
+  # 默认 LLM 配置（v0.1 从 ModelConfig 动态获取，此处只做后备）
+  llm:
+    default-model: qwen-turbo
+
+# 日志级别
+logging:
+  level:
+    com.mindvault: DEBUG
+    com.alibaba.agentscope: DEBUG
