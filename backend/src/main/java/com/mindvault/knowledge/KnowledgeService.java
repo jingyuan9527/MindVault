@@ -1,5 +1,8 @@
 package com.mindvault.knowledge;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mindvault.content.AutoProcessService;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.operationlog.OperationLogService;
 import org.slf4j.Logger;
@@ -8,8 +11,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayOutputStream;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 /**
  * 知识库服务
@@ -29,26 +37,34 @@ public class KnowledgeService {
 
     private final KnowledgeRepository repository;
     private final OperationLogService operationLogService;
+    private final AutoProcessService autoProcessService;
+    private final ObjectMapper objectMapper;
 
     public KnowledgeService(KnowledgeRepository repository,
-                            OperationLogService operationLogService) {
+                            OperationLogService operationLogService,
+                            AutoProcessService autoProcessService) {
         this.repository = repository;
         this.operationLogService = operationLogService;
+        this.autoProcessService = autoProcessService;
+        this.objectMapper = new ObjectMapper();
     }
 
     /**
      * 添加知识条目
      *
      * v0.1 简化版：先入库，嵌入生成由 Agent 的 @Tool 完成
+     * v0.2 新增：入库后自动触发摘要+标签生成
      * v0.3 改为异步：入库 → 队列 → 后台生成嵌入
      */
     @Transactional
     public Knowledge addKnowledge(Knowledge knowledge) {
-        // v0.1: 简单入库，嵌入由 AgentScope Tool 后续设置
         Knowledge saved = repository.save(knowledge);
         log.info("添加知识: id={}, title={}, type={}", saved.getId(), saved.getTitle(), saved.getContentType());
         operationLogService.log("KNOWLEDGE", "ADD", saved.getId(),
                 "添加知识「" + knowledge.getTitle() + "」");
+
+        triggerAutoProcess(saved);
+
         return saved;
     }
 
@@ -148,5 +164,151 @@ public class KnowledgeService {
         log.info("删除知识: id={}, title={}", id, k.getTitle());
         operationLogService.log("KNOWLEDGE", "DELETE", id,
                 "删除知识「" + k.getTitle() + "」");
+    }
+
+    private void triggerAutoProcess(Knowledge knowledge) {
+        if (knowledge.getContent() == null || knowledge.getContent().isBlank()) return;
+        try {
+            autoProcessService.autoProcess(knowledge.getId(), knowledge.getTitle(), knowledge.getContent());
+        } catch (Exception e) {
+            log.warn("自动处理失败: {}", e.getMessage());
+        }
+    }
+
+    public String exportAllAsJson() {
+        try {
+            List<Knowledge> all = repository.findAll();
+            List<Map<String, Object>> exportList = new ArrayList<>();
+            for (Knowledge k : all) {
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("title", k.getTitle());
+                item.put("content", k.getContent());
+                item.put("contentType", k.getContentType());
+                item.put("sourceUrl", k.getSourceUrl());
+                item.put("summary", k.getSummary());
+                item.put("tags", k.getTags());
+                item.put("createdAt", k.getCreatedAt() != null ? k.getCreatedAt().toString() : null);
+                item.put("updatedAt", k.getUpdatedAt() != null ? k.getUpdatedAt().toString() : null);
+                exportList.add(item);
+            }
+            Map<String, Object> exportData = new LinkedHashMap<>();
+            exportData.put("version", "0.2.0");
+            exportData.put("exportedAt", LocalDateTime.now().toString());
+            exportData.put("count", exportList.size());
+            exportData.put("items", exportList);
+            return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(exportData);
+        } catch (Exception e) {
+            log.error("导出失败: {}", e.getMessage());
+            return "[]";
+        }
+    }
+
+    public byte[] exportAllAsMarkdown() {
+        try {
+            List<Knowledge> all = repository.findAll();
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ZipOutputStream zos = new ZipOutputStream(baos);
+            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+            for (Knowledge k : all) {
+                String safeName = k.getTitle()
+                        .replaceAll("[/\\\\:*?\"<>|]", "_")
+                        .replaceAll("\\s+", "_");
+                if (safeName.length() > 80) safeName = safeName.substring(0, 80);
+
+                String tags = "";
+                List<String> tagList = new ArrayList<>();
+                if (k.getTags() != null && !k.getTags().equals("[]")) {
+                    try {
+                        tagList = objectMapper.readValue(k.getTags(), new TypeReference<List<String>>() {});
+                    } catch (Exception e) { /* ignore */ }
+                }
+
+                String tagsSection = tagList.isEmpty() ? "" : "\n\n标签: " + String.join(", ", tagList);
+                String summarySection = k.getSummary() != null && !k.getSummary().isBlank()
+                        ? "\n\n> " + k.getSummary().replaceAll("\n", "\n> ") : "";
+                String sourceSection = k.getSourceUrl() != null && !k.getSourceUrl().isBlank()
+                        ? "\n\n来源: " + k.getSourceUrl() : "";
+                String dateSection = "\n\n---\n创建于 " + (k.getCreatedAt() != null ? k.getCreatedAt().format(dtf) : "未知");
+
+                String md = "---\n"
+                        + "title: " + k.getTitle() + "\n"
+                        + "type: " + k.getContentType() + "\n"
+                        + "created: " + (k.getCreatedAt() != null ? k.getCreatedAt().format(dtf) : "") + "\n"
+                        + (k.getUpdatedAt() != null ? "updated: " + k.getUpdatedAt().format(dtf) + "\n" : "")
+                        + (k.getSourceUrl() != null ? "source: " + k.getSourceUrl() + "\n" : "")
+                        + (k.getSummary() != null ? "summary: " + k.getSummary() + "\n" : "")
+                        + "---\n\n"
+                        + "# " + k.getTitle() + "\n"
+                        + summarySection
+                        + tagsSection
+                        + sourceSection
+                        + "\n\n" + k.getContent()
+                        + dateSection + "\n";
+
+                String folder = tagList.isEmpty() ? "未分类" : sanitizeFolderName(tagList.get(0));
+                String entryName = folder + "/" + safeName + ".md";
+                zos.putNextEntry(new ZipEntry(entryName));
+                zos.write(md.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                zos.closeEntry();
+            }
+
+            zos.finish();
+            log.info("Markdown导出完成: 共 {} 条", all.size());
+            return baos.toByteArray();
+        } catch (Exception e) {
+            log.error("Markdown导出失败: {}", e.getMessage());
+            return new byte[0];
+        }
+    }
+
+    private static String sanitizeFolderName(String name) {
+        return name.replaceAll("[/\\\\:*?\"<>|]", "_").trim();
+    }
+
+    @Transactional
+    public int importFromJson(String json) {
+        try {
+            Map<String, Object> importData = objectMapper.readValue(json,
+                    new TypeReference<Map<String, Object>>() {});
+            Object itemsObj = importData.get("items");
+            if (itemsObj == null) return 0;
+
+            List<Map<String, Object>> items;
+            if (itemsObj instanceof List<?> list) {
+                items = new ArrayList<>();
+                for (Object o : list) {
+                    if (o instanceof Map<?, ?> m) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> casted = (Map<String, Object>) m;
+                        items.add(casted);
+                    }
+                }
+            } else {
+                return 0;
+            }
+
+            int imported = 0;
+            for (Map<String, Object> item : items) {
+                Knowledge k = new Knowledge();
+                k.setTitle((String) item.getOrDefault("title", "未命名"));
+                k.setContent((String) item.getOrDefault("content", ""));
+                k.setContentType((String) item.getOrDefault("contentType", "TEXT"));
+                k.setSourceUrl((String) item.getOrDefault("sourceUrl", null));
+                k.setSummary((String) item.getOrDefault("summary", null));
+                k.setTags((String) item.getOrDefault("tags", "[]"));
+                k.setMetadata("{}");
+                repository.save(k);
+                imported++;
+            }
+
+            log.info("导入完成: 共 {} 条", imported);
+            operationLogService.log("KNOWLEDGE", "IMPORT", null,
+                    "导入 " + imported + " 条知识");
+            return imported;
+        } catch (Exception e) {
+            log.error("导入失败: {}", e.getMessage());
+            throw new RuntimeException("导入失败: " + e.getMessage());
+        }
     }
 }

@@ -6,15 +6,17 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        display: ['Playfair Display', 'Georgia', 'serif'],
+        body: ['DM Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
       colors: {
-        primary: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-        }
+        cream: '#f8f6f3',
+        clay: '#c65f39',
+        sage: '#5d7a5a',
+        ink: '#2d2a24',
+        stone: '#8a857f',
+        border: '#e8e4de',
       }
     },
   },

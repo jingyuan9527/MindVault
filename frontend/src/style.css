@@ -2,13 +2,172 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  :root {
+    --color-bg: #f8f6f3;
+    --color-surface: #ffffff;
+    --color-border: #e8e4de;
+    --color-text: #2d2a24;
+    --color-text-secondary: #8a857f;
+    --color-accent: #c65f39;
+    --color-accent-hover: #b04d2a;
+    --color-sage: #5d7a5a;
+    --color-sage-light: #e8f0e6;
+    --color-warm-gray: #6b6560;
+  }
+
+  body {
+    font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    background-image:
+      radial-gradient(ellipse at 20% 50%, rgba(93, 122, 90, 0.04) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(198, 95, 57, 0.04) 0%, transparent 60%),
+      radial-gradient(ellipse at 50% 80%, rgba(93, 122, 90, 0.03) 0%, transparent 50%);
+  }
+
+  h1, h2, h3, h4 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  h5, h6 {
+    font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+    font-weight: 600;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200;
+    background-color: var(--color-accent);
+    color: white;
+  }
+  .btn-primary:hover {
+    background-color: var(--color-accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(198, 95, 57, 0.25);
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+  }
+  .btn-secondary:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  .card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    transition: all 0.25s ease;
+  }
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(45, 42, 36, 0.08);
+    border-color: #d4cdc4;
+  }
+
+  .tag-pill {
+    @apply inline-flex items-center px-2.5 py-0.5 text-xs rounded-full transition-colors duration-150;
+    background-color: var(--color-sage-light);
+    color: var(--color-sage);
+  }
+  .tag-pill:hover {
+    background-color: #dce8d9;
+  }
+
+  .tag-pill-active {
+    background-color: var(--color-sage);
+    color: white;
+  }
+
+  .input-field {
+    @apply w-full rounded-lg px-3 py-2 text-sm transition-all duration-150 outline-none;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface);
+    color: var(--color-text);
+  }
+  .input-field:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px rgba(198, 95, 57, 0.1);
+  }
+
+  .modal-overlay {
+    @apply fixed inset-0 flex items-center justify-center z-50;
+    background-color: rgba(45, 42, 36, 0.3);
+    backdrop-filter: blur(2px);
+  }
+
+  .modal-panel {
+    background-color: var(--color-surface);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(45, 42, 36, 0.12);
+    @apply mx-4;
+  }
+
+  .slide-enter {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  .slide-enter-active {
+    transition: all 0.25s ease;
+  }
+}
+
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 .typing-cursor::after {
   content: '▊';
   animation: blink 1s step-end infinite;
   margin-left: 2px;
+  color: var(--color-accent);
+}
+
+.fade-in-enter {
+  animation: fade-in 0.3s ease forwards;
+}
+
+.stagger-enter > * {
+  opacity: 0;
+  animation: fade-in 0.3s ease forwards;
+}
+.stagger-enter > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-enter > *:nth-child(2) { animation-delay: 60ms; }
+.stagger-enter > *:nth-child(3) { animation-delay: 120ms; }
+.stagger-enter > *:nth-child(4) { animation-delay: 180ms; }
+.stagger-enter > *:nth-child(5) { animation-delay: 240ms; }
+.stagger-enter > *:nth-child(6) { animation-delay: 300ms; }
+
+.panel-transition-enter-active,
+.panel-transition-leave-active {
+  transition: all 0.3s ease;
+}
+.panel-transition-enter-from,
+.panel-transition-leave-to {
+  opacity: 0;
+  transform: translateX(16px);
 }
