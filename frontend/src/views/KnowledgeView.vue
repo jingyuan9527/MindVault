@@ -79,6 +79,21 @@
                 创建于 {{ formatTime(detailNote.createdAt) }}
                 <span v-if="detailNote.updatedAt !== detailNote.createdAt"> | 更新于 {{ formatTime(detailNote.updatedAt) }}</span>
               </div>
+              <div v-if="relatedItems.length" class="mt-4 pt-4" style="border-top: 1px solid var(--color-border)">
+                <p class="text-xs font-medium mb-2" style="color: var(--color-text-secondary)">相关笔记</p>
+                <div class="space-y-2">
+                  <div v-for="item in relatedItems" :key="item.id"
+                    class="px-3 py-2 rounded-lg cursor-pointer transition-colors duration-150 text-sm"
+                    style="background-color: var(--color-bg)"
+                    @mouseenter="$event.target.style.backgroundColor = 'var(--color-sage-light)'"
+                    @mouseleave="$event.target.style.backgroundColor = 'var(--color-bg)'">
+                    <p class="font-medium" style="color: var(--color-text)">{{ item.title }}</p>
+                    <p class="text-xs mt-0.5" style="color: var(--color-text-secondary)">
+                      相似度 {{ (item.similarity * 100).toFixed(0) }}%
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </template>
           <template v-else>
@@ -183,3 +198,238 @@
     </transition>
   </div>
 </template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useKnowledgeStore } from '@/stores/knowledge'
+import { knowledgeApi } from '@/api/knowledge'
+import NoteCard from '@/components/knowledge/NoteCard.vue'
+
+const store = useKnowledgeStore()
+const searchText = ref('')
+const detailNote = ref(null)
+const isEditing = ref(false)
+const editForm = ref({ title: '', content: '', tagsText: '', sourceUrl: '' })
+const showAddForm = ref(false)
+const addForm = ref({ title: '', content: '', tagsText: '', sourceUrl: '' })
+const addTab = ref('text')
+const addUrl = ref('')
+const urlError = ref('')
+const pdfFile = ref(null)
+const pdfFileName = ref('')
+const pdfError = ref('')
+const adding = ref(false)
+const relatedItems = ref([])
+
+const addTabs = [
+  { key: 'text', label: '文本' },
+  { key: 'url', label: '网页' },
+  { key: 'pdf', label: 'PDF' },
+]
+
+const activeTags = computed(() => {
+  const tags = []
+  const parts = searchText.value.split(/\s+/)
+  for (const p of parts) {
+    if (p.startsWith('#')) tags.push(p.slice(1))
+  }
+  return tags
+})
+
+const keywordText = computed(() => {
+  return searchText.value.split(/\s+/).filter(p => !p.startsWith('#')).join(' ')
+})
+
+const filteredItems = computed(() => {
+  let items = store.items
+  if (activeTags.value.length) {
+    items = items.filter(n => {
+      const noteTags = parseTags(n.tags)
+      return activeTags.value.every(t => noteTags.includes(t))
+    })
+  }
+  const kw = keywordText.value.toLowerCase().trim()
+  if (kw) {
+    items = items.filter(n =>
+      (n.title && n.title.toLowerCase().includes(kw)) ||
+      (n.content && n.content.toLowerCase().includes(kw))
+    )
+  }
+  return items
+})
+
+const detailTags = computed(() => {
+  if (!detailNote.value?.tags) return []
+  return parseTags(detailNote.value.tags)
+})
+
+function parseTags(tags) {
+  if (!tags) return []
+  try { return JSON.parse(tags) } catch { return [] }
+}
+
+function tagsToArray(tagsText) {
+  const parts = tagsText.split(/#/).filter(Boolean)
+  return parts.map(p => p.trim()).filter(Boolean)
+}
+
+function tagsToText(tagsJson) {
+  const arr = parseTags(tagsJson)
+  return arr.map(t => '#' + t).join(' ')
+}
+
+function removeTag(tag) {
+  searchText.value = searchText.value.replace(new RegExp(`#${tag}\\s*`), '').trim()
+}
+
+function openDetail(note) {
+  detailNote.value = note
+  isEditing.value = false
+  loadRelated(note.id)
+}
+
+function closeDetail() {
+  detailNote.value = null
+  isEditing.value = false
+  relatedItems.value = []
+}
+
+function openAddForm() {
+  addForm.value = { title: '', content: '', tagsText: '', sourceUrl: '' }
+  addTab.value = 'text'
+  addUrl.value = ''
+  urlError.value = ''
+  pdfFile.value = null
+  pdfFileName.value = ''
+  pdfError.value = ''
+  showAddForm.value = true
+}
+
+function closeAddForm() {
+  showAddForm.value = false
+  adding.value = false
+}
+
+function onPdfSelected(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  if (file.size > 50 * 1024 * 1024) {
+    pdfError.value = '文件超过 50MB 限制'
+    pdfFile.value = null
+    pdfFileName.value = ''
+    return
+  }
+  pdfFile.value = file
+  pdfFileName.value = file.name
+  pdfError.value = ''
+}
+
+async function loadRelated(id) {
+  try {
+    const res = await knowledgeApi.getRelated(id)
+    relatedItems.value = res.data.data || []
+  } catch {}
+}
+
+async function submitAdd() {
+  if (adding.value) return
+  adding.value = true
+  try {
+    if (addTab.value === 'text') {
+      await addNote()
+    } else if (addTab.value === 'url') {
+      await addUrlNote()
+    } else if (addTab.value === 'pdf') {
+      await addPdfNote()
+    }
+  } finally {
+    adding.value = false
+  }
+}
+
+function startEditing() {
+  editForm.value = {
+    title: detailNote.value.title,
+    content: detailNote.value.content,
+    tagsText: tagsToText(detailNote.value.tags),
+    sourceUrl: detailNote.value.sourceUrl || ''
+  }
+  isEditing.value = true
+}
+
+function cancelEditing() {
+  isEditing.value = false
+}
+
+async function saveEdit() {
+  const tags = tagsToArray(editForm.value.tagsText)
+  const updated = await knowledgeApi.update(detailNote.value.id, {
+    title: editForm.value.title,
+    content: editForm.value.content,
+    tags: JSON.stringify(tags),
+    sourceUrl: editForm.value.sourceUrl || null
+  })
+  const saved = updated.data.data
+  Object.assign(detailNote.value, saved)
+  const idx = store.items.findIndex(i => i.id === saved.id)
+  if (idx !== -1) Object.assign(store.items[idx], saved)
+  isEditing.value = false
+}
+
+async function addNote() {
+  if (!addForm.value.title || !addForm.value.content) return
+  const tags = tagsToArray(addForm.value.tagsText)
+  await store.add({
+    title: addForm.value.title,
+    content: addForm.value.content,
+    tags: JSON.stringify(tags),
+    sourceUrl: addForm.value.sourceUrl || null
+  })
+  showAddForm.value = false
+}
+
+async function addUrlNote() {
+  if (!addUrl.value.trim()) {
+    urlError.value = '请输入网页 URL'
+    return
+  }
+  urlError.value = ''
+  try {
+    const res = await knowledgeApi.parseUrl(addUrl.value.trim())
+    store.items.unshift(res.data.data)
+    showAddForm.value = false
+  } catch (err) {
+    urlError.value = err.response?.data?.message || 'URL 解析失败'
+  }
+}
+
+async function addPdfNote() {
+  if (!pdfFile.value) {
+    pdfError.value = '请选择 PDF 文件'
+    return
+  }
+  pdfError.value = ''
+  try {
+    const res = await knowledgeApi.parsePdf(pdfFile.value)
+    store.items.unshift(res.data.data)
+    showAddForm.value = false
+  } catch (err) {
+    pdfError.value = err.response?.data?.message || 'PDF 解析失败'
+  }
+}
+
+async function deleteNote(id) {
+  if (confirm('确定删除此笔记？')) {
+    await store.remove(id)
+    if (detailNote.value?.id === id) closeDetail()
+  }
+}
+
+function formatTime(dateStr) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  return `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`
+}
+
+onMounted(() => store.loadItems())
+</script>

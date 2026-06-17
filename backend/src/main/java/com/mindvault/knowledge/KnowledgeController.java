@@ -22,11 +22,14 @@ public class KnowledgeController {
 
     private final KnowledgeService knowledgeService;
     private final ContentParserService contentParserService;
+    private final KnowledgeAssociationService associationService;
 
     public KnowledgeController(KnowledgeService knowledgeService,
-                                ContentParserService contentParserService) {
+                                ContentParserService contentParserService,
+                                KnowledgeAssociationService associationService) {
         this.knowledgeService = knowledgeService;
         this.contentParserService = contentParserService;
+        this.associationService = associationService;
     }
 
     @PostMapping
@@ -61,6 +64,13 @@ public class KnowledgeController {
             return ApiResponse.success(knowledgeService.searchByKeywordWithTag(q, topN, tag));
         }
         return ApiResponse.success(knowledgeService.searchByKeyword(q, topN));
+    }
+
+    @GetMapping("/{id}/related")
+    public ApiResponse<List<Map<String, Object>>> getRelated(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "5") int limit) {
+        return ApiResponse.success(associationService.getRelatedKnowledge(id, limit));
     }
 
     @DeleteMapping("/{id}")

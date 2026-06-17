@@ -2,6 +2,7 @@ package com.mindvault.agent;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindvault.agent.config.AgentConfig;
+import com.mindvault.agent.config.AgentConfig.LlmEndpoint;
 import com.mindvault.agent.tool.Tool;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
@@ -12,18 +13,11 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -37,8 +31,7 @@ public class AgentService {
     private final List<Tool> tools;
     private final ObjectMapper objectMapper;
 
-    private RestClient restClient;
-    private AgentConfig.LlmEndpoint endpoint;
+    private List<ModelEndpoint> modelEndpoints = List.of();
     private String systemPrompt;
 
     public AgentService(ModelConfigService modelConfigService,
@@ -52,22 +45,26 @@ public class AgentService {
 
     @PostConstruct
     public void init() {
+        refreshModels();
+        systemPrompt = buildSystemPrompt();
+    }
+
+    public void refreshModels() {
         try {
-            ModelConfig primaryConfig = modelConfigService.getPrimaryChatModel();
-            endpoint = agentConfig.buildEndpoint(primaryConfig);
-
-            restClient = RestClient.builder()
-                    .baseUrl(endpoint.getFullUrl())
-                    .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                    .defaultHeader("Authorization", "Bearer " + endpoint.getApiKey())
-                    .build();
-
-            systemPrompt = buildSystemPrompt();
-
-            log.info("AgentService 初始化完成，主模型: {}/{}",
-                    primaryConfig.getProvider(), primaryConfig.getModelName());
+            List<ModelConfig> models = modelConfigService.getAvailableChatModels();
+            modelEndpoints = models.stream()
+                    .map(mc -> new ModelEndpoint(mc.getId(), agentConfig.buildEndpoint(mc)))
+                    .toList();
+            if (!modelEndpoints.isEmpty()) {
+                ModelEndpoint primary = modelEndpoints.get(0);
+                log.info("AgentService 初始化完成，主模型: {}/{}, 备用模型数: {}",
+                        primary.endpoint.getModelName(), primary.endpoint.getBaseUrl(),
+                        modelEndpoints.size() - 1);
+            } else {
+                log.warn("AgentService 初始化：无可用模型");
+            }
         } catch (Exception e) {
-            log.warn("AgentService 初始化失败（未配置主模型）: {}", e.getMessage());
+            log.warn("AgentService 初始化失败: {}", e.getMessage());
         }
     }
 
@@ -91,7 +88,7 @@ public class AgentService {
     }
 
     public String processMessage(String userMessage) {
-        if (restClient == null) {
+        if (modelEndpoints.isEmpty()) {
             return "系统未配置主模型，请先在设置中添加并设置主模型。";
         }
 
@@ -107,7 +104,7 @@ public class AgentService {
             userMsg.put("content", userMessage);
             messages.add(userMsg);
 
-            String response = callLlm(messages);
+            String response = callLlmWithFailover(messages);
             String toolResult = executeToolCall(response);
 
             if (toolResult != null) {
@@ -121,7 +118,7 @@ public class AgentService {
                 toolMsg.put("content", "工具执行结果: " + toolResult);
                 messages.add(toolMsg);
 
-                return callLlm(messages);
+                return callLlmWithFailover(messages);
             }
 
             return response;
@@ -131,36 +128,60 @@ public class AgentService {
         }
     }
 
-    private String callLlm(List<Map<String, String>> messages) throws Exception {
-        Map<String, Object> requestBody = new LinkedHashMap<>();
-        requestBody.put("model", endpoint.getModelName());
-        requestBody.put("messages", messages);
-        requestBody.put("temperature", 0.7);
+    private String callLlmWithFailover(List<Map<String, String>> messages) {
+        List<String> errors = new ArrayList<>();
+        for (ModelEndpoint me : modelEndpoints) {
+            try {
+                RestClient client = RestClient.builder()
+                        .baseUrl(me.endpoint.getFullUrl())
+                        .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                        .defaultHeader("Authorization", "Bearer " + me.endpoint.getApiKey())
+                        .build();
 
-        String jsonBody = objectMapper.writeValueAsString(requestBody);
+                Map<String, Object> requestBody = new LinkedHashMap<>();
+                requestBody.put("model", me.endpoint.getModelName());
+                requestBody.put("messages", messages);
+                requestBody.put("temperature", 0.7);
 
-        String responseJson = restClient.post()
-                .body(jsonBody)
-                .retrieve()
-                .body(String.class);
+                String jsonBody = objectMapper.writeValueAsString(requestBody);
+                String responseJson = client.post()
+                        .body(jsonBody)
+                        .retrieve()
+                        .body(String.class);
 
-        Map<?, ?> responseMap = objectMapper.readValue(responseJson, Map.class);
+                Map<?, ?> responseMap = objectMapper.readValue(responseJson, Map.class);
+                String content = extractContent(responseMap);
+                if (content != null) return content;
 
+                return responseJson;
+            } catch (Exception e) {
+                log.warn("模型 id={} 调用失败: {}", me.modelId, e.getMessage());
+                errors.add("模型" + me.modelId + ": " + e.getMessage());
+            }
+        }
+        log.error("所有模型均调用失败: {}", String.join("; ", errors));
+        throw new RuntimeException("所有模型均调用失败");
+    }
+
+    private String extractContent(Map<?, ?> responseMap) {
         if (responseMap.containsKey("choices")) {
             List<?> choices = (List<?>) responseMap.get("choices");
             if (!choices.isEmpty()) {
                 Map<?, ?> choice = (Map<?, ?>) choices.get(0);
                 Map<?, ?> message = (Map<?, ?>) choice.get("message");
-                return (String) message.get("content");
+                if (message != null && message.get("content") instanceof String s) return s;
+                if (choice.get("text") instanceof String s) return s;
             }
         }
-
         if (responseMap.containsKey("message")) {
             Map<?, ?> message = (Map<?, ?>) responseMap.get("message");
-            return (String) message.get("content");
+            if (message.get("content") instanceof String s) return s;
         }
-
-        return responseJson;
+        if (responseMap.containsKey("response")) {
+            Object resp = responseMap.get("response");
+            if (resp instanceof String s) return s;
+        }
+        return null;
     }
 
     private String executeToolCall(String response) {
@@ -194,4 +215,6 @@ public class AgentService {
     public List<Tool> getTools() {
         return tools;
     }
+
+    private record ModelEndpoint(Long modelId, LlmEndpoint endpoint) {}
 }

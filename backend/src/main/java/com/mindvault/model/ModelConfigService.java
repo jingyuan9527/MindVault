@@ -84,6 +84,16 @@ public class ModelConfigService {
                 .orElseThrow(() -> new RuntimeException("未配置主模型，请在设置中添加并设置主模型"));
     }
 
+    /** 获取所有可用聊天模型（按优先级降序），用于故障降级 */
+    public List<ModelConfig> getAvailableChatModels() {
+        return repository.findByModelTypeAndIsEnabledTrueOrderByPriorityDesc("CHAT");
+    }
+
+    /** 获取所有可用嵌入模型 */
+    public List<ModelConfig> getAvailableEmbeddingModels() {
+        return repository.findByModelTypeAndIsEnabledTrueOrderByPriorityDesc("EMBEDDING");
+    }
+
     /** 删除模型配置 */
     @Transactional
     public void deleteConfig(Long id) {

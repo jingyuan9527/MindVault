@@ -21,5 +21,6 @@ export const knowledgeApi = {
   exportMarkdown: () => api.get('/knowledge/export/markdown', { responseType: 'blob' }),
   importJson: (json) => api.post('/knowledge/import', json, {
     headers: { 'Content-Type': 'application/json' }
-  })
+  }),
+  getRelated: (id, limit = 5) => api.get(`/knowledge/${id}/related?limit=${limit}`)
 }

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindvault.content.AutoProcessService;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.operationlog.OperationLogService;
+import com.mindvault.review.ReviewService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
@@ -38,14 +39,17 @@ public class KnowledgeService {
     private final KnowledgeRepository repository;
     private final OperationLogService operationLogService;
     private final AutoProcessService autoProcessService;
+    private final ReviewService reviewService;
     private final ObjectMapper objectMapper;
 
     public KnowledgeService(KnowledgeRepository repository,
                             OperationLogService operationLogService,
-                            AutoProcessService autoProcessService) {
+                            AutoProcessService autoProcessService,
+                            ReviewService reviewService) {
         this.repository = repository;
         this.operationLogService = operationLogService;
         this.autoProcessService = autoProcessService;
+        this.reviewService = reviewService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -64,6 +68,11 @@ public class KnowledgeService {
                 "添加知识「" + knowledge.getTitle() + "」");
 
         triggerAutoProcess(saved);
+        try {
+            reviewService.scheduleReview(saved.getId());
+        } catch (Exception e) {
+            log.warn("自动安排复习失败: {}", e.getMessage());
+        }
 
         return saved;
     }
