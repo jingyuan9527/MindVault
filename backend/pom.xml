@@ -45,7 +45,6 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
@@ -53,11 +52,13 @@
         </dependency>
 
         <!-- AgentScope Java 2.0 -->
+        <!-- 暂注释，待找到正确仓库后恢复
         <dependency>
             <groupId>com.alibaba.agentscope</groupId>
             <artifactId>agentscope-spring-boot-starter</artifactId>
             <version>${agentscope.version}</version>
         </dependency>
+        -->
 
         <!-- JSON 处理 -->
         <dependency>
@@ -79,6 +80,18 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <repositories>
+        <repository>
+            <id>aliyun</id>
+            <name>Alibaba Cloud Mirror</name>
+            <url>https://maven.aliyun.com/repository/public</url>
+        </repository>
+        <repository>
+            <id>central</id>
+            <url>https://repo.maven.apache.org/maven2</url>
+        </repository>
+    </repositories>
 
     <build>
         <plugins>

@@ -5,6 +5,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 /**
  * 操作日志服务
  *
@@ -41,5 +43,15 @@ public class OperationLogService {
 
         // 同时输出到操作日志文件
         opLog.info("[{}][{}] entityId={} | {}", module, action, entityId, summary);
+    }
+
+    /** 按模块查询操作日志 */
+    public List<OperationLog> listByModule(String module) {
+        return repository.findByModuleOrderByCreatedAtDesc(module);
+    }
+
+    /** 查询所有操作日志 */
+    public List<OperationLog> listAll() {
+        return repository.findAll();
     }
 }

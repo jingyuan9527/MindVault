@@ -51,14 +51,8 @@ spring:
       max-file-size: 50MB
       max-request-size: 50MB
 
-# AgentScope 配置
-agentscope:
-  # 默认 LLM 配置（v0.1 从 ModelConfig 动态获取，此处只做后备）
-  llm:
-    default-model: qwen-turbo
-
 # 日志级别
 logging:
   level:
     com.mindvault: DEBUG
-    com.alibaba.agentscope: DEBUG
+    #com.alibaba.agentscope: DEBUG

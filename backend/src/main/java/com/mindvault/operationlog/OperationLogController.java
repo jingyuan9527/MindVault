@@ -15,10 +15,10 @@ import java.util.List;
 @RequestMapping("/api/v1/operation-logs")
 public class OperationLogController {
 
-    private final OperationLogRepository repository;
+    private final OperationLogService operationLogService;
 
-    public OperationLogController(OperationLogRepository repository) {
-        this.repository = repository;
+    public OperationLogController(OperationLogService operationLogService) {
+        this.operationLogService = operationLogService;
     }
 
     /** 按模块查询操作日志 */
@@ -26,8 +26,8 @@ public class OperationLogController {
     public ApiResponse<List<OperationLog>> list(
             @RequestParam(required = false) String module) {
         if (module != null) {
-            return ApiResponse.success(repository.findByModuleOrderByCreatedAtDesc(module));
+            return ApiResponse.success(operationLogService.listByModule(module));
         }
-        return ApiResponse.success(repository.findAll());
+        return ApiResponse.success(operationLogService.listAll());
     }
 }

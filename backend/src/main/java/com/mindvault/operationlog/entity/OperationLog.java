@@ -2,6 +2,8 @@ package com.mindvault.operationlog.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.type.SqlTypes;
+import org.hibernate.annotations.JdbcTypeCode;
 import java.time.LocalDateTime;
 
 /**
@@ -30,6 +32,7 @@ public class OperationLog {
     @Column(length = 500)
     private String summary;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private String detail;
 
