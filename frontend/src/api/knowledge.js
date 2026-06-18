@@ -19,8 +19,16 @@ export const knowledgeApi = {
   },
   exportJson: () => api.get('/knowledge/export/json', { responseType: 'blob' }),
   exportMarkdown: () => api.get('/knowledge/export/markdown', { responseType: 'blob' }),
-  importJson: (json) => api.post('/knowledge/import', json, {
+  exportCsv: () => api.get('/knowledge/export/csv', { responseType: 'blob' }),
+  importJson: (json, conflictMode = 'skip') => api.post(`/knowledge/import?conflict=${conflictMode}`, json, {
     headers: { 'Content-Type': 'application/json' }
   }),
-  getRelated: (id, limit = 5) => api.get(`/knowledge/${id}/related?limit=${limit}`)
+  previewImport: (json) => api.post('/knowledge/import/preview', json, {
+    headers: { 'Content-Type': 'application/json' }
+  }),
+  getRelated: (id, limit = 5) => api.get(`/knowledge/${id}/related?limit=${limit}`),
+  getTags: () => api.get('/knowledge/tags'),
+  batchDelete: (ids) => api.post('/knowledge/batch/delete', ids),
+  batchTag: (ids, tag) => api.post('/knowledge/batch/tag', { ids, tag }),
+  batchExport: (ids) => api.post('/knowledge/batch/export', ids, { responseType: 'blob' })
 }

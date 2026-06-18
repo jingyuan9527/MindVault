@@ -81,7 +81,24 @@
       </router-link>
     </nav>
 
-    <div class="p-4" style="border-top: 1px solid var(--color-border)">
+    <div class="p-3" style="border-top: 1px solid var(--color-border)">
+      <p class="text-xs font-medium mb-2 px-2" style="color: var(--color-text-secondary)">标签云</p>
+      <div class="flex flex-wrap gap-1.5 px-2 max-h-32 overflow-y-auto">
+        <router-link v-for="tag in tags" :key="tag.name" :to="{ path: '/', query: { tag: tag.name } }"
+          class="px-2 py-0.5 rounded text-xs transition-all duration-150 whitespace-nowrap hover:opacity-80"
+          :style="{
+            backgroundColor: 'var(--color-sage-light)',
+            color: 'var(--color-sage)',
+            fontSize: Math.min(0.75 + tag.count * 0.04, 1) + 'rem'
+          }">
+          {{ tag.name }}
+          <span class="ml-0.5 opacity-60">({{ tag.count }})</span>
+        </router-link>
+        <p v-if="!tags.length" class="text-xs px-2" style="color: var(--color-text-secondary)">暂无标签</p>
+      </div>
+    </div>
+
+    <div class="p-4 pt-2" style="border-top: 1px solid var(--color-border)">
       <p class="text-xs" style="color: var(--color-text-secondary)">v0.3.0 · 智能增强版</p>
     </div>
   </aside>
@@ -90,8 +107,10 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { reviewApi } from '@/api/review'
+import { knowledgeApi } from '@/api/knowledge'
 
 const dueCount = ref(0)
+const tags = ref([])
 let pollTimer = null
 
 function hoverNav(e, path) {
@@ -113,8 +132,16 @@ async function loadDueCount() {
   } catch {}
 }
 
+async function loadTags() {
+  try {
+    const res = await knowledgeApi.getTags()
+    tags.value = res.data.data || []
+  } catch {}
+}
+
 onMounted(() => {
   loadDueCount()
+  loadTags()
   pollTimer = setInterval(loadDueCount, 60000)
 })
 

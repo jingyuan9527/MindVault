@@ -2,7 +2,7 @@ package com.mindvault.writing;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindvault.agent.config.AgentConfig;
-import com.mindvault.knowledge.KnowledgeRepository;
+import com.mindvault.knowledge.KnowledgeMapper;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
@@ -23,17 +23,17 @@ public class WritingService {
 
     private final ModelConfigService modelConfigService;
     private final AgentConfig agentConfig;
-    private final KnowledgeRepository knowledgeRepository;
+    private final KnowledgeMapper knowledgeMapper;
     private final ObjectMapper objectMapper;
 
     private List<LlmEndpoint> modelEndpoints = List.of();
 
     public WritingService(ModelConfigService modelConfigService,
                           AgentConfig agentConfig,
-                          KnowledgeRepository knowledgeRepository) {
+                          KnowledgeMapper knowledgeMapper) {
         this.modelConfigService = modelConfigService;
         this.agentConfig = agentConfig;
-        this.knowledgeRepository = knowledgeRepository;
+        this.knowledgeMapper = knowledgeMapper;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -104,7 +104,7 @@ public class WritingService {
 
         List<Knowledge> results = new ArrayList<>();
         for (String term : searchTerms) {
-            List<Knowledge> matches = knowledgeRepository.findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(term, term);
+            List<Knowledge> matches = knowledgeMapper.findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(term, term);
             for (Knowledge k : matches) {
                 if (results.stream().noneMatch(r -> r.getId().equals(k.getId()))) {
                     results.add(k);

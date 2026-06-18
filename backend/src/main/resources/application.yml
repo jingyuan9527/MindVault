@@ -20,18 +20,6 @@ spring:
       maximum-pool-size: 10
       minimum-idle: 2
 
-  # JPA 配置
-  jpa:
-    hibernate:
-      ddl-auto: validate  # 由 Flyway 管理表结构，JPA 只做验证
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        jdbc:
-          batch_size: 50
-        format_sql: true
-    show-sql: true
-
   # Flyway 数据库迁移
   flyway:
     enabled: true
@@ -50,6 +38,23 @@ spring:
     multipart:
       max-file-size: 50MB
       max-request-size: 50MB
+
+# 备份配置
+mindvault:
+  backup:
+    dir: backups
+    retention-days: 7
+
+# MyBatis-Plus 配置
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      id-type: auto
+      update-strategy: not_null
+      insert-strategy: not_null
 
 # 日志级别
 logging:

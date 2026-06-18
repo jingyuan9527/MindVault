@@ -1,38 +1,34 @@
 package com.mindvault.flashcard.entity;
 
-import jakarta.persistence.*;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "flash_card")
+@TableName("flash_card")
 public class FlashCard {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @TableId(type = IdType.AUTO)
     private Long id;
 
-    @Column(name = "knowledge_id", nullable = false)
+    @TableField("knowledge_id")
     private Long knowledgeId;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @TableField("question")
     private String question;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @TableField("answer")
     private String answer;
 
-    @Column(length = 10)
+    @TableField("difficulty")
     private String difficulty = "MEDIUM";
 
-    @Column(name = "source_type", nullable = false, length = 10)
+    @TableField("source_type")
     private String sourceType = "AUTO";
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @TableField("created_at")
     private LocalDateTime createdAt;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -47,4 +43,5 @@ public class FlashCard {
     public String getSourceType() { return sourceType; }
     public void setSourceType(String sourceType) { this.sourceType = sourceType; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

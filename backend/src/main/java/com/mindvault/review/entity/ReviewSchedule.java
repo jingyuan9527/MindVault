@@ -1,51 +1,41 @@
 package com.mindvault.review.entity;
 
-import jakarta.persistence.*;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "review_schedule")
+@TableName("review_schedule")
 public class ReviewSchedule {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @TableId(type = IdType.AUTO)
     private Long id;
 
-    @Column(name = "knowledge_id", nullable = false)
+    @TableField("knowledge_id")
     private Long knowledgeId;
 
-    @Column(name = "ease_factor", nullable = false, precision = 4, scale = 2)
+    @TableField("ease_factor")
     private BigDecimal easeFactor = new BigDecimal("2.50");
 
-    @Column(name = "interval_days", nullable = false)
+    @TableField("interval_days")
     private Integer intervalDays = 0;
 
-    @Column(name = "review_count", nullable = false)
+    @TableField("review_count")
     private Integer reviewCount = 0;
 
-    @Column(name = "next_review_at", nullable = false)
+    @TableField("next_review_at")
     private LocalDateTime nextReviewAt = LocalDateTime.now();
 
-    @Column(name = "last_review_at")
+    @TableField("last_review_at")
     private LocalDateTime lastReviewAt;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @TableField("created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
+    @TableField("updated_at")
     private LocalDateTime updatedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -63,4 +53,6 @@ public class ReviewSchedule {
     public void setLastReviewAt(LocalDateTime lastReviewAt) { this.lastReviewAt = lastReviewAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

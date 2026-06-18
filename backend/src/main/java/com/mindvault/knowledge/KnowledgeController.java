@@ -10,8 +10,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.mindvault.knowledge.dto.ImportPreview;
 
 /**
  * 知识库 REST API
@@ -23,13 +26,16 @@ public class KnowledgeController {
     private final KnowledgeService knowledgeService;
     private final ContentParserService contentParserService;
     private final KnowledgeAssociationService associationService;
+    private final SearchEnhanceService searchEnhanceService;
 
     public KnowledgeController(KnowledgeService knowledgeService,
                                 ContentParserService contentParserService,
-                                KnowledgeAssociationService associationService) {
+                                KnowledgeAssociationService associationService,
+                                SearchEnhanceService searchEnhanceService) {
         this.knowledgeService = knowledgeService;
         this.contentParserService = contentParserService;
         this.associationService = associationService;
+        this.searchEnhanceService = searchEnhanceService;
     }
 
     @PostMapping
@@ -63,7 +69,26 @@ public class KnowledgeController {
         if (tag != null && !tag.isBlank()) {
             return ApiResponse.success(knowledgeService.searchByKeywordWithTag(q, topN, tag));
         }
-        return ApiResponse.success(knowledgeService.searchByKeyword(q, topN));
+        List<Map<String, Object>> results = knowledgeService.hybridSearch(q, topN * 2);
+        List<Map<String, Object>> reranked = searchEnhanceService.rerankResults(q, results, topN);
+        return ApiResponse.success(reranked);
+    }
+
+    @GetMapping("/search/hyde")
+    public ApiResponse<?> searchHyde(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "5") int topN) {
+        List<Map<String, Object>> results = searchEnhanceService.hydeSearch(q, topN * 2);
+        List<Map<String, Object>> reranked = searchEnhanceService.rerankResults(q, results, topN);
+        return ApiResponse.success(reranked);
+    }
+
+    @GetMapping("/search/rewrite")
+    public ApiResponse<?> searchWithRewrite(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "5") int topN) {
+        List<Map<String, Object>> results = searchEnhanceService.searchWithRewrite(q, topN);
+        return ApiResponse.success(results);
     }
 
     @GetMapping("/{id}/related")
@@ -136,9 +161,59 @@ public class KnowledgeController {
                 .body(zip);
     }
 
+    @GetMapping("/export/csv")
+    public ResponseEntity<String> exportCsv() {
+        String csv = knowledgeService.exportAllAsCsv();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=mindvault-export.csv")
+                .contentType(MediaType.TEXT_PLAIN)
+                .body(csv);
+    }
+
+    @PostMapping("/import/preview")
+    public ApiResponse<ImportPreview> previewImport(@RequestBody String jsonBody) {
+        ImportPreview preview = knowledgeService.previewImport(jsonBody);
+        return ApiResponse.success(preview);
+    }
+
     @PostMapping("/import")
-    public ApiResponse<Map<String, Integer>> importJson(@RequestBody String jsonBody) {
-        int count = knowledgeService.importFromJson(jsonBody);
-        return ApiResponse.success(Map.of("imported", count));
+    public ApiResponse<Map<String, Object>> importJson(
+            @RequestBody String jsonBody,
+            @RequestParam(defaultValue = "skip") String conflict) {
+        int count = knowledgeService.importFromJsonWithConflict(jsonBody, conflict);
+        Map<String, Object> result = new HashMap<>();
+        result.put("imported", count);
+        result.put("conflictMode", conflict);
+        return ApiResponse.success(result);
+    }
+
+    @PostMapping("/batch/delete")
+    public ApiResponse<Void> batchDelete(@RequestBody List<Long> ids) {
+        knowledgeService.batchDelete(ids);
+        return ApiResponse.success(null);
+    }
+
+    @PostMapping("/batch/tag")
+    public ApiResponse<Void> batchTag(@RequestBody Map<String, Object> body) {
+        @SuppressWarnings("unchecked")
+        List<Number> rawIds = (List<Number>) body.get("ids");
+        List<Long> ids = rawIds.stream().map(Number::longValue).toList();
+        String tag = (String) body.get("tag");
+        knowledgeService.batchTag(ids, tag);
+        return ApiResponse.success(null);
+    }
+
+    @PostMapping("/batch/export")
+    public ResponseEntity<String> batchExport(@RequestBody List<Long> ids) {
+        String json = knowledgeService.batchExport(ids);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=mindvault-export.json")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(json);
+    }
+
+    @GetMapping("/tags")
+    public ApiResponse<List<Map<String, Object>>> getAllTags() {
+        return ApiResponse.success(knowledgeService.getAllTags());
     }
 }

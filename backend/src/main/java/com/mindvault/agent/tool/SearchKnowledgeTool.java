@@ -1,7 +1,6 @@
 package com.mindvault.agent.tool;
 
 import com.mindvault.knowledge.KnowledgeService;
-import com.mindvault.knowledge.entity.Knowledge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -39,18 +38,24 @@ public class SearchKnowledgeTool implements Tool {
         log.info("Agent 调用 search_knowledge: query={}, topN={}", query, topN);
 
         try {
-            List<Knowledge> knowledgeList = knowledgeService.searchByKeyword(query, topN);
+            List<Map<String, Object>> results = knowledgeService.hybridSearch(query, topN);
 
-            if (knowledgeList.isEmpty()) {
+            if (results.isEmpty()) {
                 return "未找到与「" + query + "」相关的知识。";
             }
 
-            return knowledgeList.stream()
-                    .map(k -> String.format("- [%d] %s\n  %s",
-                            k.getId(), k.getTitle(),
-                            k.getContent().length() > 200
-                                    ? k.getContent().substring(0, 200) + "..."
-                                    : k.getContent()))
+            return results.stream()
+                    .map(k -> {
+                        String title = (String) k.getOrDefault("title", "");
+                        String content = (String) k.getOrDefault("content", "");
+                        String summary = (String) k.getOrDefault("summary", "");
+                        Object sim = k.get("similarity");
+                        String simStr = sim != null ? String.format(" (相似度: %.2f)", sim) : "";
+                        String display = summary != null && !summary.isBlank() ? summary : content;
+                        return String.format("- [%d] %s%s\n  %s",
+                                k.get("id"), title, simStr,
+                                display.length() > 200 ? display.substring(0, 200) + "..." : display);
+                    })
                     .collect(Collectors.joining("\n\n"));
         } catch (Exception e) {
             log.warn("搜索失败，降级到空结果: {}", e.getMessage());

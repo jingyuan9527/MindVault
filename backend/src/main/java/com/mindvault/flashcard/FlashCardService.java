@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
@@ -27,7 +28,7 @@ public class FlashCardService {
     private final ModelConfigService modelConfigService;
     private final AgentConfig agentConfig;
     private final KnowledgeService knowledgeService;
-    private final FlashCardRepository repository;
+    private final FlashCardMapper mapper;
     private final ObjectMapper objectMapper;
 
     private List<LlmEndpoint> modelEndpoints = List.of();
@@ -35,11 +36,11 @@ public class FlashCardService {
     public FlashCardService(ModelConfigService modelConfigService,
                             AgentConfig agentConfig,
                             KnowledgeService knowledgeService,
-                            FlashCardRepository repository) {
+                            FlashCardMapper mapper) {
         this.modelConfigService = modelConfigService;
         this.agentConfig = agentConfig;
         this.knowledgeService = knowledgeService;
-        this.repository = repository;
+        this.mapper = mapper;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -65,10 +66,11 @@ public class FlashCardService {
         Knowledge knowledge = knowledgeService.getById(knowledgeId);
         if (knowledge == null) throw new IllegalArgumentException("知识不存在: " + knowledgeId);
 
-        repository.findByKnowledgeId(knowledgeId).forEach(c -> repository.deleteById(c.getId()));
+        mapper.findByKnowledgeId(knowledgeId).forEach(c -> mapper.deleteById(c.getId()));
 
         List<Map<String, String>> qaPairs = callLlmForCards(knowledge.getTitle(), knowledge.getContent());
         List<FlashCard> cards = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
         for (Map<String, String> pair : qaPairs) {
             FlashCard card = new FlashCard();
             card.setKnowledgeId(knowledgeId);
@@ -76,7 +78,9 @@ public class FlashCardService {
             card.setAnswer(pair.get("answer"));
             card.setDifficulty(pair.getOrDefault("difficulty", "MEDIUM"));
             card.setSourceType("AUTO");
-            cards.add(repository.save(card));
+            card.setCreatedAt(now);
+            mapper.insert(card);
+            cards.add(card);
         }
         log.info("生成知识卡片: knowledgeId={}, count={}", knowledgeId, cards.size());
         return cards;
@@ -104,24 +108,24 @@ public class FlashCardService {
     }
 
     public List<FlashCard> listByKnowledge(Long knowledgeId) {
-        return repository.findByKnowledgeId(knowledgeId);
+        return mapper.findByKnowledgeId(knowledgeId);
     }
 
     public List<FlashCard> listAll() {
-        return repository.findAll();
+        return mapper.selectList(null);
     }
 
     public List<FlashCard> listBySourceType(String sourceType) {
-        return repository.findBySourceType(sourceType);
+        return mapper.findBySourceType(sourceType);
     }
 
     public long countByKnowledge(Long knowledgeId) {
-        return repository.countByKnowledgeId(knowledgeId);
+        return mapper.countByKnowledgeId(knowledgeId);
     }
 
     @Transactional
     public void deleteCard(Long id) {
-        repository.deleteById(id);
+        mapper.deleteById(id);
     }
 
     private String callLlmWithFailover(String prompt) {

@@ -13,6 +13,7 @@
         :message="msg.content"
         :isUser="msg.role === 'USER'"
         :time="formatTime(msg.createdAt)"
+        :sources="msg.sources"
       />
 
       <ThinkingIndicator v-if="store.isLoading" />

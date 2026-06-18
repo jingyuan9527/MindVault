@@ -5,6 +5,7 @@ import com.mindvault.chat.entity.ChatSession;
 import com.mindvault.common.dto.ApiResponse;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 import java.util.Map;
@@ -43,5 +44,21 @@ public class ChatController {
             return ApiResponse.error(400, "消息内容不能为空");
         }
         return ApiResponse.success(chatService.sendMessage(id, content));
+    }
+
+    @PostMapping(value = "/sessions/{id}/messages/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter sendMessageStream(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        String content = body.get("content");
+        if (content == null || content.isBlank()) {
+            SseEmitter emitter = new SseEmitter();
+            try {
+                emitter.send(SseEmitter.event().name("error").data("消息内容不能为空"));
+                emitter.complete();
+            } catch (Exception ignored) {}
+            return emitter;
+        }
+        return chatService.sendMessageStream(id, content);
     }
 }

@@ -1,35 +1,34 @@
 package com.mindvault.chat.entity;
 
-import jakarta.persistence.*;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "chat_message")
+@TableName("chat_message")
 public class ChatMessage {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @TableId(type = IdType.AUTO)
     private Long id;
 
-    @Column(name = "session_id", nullable = false)
+    @TableField("session_id")
     private Long sessionId;
 
-    @Column(nullable = false, length = 10)
+    @TableField("role")
     private String role;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @TableField("content")
     private String content;
 
-    @Column(columnDefinition = "jsonb")
+    @TableField("metadata")
     private String metadata = "{}";
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    @TableField("sources")
+    private String sources = "[]";
 
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
+    @TableField("created_at")
+    private LocalDateTime createdAt;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -41,6 +40,8 @@ public class ChatMessage {
     public void setContent(String content) { this.content = content; }
     public String getMetadata() { return metadata; }
     public void setMetadata(String metadata) { this.metadata = metadata; }
+    public String getSources() { return sources; }
+    public void setSources(String sources) { this.sources = sources; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

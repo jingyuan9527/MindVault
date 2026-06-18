@@ -8,4 +8,9 @@ frontend/dist/
 .idea/
 .claude/
 *.Zone.Identifier
+
+# 本地/测试配置文件（可能包含密钥，禁止提交）
+backend/src/test/resources/application-test.yml
+backend/src/main/resources/application-local.yml
+**/application-local.yml
 "MindVault 知忆 - 个人知识库Agent 开发手册.md"

@@ -7,6 +7,9 @@ export const useChatStore = defineStore('chat', {
     currentSessionId: null,
     messages: [],
     isLoading: false,
+    streamingContent: '',
+    streamingSources: [],
+    cancelStream: null,
   }),
 
   actions: {
@@ -34,13 +37,49 @@ export const useChatStore = defineStore('chat', {
       if (!this.currentSessionId) {
         await this.createSession()
       }
+
+      const tempUserMsg = { id: Date.now(), role: 'USER', content, createdAt: new Date().toISOString() }
+      this.messages.push(tempUserMsg)
       this.isLoading = true
-      try {
-        await chatApi.sendMessage(this.currentSessionId, content)
-        await this.loadMessages(this.currentSessionId)
-      } finally {
-        this.isLoading = false
-      }
+      this.streamingContent = ''
+      this.streamingSources = []
+
+      const tempAgentMsgIndex = this.messages.length
+      this.messages.push({ id: 'streaming', role: 'ASSISTANT', content: '', sources: '[]', createdAt: new Date().toISOString() })
+
+      this.cancelStream = chatApi.sendMessageStream(this.currentSessionId, content, {
+        onToken: (token) => {
+          this.streamingContent += token
+          this.messages[tempAgentMsgIndex] = {
+            ...this.messages[tempAgentMsgIndex],
+            content: this.streamingContent
+          }
+        },
+        onSources: (sources) => {
+          this.streamingSources = sources
+          this.messages[tempAgentMsgIndex] = {
+            ...this.messages[tempAgentMsgIndex],
+            sources: JSON.stringify(sources)
+          }
+        },
+        onDone: () => {
+          this.isLoading = false
+          this.streamingContent = ''
+          this.streamingSources = []
+          this.cancelStream = null
+          this.loadMessages(this.currentSessionId)
+        },
+        onError: (error) => {
+          this.isLoading = false
+          this.streamingContent = ''
+          this.streamingSources = []
+          this.cancelStream = null
+          this.messages[tempAgentMsgIndex] = {
+            ...this.messages[tempAgentMsgIndex],
+            content: `抱歉，处理消息时出错: ${error}`
+          }
+        }
+      })
     }
   }
 })

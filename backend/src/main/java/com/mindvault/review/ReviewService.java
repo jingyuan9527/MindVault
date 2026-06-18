@@ -20,36 +20,39 @@ public class ReviewService {
 
     private static final Logger log = LoggerFactory.getLogger(ReviewService.class);
 
-    private final ReviewScheduleRepository repository;
+    private final ReviewScheduleMapper mapper;
     private final KnowledgeService knowledgeService;
     private final OperationLogService operationLogService;
 
-    public ReviewService(ReviewScheduleRepository repository,
+    public ReviewService(ReviewScheduleMapper mapper,
                          @Lazy KnowledgeService knowledgeService,
                          OperationLogService operationLogService) {
-        this.repository = repository;
+        this.mapper = mapper;
         this.knowledgeService = knowledgeService;
         this.operationLogService = operationLogService;
     }
 
     @Transactional
     public ReviewSchedule scheduleReview(Long knowledgeId) {
-        Optional<ReviewSchedule> existing = repository.findByKnowledgeId(knowledgeId);
+        Optional<ReviewSchedule> existing = mapper.findByKnowledgeId(knowledgeId);
         if (existing.isPresent()) {
             return existing.get();
         }
         ReviewSchedule schedule = new ReviewSchedule();
+        LocalDateTime now = LocalDateTime.now();
         schedule.setKnowledgeId(knowledgeId);
-        schedule.setNextReviewAt(LocalDateTime.now().plusDays(1));
-        ReviewSchedule saved = repository.save(schedule);
-        log.info("安排复习: knowledgeId={}, nextReviewAt={}", knowledgeId, saved.getNextReviewAt());
-        return saved;
+        schedule.setNextReviewAt(now.plusDays(1));
+        schedule.setCreatedAt(now);
+        schedule.setUpdatedAt(now);
+        mapper.insert(schedule);
+        log.info("安排复习: knowledgeId={}, nextReviewAt={}", knowledgeId, schedule.getNextReviewAt());
+        return schedule;
     }
 
     @Transactional
     public ReviewSchedule performReview(Long knowledgeId, int quality) {
         quality = Math.max(0, Math.min(5, quality));
-        ReviewSchedule schedule = repository.findByKnowledgeId(knowledgeId)
+        ReviewSchedule schedule = mapper.findByKnowledgeId(knowledgeId)
                 .orElseGet(() -> {
                     ReviewSchedule s = new ReviewSchedule();
                     s.setKnowledgeId(knowledgeId);
@@ -89,16 +92,25 @@ public class ReviewService {
         schedule.setLastReviewAt(LocalDateTime.now());
         schedule.setNextReviewAt(LocalDateTime.now().plusDays(Math.max(1, interval)));
 
-        ReviewSchedule saved = repository.save(schedule);
+        LocalDateTime now = LocalDateTime.now();
+        if (schedule.getId() == null) {
+            schedule.setCreatedAt(now);
+            schedule.setUpdatedAt(now);
+            mapper.insert(schedule);
+        } else {
+            schedule.setUpdatedAt(now);
+            mapper.updateById(schedule);
+        }
+
         log.info("执行复习: knowledgeId={}, quality={}, nextInterval={}d, nextAt={}",
-                knowledgeId, quality, saved.getIntervalDays(), saved.getNextReviewAt());
+                knowledgeId, quality, schedule.getIntervalDays(), schedule.getNextReviewAt());
         operationLogService.log("REVIEW", "PERFORM", knowledgeId,
-                "复习知识，质量=" + quality + "，下次复习=" + saved.getNextReviewAt());
-        return saved;
+                "复习知识，质量=" + quality + "，下次复习=" + schedule.getNextReviewAt());
+        return schedule;
     }
 
     public List<Map<String, Object>> getDueReviews(int limit) {
-        List<ReviewSchedule> dueSchedules = repository.findDueReviews(LocalDateTime.now());
+        List<ReviewSchedule> dueSchedules = mapper.findDueReviews(LocalDateTime.now());
         if (dueSchedules.size() > limit) {
             dueSchedules = dueSchedules.subList(0, limit);
         }
@@ -127,6 +139,6 @@ public class ReviewService {
     }
 
     public long getDueReviewCount() {
-        return repository.countDueReviews(LocalDateTime.now());
+        return mapper.countDueReviews(LocalDateTime.now());
     }
 }

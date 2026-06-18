@@ -1,42 +1,38 @@
 package com.mindvault.dailyreview.entity;
 
-import jakarta.persistence.*;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "daily_review")
+@TableName("daily_review")
 public class DailyReview {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @TableId(type = IdType.AUTO)
     private Long id;
 
-    @Column(name = "report_date", nullable = false, unique = true)
+    @TableField("report_date")
     private LocalDate reportDate;
 
-    @Column(name = "total_count", nullable = false)
+    @TableField("total_count")
     private Integer totalCount = 0;
 
-    @Column(columnDefinition = "TEXT")
+    @TableField("summary")
     private String summary;
 
-    @Column(name = "key_insights", columnDefinition = "TEXT")
+    @TableField("key_insights")
     private String keyInsights = "[]";
 
-    @Column(columnDefinition = "TEXT")
+    @TableField("recommendations")
     private String recommendations = "[]";
 
-    @Column(name = "category_breakdown", columnDefinition = "TEXT")
+    @TableField("category_breakdown")
     private String categoryBreakdown = "{}";
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @TableField("created_at")
     private LocalDateTime createdAt;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -53,4 +49,5 @@ public class DailyReview {
     public String getCategoryBreakdown() { return categoryBreakdown; }
     public void setCategoryBreakdown(String categoryBreakdown) { this.categoryBreakdown = categoryBreakdown; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

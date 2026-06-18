@@ -4,16 +4,23 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindvault.agent.config.AgentConfig;
 import com.mindvault.agent.config.AgentConfig.LlmEndpoint;
 import com.mindvault.agent.tool.Tool;
+import com.mindvault.common.config.CircuitBreakerConfig;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
+import com.mindvault.tokenusage.TokenUsageService;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,6 +36,8 @@ public class AgentService {
     private final ModelConfigService modelConfigService;
     private final AgentConfig agentConfig;
     private final List<Tool> tools;
+    private final TokenUsageService tokenUsageService;
+    private final CircuitBreakerConfig circuitBreaker;
     private final ObjectMapper objectMapper;
 
     private List<ModelEndpoint> modelEndpoints = List.of();
@@ -36,10 +45,14 @@ public class AgentService {
 
     public AgentService(ModelConfigService modelConfigService,
                         AgentConfig agentConfig,
-                        List<Tool> tools) {
+                        List<Tool> tools,
+                        TokenUsageService tokenUsageService,
+                        CircuitBreakerConfig circuitBreaker) {
         this.modelConfigService = modelConfigService;
         this.agentConfig = agentConfig;
         this.tools = tools;
+        this.tokenUsageService = tokenUsageService;
+        this.circuitBreaker = circuitBreaker;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -53,7 +66,7 @@ public class AgentService {
         try {
             List<ModelConfig> models = modelConfigService.getAvailableChatModels();
             modelEndpoints = models.stream()
-                    .map(mc -> new ModelEndpoint(mc.getId(), agentConfig.buildEndpoint(mc)))
+                    .map(mc -> new ModelEndpoint(mc.getId(), mc.getProvider(), agentConfig.buildEndpoint(mc)))
                     .toList();
             if (!modelEndpoints.isEmpty()) {
                 ModelEndpoint primary = modelEndpoints.get(0);
@@ -128,9 +141,135 @@ public class AgentService {
         }
     }
 
-    private String callLlmWithFailover(List<Map<String, String>> messages) {
+    public void processMessageStream(String userMessage, StreamCallback callback) {
+        if (modelEndpoints.isEmpty()) {
+            callback.onError("系统未配置主模型，请先在设置中添加并设置主模型。");
+            return;
+        }
+
+        try {
+            List<Map<String, String>> messages = new ArrayList<>();
+            messages.add(Map.of("role", "system", "content", systemPrompt));
+            messages.add(Map.of("role", "user", "content", userMessage));
+
+            StringBuilder fullResponse = new StringBuilder();
+            streamFromLlm(messages, callback, fullResponse);
+
+            String toolResult = executeToolCall(fullResponse.toString());
+            if (toolResult != null) {
+                messages.add(Map.of("role", "assistant", "content", fullResponse.toString()));
+                messages.add(Map.of("role", "user", "content", "工具执行结果: " + toolResult));
+                streamFromLlm(messages, callback, new StringBuilder());
+            }
+
+            callback.onComplete();
+        } catch (Exception e) {
+            log.error("Agent 流式处理失败: {}", e.getMessage(), e);
+            callback.onError("抱歉，处理您的消息时遇到了问题，请稍后重试。");
+        }
+    }
+
+    private void streamFromLlm(List<Map<String, String>> messages, StreamCallback callback, StringBuilder collector) {
         List<String> errors = new ArrayList<>();
         for (ModelEndpoint me : modelEndpoints) {
+            if (!circuitBreaker.isAvailable(me.modelId)) {
+                errors.add("模型" + me.modelId + " 熔断中");
+                continue;
+            }
+            try {
+                JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory();
+                factory.setReadTimeout(120_000);
+
+                RestClient client = RestClient.builder()
+                        .baseUrl(me.endpoint.getFullUrl())
+                        .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                        .defaultHeader("Authorization", "Bearer " + me.endpoint.getApiKey())
+                        .requestFactory(factory)
+                        .build();
+
+                Map<String, Object> requestBody = new LinkedHashMap<>();
+                requestBody.put("model", me.endpoint.getModelName());
+                requestBody.put("messages", messages);
+                requestBody.put("temperature", 0.7);
+                requestBody.put("stream", true);
+
+                String jsonBody = objectMapper.writeValueAsString(requestBody);
+
+                boolean isOllama = me.endpoint.getFullUrl().contains("ollama") || me.endpoint.getFullUrl().contains("11434");
+
+                client.post()
+                        .body(jsonBody)
+                        .exchange((request, response) -> {
+                            InputStream body = response.getBody();
+                            BufferedReader reader = new BufferedReader(new InputStreamReader(body, StandardCharsets.UTF_8));
+                            String line;
+                            while ((line = reader.readLine()) != null) {
+                                if (line.isEmpty()) continue;
+                                String content = parseStreamLine(line, isOllama);
+                                if (content != null) {
+                                    callback.onToken(content);
+                                    collector.append(content);
+                                }
+                            }
+                            return null;
+                        });
+
+                circuitBreaker.recordSuccess(me.modelId);
+                return;
+            } catch (Exception e) {
+                circuitBreaker.recordFailure(me.modelId);
+                log.warn("模型 id={} 流式调用失败: {}", me.modelId, e.getMessage());
+                errors.add("模型" + me.modelId + ": " + e.getMessage());
+            }
+        }
+        log.error("所有模型流式调用均失败: {}", String.join("; ", errors));
+        throw new RuntimeException("所有模型流式调用均失败");
+    }
+
+    private String parseStreamLine(String line, boolean isOllama) {
+        if (isOllama) {
+            try {
+                Map<?, ?> data = objectMapper.readValue(line, Map.class);
+                if (data.containsKey("message")) {
+                    Map<?, ?> msg = (Map<?, ?>) data.get("message");
+                    Object content = msg.get("content");
+                    if (content instanceof String s && !s.isEmpty()) return s;
+                }
+                if (data.containsKey("done") && Boolean.TRUE.equals(data.get("done"))) return null;
+            } catch (Exception ignored) {}
+            return null;
+        }
+
+        if (!line.startsWith("data:")) return null;
+        String data = line.substring(5).trim();
+        if (data.equals("[DONE]")) return null;
+
+        try {
+            Map<?, ?> json = objectMapper.readValue(data, Map.class);
+            List<?> choices = (List<?>) json.get("choices");
+            if (choices != null && !choices.isEmpty()) {
+                Map<?, ?> choice = (Map<?, ?>) choices.get(0);
+                Object finishReason = choice.get("finish_reason");
+                if (finishReason instanceof String s && !s.isBlank()) return null;
+                Map<?, ?> delta = (Map<?, ?>) choice.get("delta");
+                if (delta != null && delta.get("content") instanceof String s && !s.isEmpty()) return s;
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private String callLlmWithFailover(List<Map<String, String>> messages) {
+        return callLlmWithRetry(messages, 0);
+    }
+
+    private String callLlmWithRetry(List<Map<String, String>> messages, int retryCount) {
+        List<String> errors = new ArrayList<>();
+        for (ModelEndpoint me : modelEndpoints) {
+            if (!circuitBreaker.isAvailable(me.modelId)) {
+                errors.add("模型" + me.modelId + " 熔断中");
+                continue;
+            }
+
             try {
                 RestClient client = RestClient.builder()
                         .baseUrl(me.endpoint.getFullUrl())
@@ -151,16 +290,47 @@ public class AgentService {
 
                 Map<?, ?> responseMap = objectMapper.readValue(responseJson, Map.class);
                 String content = extractContent(responseMap);
+                circuitBreaker.recordSuccess(me.modelId);
+                recordUsage(me, responseMap);
                 if (content != null) return content;
 
                 return responseJson;
             } catch (Exception e) {
+                circuitBreaker.recordFailure(me.modelId);
                 log.warn("模型 id={} 调用失败: {}", me.modelId, e.getMessage());
                 errors.add("模型" + me.modelId + ": " + e.getMessage());
             }
         }
-        log.error("所有模型均调用失败: {}", String.join("; ", errors));
+
+        if (retryCount < 2) {
+            log.warn("所有模型失败，{} 秒后重试 ({}/2)", (retryCount + 1) * 2, retryCount + 1);
+            try {
+                Thread.sleep((retryCount + 1L) * 2000);
+            } catch (InterruptedException ignored) {}
+            return callLlmWithRetry(messages, retryCount + 1);
+        }
+
+        log.error("所有模型均调用失败 (已重试): {}", String.join("; ", errors));
         throw new RuntimeException("所有模型均调用失败");
+    }
+
+    @SuppressWarnings("unchecked")
+    private void recordUsage(ModelEndpoint me, Map<?, ?> responseMap) {
+        try {
+            Map<String, Object> usage = (Map<String, Object>) responseMap.get("usage");
+            if (usage != null) {
+                int promptTokens = ((Number) usage.getOrDefault("prompt_tokens", 0)).intValue();
+                int completionTokens = ((Number) usage.getOrDefault("completion_tokens", 0)).intValue();
+                ModelConfig mc = new ModelConfig();
+                mc.setId(me.modelId);
+                mc.setProvider(me.provider);
+                mc.setModelName(me.endpoint.getModelName());
+                mc.setModelType("CHAT");
+                tokenUsageService.recordUsage(mc, promptTokens, completionTokens, "CHAT", null);
+            }
+        } catch (Exception e) {
+            log.warn("记录 Token 用量失败: {}", e.getMessage());
+        }
     }
 
     private String extractContent(Map<?, ?> responseMap) {
@@ -216,5 +386,11 @@ public class AgentService {
         return tools;
     }
 
-    private record ModelEndpoint(Long modelId, LlmEndpoint endpoint) {}
+    public interface StreamCallback {
+        void onToken(String token);
+        void onComplete();
+        void onError(String error);
+    }
+
+    private record ModelEndpoint(Long modelId, String provider, LlmEndpoint endpoint) {}
 }

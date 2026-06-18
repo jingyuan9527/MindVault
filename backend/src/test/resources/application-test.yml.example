@@ -1,0 +1,25 @@
+# ============================================================
+# MindVault Test Configuration
+# ============================================================
+# 复制此文件为 application-test.yml 并填入实际值。
+# application-test.yml 已在 .gitignore 中，不会提交到 Git。
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  flyway:
+    enabled: false
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+
+# 测试用模型配置
+mindvault:
+  test:
+    model:
+      base-url: https://apihub.agnes-ai.com/v1
+      model-name: agnes-2.0-flash
+      api-key: your-api-key-here
+      embedding-model-name: text-embedding-ada-002

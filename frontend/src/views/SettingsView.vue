@@ -78,7 +78,7 @@
     <section class="card p-6 mt-6">
       <h3 class="font-display text-lg mb-4" style="color: var(--color-text)">数据导入/导出</h3>
       <div class="space-y-4">
-        <div class="flex gap-4">
+        <div class="flex gap-4 flex-wrap">
           <div>
             <p class="text-sm mb-2" style="color: var(--color-text-secondary)">导出 JSON（完整备份）</p>
             <button @click="exportJson" :disabled="exporting" class="btn-primary text-sm">
@@ -95,18 +95,101 @@
               {{ exportingMd ? '导出中...' : '导出 Markdown' }}
             </button>
           </div>
+          <div>
+            <p class="text-sm mb-2" style="color: var(--color-text-secondary)">导出 CSV（表格分析）</p>
+            <button @click="exportCsv" :disabled="exportingCsv"
+              class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+              :style="{ backgroundColor: 'var(--color-warm-gray)', color: 'white' }"
+              @mouseenter="!exportingCsv && ($event.target.style.opacity = '0.9')"
+              @mouseleave="!exportingCsv && ($event.target.style.opacity = '1')">
+              {{ exportingCsv ? '导出中...' : '导出 CSV' }}
+            </button>
+          </div>
         </div>
         <div style="border-top: 1px solid var(--color-border); padding-top: 1rem">
           <p class="text-sm mb-2" style="color: var(--color-text-secondary)">导入 JSON 备份文件</p>
-          <input type="file" accept=".json" @change="handleImport" ref="fileInput"
-            class="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm transition-colors duration-150"
-            style="color: var(--color-text-secondary); --file-bg: var(--color-sage-light); --file-color: var(--color-sage)" />
+          <div class="flex items-center gap-3 mb-3">
+            <span class="text-xs" style="color: var(--color-text-secondary)">冲突处理:</span>
+            <label class="text-xs flex items-center gap-1">
+              <input type="radio" v-model="conflictMode" value="skip" /> 跳过
+            </label>
+            <label class="text-xs flex items-center gap-1">
+              <input type="radio" v-model="conflictMode" value="overwrite" /> 覆盖
+            </label>
+          </div>
+          <div class="border-2 border-dashed rounded-lg p-6 text-center transition-colors duration-150 cursor-pointer"
+            :style="{ borderColor: dragOver ? 'var(--color-sage)' : 'var(--color-border)', backgroundColor: dragOver ? 'var(--color-sage-light)' : 'transparent' }"
+            @dragover.prevent="dragOver = true"
+            @dragleave="dragOver = false"
+            @drop.prevent="onDrop"
+            @click="fileInputRef.click()">
+            <svg class="w-8 h-8 mx-auto mb-2" :style="{ color: dragOver ? 'var(--color-sage)' : 'var(--color-text-secondary)' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+            </svg>
+            <p class="text-sm" :style="{ color: dragOver ? 'var(--color-sage)' : 'var(--color-text-secondary)' }">
+              {{ dragOver ? '释放文件开始导入' : '拖拽 JSON 文件到此处，或点击选择' }}
+            </p>
+          </div>
+          <input type="file" accept=".json" @change="handleFileSelect" ref="fileInputRef" class="hidden" />
+
+          <div v-if="importProgress" class="mt-3">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs" style="color: var(--color-text-secondary)">导入进度</span>
+              <span class="text-xs font-medium" style="color: var(--color-sage)">{{ importProgress }}%</span>
+            </div>
+            <div class="w-full h-2 rounded-full" style="background-color: var(--color-border)">
+              <div class="h-full rounded-full transition-all duration-300"
+                :style="{ width: importProgress + '%', backgroundColor: 'var(--color-sage)' }"></div>
+            </div>
+          </div>
+
+          <div v-if="importPreview" class="mt-3 p-3 rounded-lg" style="background-color: var(--color-sage-light)">
+            <p class="text-sm font-medium" style="color: var(--color-sage)">导入预览</p>
+            <p class="text-xs mt-1" style="color: var(--color-text)">共 {{ importPreview.totalCount }} 条知识</p>
+            <p class="text-xs" style="color: var(--color-sage)">新增: {{ importPreview.newCount }} 条</p>
+            <p v-if="importPreview.conflictCount > 0" class="text-xs" style="color: var(--color-accent)">
+              冲突: {{ importPreview.conflictCount }} 条 (将{{ conflictMode === 'skip' ? '跳过' : '覆盖' }})
+            </p>
+            <div class="flex gap-2 mt-2">
+              <button @click="confirmImport" :disabled="importing"
+                class="btn-primary text-xs px-3 py-1.5">
+                {{ importing ? '导入中...' : '确认导入' }}
+              </button>
+              <button @click="cancelImport" class="btn-secondary text-xs px-3 py-1.5">取消</button>
+            </div>
+          </div>
           <p v-if="importResult" class="text-sm mt-2 fade-in-enter"
             :style="{ color: importResult.success ? 'var(--color-sage)' : 'var(--color-accent)' }">
             {{ importResult.message }}
           </p>
         </div>
       </div>
+    </section>
+
+    <section class="card p-6 mt-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-display text-lg" style="color: var(--color-text)">自动备份</h3>
+        <button @click="createBackup" :disabled="backingUp" class="btn-primary text-sm">
+          {{ backingUp ? '备份中...' : '立即备份' }}
+        </button>
+      </div>
+      <div v-if="backups.length" class="space-y-2">
+        <div v-for="bak in backups" :key="bak"
+          class="flex items-center justify-between px-4 py-2.5 rounded-lg transition-colors duration-150"
+          style="background-color: var(--color-bg)"
+          @mouseenter="$event.currentTarget.style.backgroundColor = 'var(--color-sage-light)'"
+          @mouseleave="$event.currentTarget.style.backgroundColor = 'var(--color-bg)'">
+          <span class="text-sm" style="color: var(--color-text)">{{ bak }}</span>
+          <button @click="downloadBackup(bak)"
+            class="text-xs px-3 py-1 rounded transition-colors duration-150"
+            style="color: var(--color-accent)"
+            @mouseenter="$event.target.style.backgroundColor = 'rgba(207,112,88,0.1)'"
+            @mouseleave="$event.target.style.backgroundColor = 'transparent'">
+            下载
+          </button>
+        </div>
+      </div>
+      <p v-else class="text-sm py-4" style="color: var(--color-text-secondary)">暂无备份，将在每天 3:00 自动备份</p>
     </section>
 
     <transition name="fade">
@@ -169,6 +252,7 @@
 import { ref, onMounted } from 'vue'
 import { modelApi } from '@/api/models'
 import { knowledgeApi } from '@/api/knowledge'
+import { backupApi } from '@/api/backup'
 
 const models = ref([])
 const showAddForm = ref(false)
@@ -177,7 +261,18 @@ const fetching = ref(false)
 const fetchedModelList = ref([])
 const exporting = ref(false)
 const exportingMd = ref(false)
+const exportingCsv = ref(false)
 const importResult = ref(null)
+const importPreview = ref(null)
+const conflictMode = ref('skip')
+const importing = ref(false)
+const importProgress = ref(0)
+const dragOver = ref(false)
+const fileInputRef = ref(null)
+let selectedFile = null
+
+const backups = ref([])
+const backingUp = ref(false)
 
 async function loadModels() {
   const res = await modelApi.list()
@@ -268,20 +363,117 @@ async function exportMarkdown() {
   }
 }
 
-async function handleImport(e) {
-  const file = e.target.files[0]
-  if (!file) return
-  importResult.value = null
+async function exportCsv() {
+  exportingCsv.value = true
   try {
-    const text = await file.text()
-    const res = await knowledgeApi.importJson(text)
-    const count = res.data.data?.imported || 0
-    importResult.value = { success: true, message: `导入成功！共 ${count} 条知识` }
-  } catch (err) {
-    importResult.value = { success: false, message: '导入失败: ' + (err.response?.data?.message || err.message) }
+    const res = await knowledgeApi.exportCsv()
+    const blob = new Blob([res.data], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `mindvault-export-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  } finally {
+    exportingCsv.value = false
   }
-  e.target.value = ''
 }
 
-onMounted(loadModels)
+function onDrop(e) {
+  dragOver.value = false
+  const file = e.dataTransfer.files[0]
+  if (!file) return
+  startImport(file)
+}
+
+function handleFileSelect(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  startImport(file)
+}
+
+async function startImport(file) {
+  selectedFile = file
+  importResult.value = null
+  importPreview.value = null
+  importProgress.value = 0
+  try {
+    const text = await file.text()
+    importProgress.value = 30
+    const res = await knowledgeApi.previewImport(text)
+    importPreview.value = res.data.data
+    importProgress.value = 0
+  } catch (err) {
+    importResult.value = { success: false, message: '预览失败: ' + (err.response?.data?.message || err.message) }
+    importPreview.value = null
+    importProgress.value = 0
+  }
+}
+
+async function confirmImport() {
+  if (!selectedFile) return
+  importing.value = true
+  importResult.value = null
+  importProgress.value = 10
+  try {
+    const text = await selectedFile.text()
+    importProgress.value = 40
+    const res = await knowledgeApi.importJson(text, conflictMode.value)
+    importProgress.value = 90
+    const data = res.data.data
+    importResult.value = { success: true, message: `导入成功！共 ${data.imported} 条知识 (冲突模式: ${data.conflictMode})` }
+    importPreview.value = null
+    selectedFile = null
+    importProgress.value = 100
+    setTimeout(() => { importProgress.value = 0 }, 1500)
+  } catch (err) {
+    importResult.value = { success: false, message: '导入失败: ' + (err.response?.data?.message || err.message) }
+    importProgress.value = 0
+  } finally {
+    importing.value = false
+  }
+}
+
+function cancelImport() {
+  importPreview.value = null
+  selectedFile = null
+  importProgress.value = 0
+}
+
+async function loadBackups() {
+  try {
+    const res = await backupApi.list()
+    backups.value = res.data.data || []
+  } catch {}
+}
+
+async function createBackup() {
+  backingUp.value = true
+  try {
+    await backupApi.create()
+    await loadBackups()
+  } finally {
+    backingUp.value = false
+  }
+}
+
+async function downloadBackup(filename) {
+  try {
+    const res = await backupApi.download(filename)
+    const blob = new Blob([res.data], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    console.error('下载备份失败:', err)
+  }
+}
+
+onMounted(() => {
+  loadModels()
+  loadBackups()
+})
 </script>

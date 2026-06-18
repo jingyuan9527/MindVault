@@ -1,49 +1,37 @@
 package com.mindvault.operationlog.entity;
 
-import jakarta.persistence.*;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
-import org.hibernate.type.SqlTypes;
-import org.hibernate.annotations.JdbcTypeCode;
 import java.time.LocalDateTime;
 
-/**
- * 操作日志实体
- *
- * 记录用户的关键操作，用于审计和追溯。
- * 所有 Service 层通过 OperationLogService 记录日志。
- */
-@Entity
-@Table(name = "operation_log")
+@TableName("operation_log")
 @Data
 public class OperationLog {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @TableId(type = IdType.AUTO)
     private Long id;
 
-    @Column(nullable = false, length = 20)
+    @TableField("module")
     private String module;
 
-    @Column(nullable = false, length = 30)
+    @TableField("action")
     private String action;
 
+    @TableField("entity_id")
     private Long entityId;
 
-    @Column(length = 500)
+    @TableField("summary")
     private String summary;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
+    @TableField("detail")
     private String detail;
 
-    @Column(length = 100)
+    @TableField("operator")
     private String operator = "system";
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @TableField("created_at")
     private LocalDateTime createdAt;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
 }

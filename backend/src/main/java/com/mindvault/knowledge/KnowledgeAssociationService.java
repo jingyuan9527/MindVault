@@ -3,6 +3,7 @@ package com.mindvault.knowledge;
 import com.mindvault.knowledge.entity.Knowledge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -13,12 +14,12 @@ public class KnowledgeAssociationService {
 
     private static final Logger log = LoggerFactory.getLogger(KnowledgeAssociationService.class);
 
-    private final KnowledgeRepository repository;
+    private final KnowledgeMapper mapper;
     private final KnowledgeService knowledgeService;
 
-    public KnowledgeAssociationService(KnowledgeRepository repository,
+    public KnowledgeAssociationService(KnowledgeMapper mapper,
                                         KnowledgeService knowledgeService) {
-        this.repository = repository;
+        this.mapper = mapper;
         this.knowledgeService = knowledgeService;
     }
 
@@ -29,7 +30,7 @@ public class KnowledgeAssociationService {
             return List.of();
         }
 
-        List<Object[]> results = repository.findSimilarIds(knowledge.getEmbedding(), limit + 1);
+        List<Object[]> results = mapper.findSimilarIds(knowledge.getEmbedding(), limit + 1);
         Map<Long, Double> similarityMap = new LinkedHashMap<>();
         for (Object[] row : results) {
             Long id = ((Number) row[0]).longValue();
@@ -38,7 +39,7 @@ public class KnowledgeAssociationService {
             similarityMap.put(id, similarity);
         }
 
-        List<Knowledge> knowledgeList = repository.findAllById(similarityMap.keySet());
+        List<Knowledge> knowledgeList = mapper.selectBatchIds(similarityMap.keySet());
         Map<Long, Knowledge> knowledgeMap = knowledgeList.stream()
                 .collect(Collectors.toMap(Knowledge::getId, k -> k));
 
@@ -58,5 +59,29 @@ public class KnowledgeAssociationService {
 
         log.info("知识关联推荐: knowledgeId={}, 返回 {} 条", knowledgeId, list.size());
         return list;
+    }
+
+    @Scheduled(cron = "0 0 2 * * ?")
+    public void scheduledAssociationDiscovery() {
+        log.info("开始执行定时知识关联发现...");
+        List<Knowledge> all = mapper.selectList(null);
+        int totalWithEmbedding = 0;
+        int totalAssociations = 0;
+
+        for (Knowledge k : all) {
+            if (k.getEmbedding() == null || k.getEmbedding().isBlank()) continue;
+            totalWithEmbedding++;
+            List<Object[]> similar = mapper.findSimilarIds(k.getEmbedding(), 6);
+            int count = 0;
+            for (Object[] row : similar) {
+                Long id = ((Number) row[0]).longValue();
+                if (id.equals(k.getId())) continue;
+                count++;
+            }
+            totalAssociations += count;
+        }
+
+        log.info("知识关联发现完成: 有嵌入的知识 {} 条, 共发现关联 {} 条",
+                totalWithEmbedding, totalAssociations);
     }
 }

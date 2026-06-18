@@ -3,7 +3,7 @@ package com.mindvault.dailyreview;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindvault.agent.config.AgentConfig;
 import com.mindvault.dailyreview.entity.DailyReview;
-import com.mindvault.knowledge.KnowledgeRepository;
+import com.mindvault.knowledge.KnowledgeMapper;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
@@ -29,20 +29,20 @@ public class DailyReviewService {
 
     private final ModelConfigService modelConfigService;
     private final AgentConfig agentConfig;
-    private final KnowledgeRepository knowledgeRepository;
-    private final DailyReviewRepository repository;
+    private final KnowledgeMapper knowledgeMapper;
+    private final DailyReviewMapper mapper;
     private final ObjectMapper objectMapper;
 
     private List<LlmEndpoint> modelEndpoints = List.of();
 
     public DailyReviewService(ModelConfigService modelConfigService,
                               AgentConfig agentConfig,
-                              KnowledgeRepository knowledgeRepository,
-                              DailyReviewRepository repository) {
+                              KnowledgeMapper knowledgeMapper,
+                              DailyReviewMapper mapper) {
         this.modelConfigService = modelConfigService;
         this.agentConfig = agentConfig;
-        this.knowledgeRepository = knowledgeRepository;
-        this.repository = repository;
+        this.knowledgeMapper = knowledgeMapper;
+        this.mapper = mapper;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -73,14 +73,14 @@ public class DailyReviewService {
 
     @Transactional
     public DailyReview generateReport(LocalDate date) {
-        Optional<DailyReview> existing = repository.findByReportDate(date);
+        Optional<DailyReview> existing = mapper.findByReportDate(date);
         if (existing.isPresent()) {
             return existing.get();
         }
 
         LocalDateTime start = date.atStartOfDay();
         LocalDateTime end = date.atTime(LocalTime.MAX);
-        List<Knowledge> dayKnowledge = knowledgeRepository.findByCreatedAtBetween(start, end);
+        List<Knowledge> dayKnowledge = knowledgeMapper.findByCreatedAtBetween(start, end);
 
         DailyReview report = new DailyReview();
         report.setReportDate(date);
@@ -91,7 +91,9 @@ public class DailyReviewService {
             report.setKeyInsights("[]");
             report.setRecommendations("[]");
             report.setCategoryBreakdown("{}");
-            return repository.save(report);
+            report.setCreatedAt(LocalDateTime.now());
+            mapper.insert(report);
+            return report;
         }
 
         StringBuilder sb = new StringBuilder();
@@ -129,7 +131,9 @@ public class DailyReviewService {
             report.setCategoryBreakdown("{}");
         }
 
-        return repository.save(report);
+        report.setCreatedAt(LocalDateTime.now());
+        mapper.insert(report);
+        return report;
     }
 
     private String callLlmForReport(String knowledgeSummary) {
@@ -163,15 +167,15 @@ public class DailyReviewService {
     }
 
     public Optional<DailyReview> getReportByDate(LocalDate date) {
-        return repository.findByReportDate(date);
+        return mapper.findByReportDate(date);
     }
 
     public List<DailyReview> getRecentReports(int limit) {
-        return repository.findTopByOrderByReportDateDesc(limit);
+        return mapper.findTopByOrderByReportDateDesc(limit);
     }
 
     public DailyReview getLatestOrGenerate() {
-        return repository.findTopByOrderByReportDateDesc(1).stream()
+        return mapper.findTopByOrderByReportDateDesc(1).stream()
                 .findFirst()
                 .orElseGet(() -> generateReport(LocalDate.now()));
     }

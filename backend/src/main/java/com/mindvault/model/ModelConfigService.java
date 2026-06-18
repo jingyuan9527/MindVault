@@ -11,107 +11,90 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.util.*;
 
-/**
- * 模型配置服务
- *
- * 核心职责：
- * 1. 模型 CRUD 管理
- * 2. 主模型切换（事务保证一个主模型约束）
- * 3. 获取当前可用模型（供 Agent 和 Chat 模块使用）
- */
 @Service
 public class ModelConfigService {
 
     private static final Logger log = LoggerFactory.getLogger(ModelConfigService.class);
 
-    private final ModelConfigRepository repository;
+    private final ModelConfigMapper mapper;
     private final OperationLogService operationLogService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public ModelConfigService(ModelConfigRepository repository,
+    public ModelConfigService(ModelConfigMapper mapper,
                               OperationLogService operationLogService) {
-        this.repository = repository;
+        this.mapper = mapper;
         this.operationLogService = operationLogService;
     }
 
-    /** 添加模型配置 */
     @Transactional
     public ModelConfig addConfig(ModelConfig config) {
-        ModelConfig saved = repository.save(config);
+        LocalDateTime now = LocalDateTime.now();
+        config.setCreatedAt(now);
+        config.setUpdatedAt(now);
+        mapper.insert(config);
         log.info("添加模型配置: provider={}, model={}, type={}",
                 config.getProvider(), config.getModelName(), config.getModelType());
-        operationLogService.log("MODEL", "ADD", saved.getId(),
+        operationLogService.log("MODEL", "ADD", config.getId(),
                 "添加模型 " + config.getProvider() + "/" + config.getModelName());
-        return saved;
+        return config;
     }
 
-    /** 获取全部模型列表 */
     public List<ModelConfig> listAll() {
-        return repository.findAll();
+        return mapper.selectList(null);
     }
 
-    /**
-     * 设置为主模型（自动取消同类型的旧主模型）
-     *
-     * V8 迁移后采用 per-model-type 部分唯一索引 idx_single_primary_per_type，
-     * 每种 model_type 各有一个主模型，因此只清除同类型的旧主模型。
-     */
     @Transactional
     public ModelConfig setPrimary(Long id) {
-        ModelConfig config = repository.findById(id)
+        ModelConfig config = Optional.ofNullable(mapper.selectById(id))
                 .orElseThrow(() -> new IllegalArgumentException("模型配置不存在: " + id));
 
-        List<ModelConfig> sameTypePrimary = repository.findAll().stream()
+        List<ModelConfig> sameTypePrimary = mapper.selectList(null).stream()
                 .filter(mc -> mc.getIsPrimary() && config.getModelType().equals(mc.getModelType()))
                 .toList();
         for (ModelConfig old : sameTypePrimary) {
             old.setIsPrimary(false);
-            repository.save(old);
+            old.setUpdatedAt(LocalDateTime.now());
+            mapper.updateById(old);
         }
 
-        // 设置新主模型
         config.setIsPrimary(true);
-        ModelConfig saved = repository.save(config);
+        config.setUpdatedAt(LocalDateTime.now());
+        mapper.updateById(config);
 
         log.info("设置主模型: id={}, provider={}, model={}", id,
                 config.getProvider(), config.getModelName());
         operationLogService.log("MODEL", "SET_PRIMARY", id,
                 "设置主模型 " + config.getProvider() + "/" + config.getModelName());
-        return saved;
+        return config;
     }
 
-    /** 获取当前可用的 CHAT 主模型 */
     public ModelConfig getPrimaryChatModel() {
-        return repository.findByModelTypeAndIsPrimaryTrue("CHAT")
+        return mapper.findByModelTypeAndIsPrimaryTrue("CHAT")
                 .orElseThrow(() -> new RuntimeException("未配置主模型，请在设置中添加并设置主模型"));
     }
 
-    /** 获取所有可用聊天模型（按优先级降序），用于故障降级 */
     public List<ModelConfig> getAvailableChatModels() {
-        return repository.findByModelTypeAndIsEnabledTrueOrderByPriorityDesc("CHAT");
+        return mapper.findByModelTypeAndIsEnabledTrueOrderByPriorityDesc("CHAT");
     }
 
-    /** 获取所有可用嵌入模型 */
     public List<ModelConfig> getAvailableEmbeddingModels() {
-        return repository.findByModelTypeAndIsEnabledTrueOrderByPriorityDesc("EMBEDDING");
+        return mapper.findByModelTypeAndIsEnabledTrueOrderByPriorityDesc("EMBEDDING");
     }
 
-    /** 更新模型优先级 */
     @Transactional
     public ModelConfig updatePriority(Long id, int priority) {
-        ModelConfig config = repository.findById(id)
+        ModelConfig config = Optional.ofNullable(mapper.selectById(id))
                 .orElseThrow(() -> new IllegalArgumentException("模型配置不存在: " + id));
         config.setPriority(priority);
-        ModelConfig saved = repository.save(config);
+        config.setUpdatedAt(LocalDateTime.now());
+        mapper.updateById(config);
         log.info("更新模型优先级: id={}, priority={}", id, priority);
         operationLogService.log("MODEL", "UPDATE_PRIORITY", id,
                 "更新模型 " + config.getProvider() + "/" + config.getModelName() + " 优先级为 " + priority);
-        return saved;
+        return config;
     }
 
     public List<String> fetchAvailableModels(String provider, String apiKey, String baseUrl) {
@@ -169,19 +152,18 @@ public class ModelConfigService {
         return models;
     }
 
-    /** 删除模型配置 */
     @Transactional
     public void deleteConfig(Long id) {
-        ModelConfig config = repository.findById(id)
+        ModelConfig config = Optional.ofNullable(mapper.selectById(id))
                 .orElseThrow(() -> new IllegalArgumentException("模型配置不存在: " + id));
-        repository.deleteById(id);
+        mapper.deleteById(id);
         log.info("删除模型配置: id={}", id);
         operationLogService.log("MODEL", "DELETE", id,
                 "删除模型 " + config.getProvider() + "/" + config.getModelName());
     }
 
     public boolean testConnection(Long id) {
-        ModelConfig config = repository.findById(id)
+        ModelConfig config = Optional.ofNullable(mapper.selectById(id))
                 .orElseThrow(() -> new IllegalArgumentException("模型配置不存在: " + id));
 
         if (config.getApiKey() == null || config.getApiKey().isBlank()) {

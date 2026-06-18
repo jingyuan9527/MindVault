@@ -1,9 +1,11 @@
 <template>
-  <div class="card p-5 cursor-pointer" @click="$emit('click', note)">
-    <h3 class="font-display text-base font-bold leading-tight mb-2" style="color: var(--color-text)">{{ note.title }}</h3>
-    <p class="text-sm leading-relaxed mb-3 line-clamp-3" style="color: var(--color-warm-gray); line-height: 1.6">{{ note.content }}</p>
+  <div class="card p-5 cursor-pointer flex flex-col" @click="$emit('click', note)">
+    <h3 class="font-display text-base font-bold leading-tight mb-2 card-title" style="color: var(--color-text)">{{ note.title }}</h3>
+    <div class="flex-1 min-h-0 mb-3">
+      <ContentRenderer :content="note.content" preview class="line-clamp-3 text-sm" style="color: var(--color-warm-gray)" />
+    </div>
     <div class="flex flex-wrap gap-1.5 mb-2" v-if="parsedTags.length">
-      <span v-for="tag in parsedTags" :key="tag" class="tag-pill">#{{ tag }}</span>
+      <router-link v-for="tag in parsedTags" :key="tag" :to="{ path: '/', query: { tag } }" @click.stop class="tag-pill">#{{ tag }}</router-link>
     </div>
     <div class="flex items-center justify-between pt-2 text-xs" style="border-top: 1px solid var(--color-border)">
       <span style="color: var(--color-text-secondary)">{{ formatTime(note.createdAt) }}</span>
@@ -18,6 +20,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import ContentRenderer from '@/components/common/ContentRenderer.vue'
 
 const props = defineProps({ note: { type: Object, required: true } })
 defineEmits(['click', 'delete'])
