@@ -63,7 +63,7 @@ cd docker && docker compose up -d --build
 
 ## Feature Progress
 
-### Backend (API — 51 endpoints)
+### Backend (API — 54 endpoints)
 | Module | Backend | Controller Test | Service Test | Coverage |
 |--------|---------|:-:|:-:|:-:|
 | 知识库 Knowledge | CRUD + 搜索 + 导入导出 + 标签 + URL/PDF 解析 | ✅ | ✅ | 54% |
@@ -78,16 +78,18 @@ cd docker && docker compose up -d --build
 | 数据备份 Backup | 备份 + 列表 + 下载 + 清理 | ✅ | ✅ | 85% |
 | Agent | LLM failover + 熔断 + 工具调用 | ❌ | ✅ | 3% |
 | 内容解析 Content | Jsoup 网页 + PDFBox PDF | ❌ | ✅ | 13% |
-| **Total** | **12 模块 / 51 接口** | **10/12** | **12/12** | **43%** |
+| **Total** | **12 模块 / 54 接口** | **10/12** | **12/12** | **43%** |
 
-### Frontend (7 routes)
+### Frontend (9 routes)
 | Route | View | Responsive | Tests |
 |-------|------|:-:|:-:|
 | `/` | 知识库列表 + 搜索 + 导入导出 | ✅ | ✅ |
+| `/chat` | AI 对话 | ✅ | ❌ |
 | `/review` | 复习计划 + 执行 SM-2 | ✅ | ❌ |
 | `/flashcards` | 闪卡展示 | ✅ | ❌ |
 | `/writing` | AI 写作 | ✅ | ❌ |
 | `/daily-review` | 每日回顾报告 | ✅ | ❌ |
+| `/token-usage` | Token 用量统计 | ✅ | ❌ |
 | `/operation-logs` | 操作日志 | ✅ | ❌ |
 | `/settings` | 模型配置 + 导出 | ✅ | ❌ |
 
@@ -107,7 +109,7 @@ cd docker && docker compose up -d --build
 ### To Do
 - [ ] Agent 集成测试（WireMock）— agent 3% → ~60%
 - [ ] Content 集成测试（WireMock）— content 13% → ~70%
-- [ ] Frontend 7 个 View 的 Vitest 测试（当前只有 3 个组件/View 有测试）
+- [ ] Frontend 9 个 View 的 Vitest 测试（当前只有 3 个组件/View 有测试）
 - [ ] `image` 图床模块（可选）
 - [ ] `search` 搜索日志/热词（可选）
 
