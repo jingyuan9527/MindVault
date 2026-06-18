@@ -172,4 +172,4 @@ cd frontend && npx vitest run
 
 ## 许可证
 
-MIT
+Apache 2.0

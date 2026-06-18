@@ -1,6 +1,7 @@
 <p align="center">
   <h1 align="center">MindVault</h1>
   <p align="center"><em>Your AI-Augmented Second Brain — A self-hosted personal knowledge base with LLM-powered intelligence</em></p>
+  <p align="center"><a href="README.zh-CN.md">中文</a></p>
 </p>
 
 ---
@@ -172,4 +173,4 @@ cd frontend && npx vitest run
 
 ## License
 
-MIT
+Apache 2.0
