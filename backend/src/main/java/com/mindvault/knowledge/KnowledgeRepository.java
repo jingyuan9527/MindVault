@@ -59,4 +59,11 @@ public interface KnowledgeRepository extends JpaRepository<Knowledge, Long> {
 
     /** 按 content_type 过滤 */
     List<Knowledge> findByContentTypeOrderByCreatedAtDesc(String contentType);
+
+    /** 按创建时间范围查询（用于每日复盘） */
+    @Query(value = "SELECT * FROM knowledge WHERE created_at >= :start AND created_at < :end ORDER BY created_at DESC", nativeQuery = true)
+    List<Knowledge> findByCreatedAtBetween(@Param("start") java.time.LocalDateTime start, @Param("end") java.time.LocalDateTime end);
+
+    /** 模糊搜索标题或内容（用于写作辅助知识检索） */
+    List<Knowledge> findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(String title, String content);
 }

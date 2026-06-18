@@ -14,12 +14,13 @@
             <th class="text-left py-2 font-medium">供应商</th>
             <th class="text-left py-2 font-medium">模型</th>
             <th class="text-left py-2 font-medium">类型</th>
+            <th class="text-center py-2 font-medium w-20">优先级</th>
             <th class="text-center py-2 font-medium">状态</th>
             <th class="text-center py-2 font-medium">操作</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="m in models" :key="m.id" style="border-bottom: 1px solid var(--color-border)">
+          <tr v-for="(m, idx) in models" :key="m.id" style="border-bottom: 1px solid var(--color-border)">
             <td class="py-3" style="color: var(--color-text)">{{ m.provider }}</td>
             <td class="py-3">
               <span style="color: var(--color-text)">{{ m.modelName }}</span>
@@ -27,6 +28,21 @@
                 :style="{ backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' }">主模型</span>
             </td>
             <td class="py-3" style="color: var(--color-warm-gray)">{{ m.modelType }}</td>
+            <td class="py-3 text-center">
+              <div class="flex items-center justify-center gap-1">
+                <button @click="movePriority(m.id, m.priority - 1)" :disabled="idx === 0"
+                  class="text-xs transition-colors duration-150 disabled:opacity-20"
+                  style="color: var(--color-text-secondary)"
+                  @mouseenter="$event.target.style.color = 'var(--color-text)'"
+                  @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">&#9650;</button>
+                <span class="text-xs w-5 text-center" style="color: var(--color-warm-gray)">{{ m.priority }}</span>
+                <button @click="movePriority(m.id, m.priority + 1)" :disabled="idx === models.length - 1"
+                  class="text-xs transition-colors duration-150 disabled:opacity-20"
+                  style="color: var(--color-text-secondary)"
+                  @mouseenter="$event.target.style.color = 'var(--color-text)'"
+                  @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">&#9660;</button>
+              </div>
+            </td>
             <td class="py-3 text-center">
               <span class="px-2 py-0.5 text-xs rounded"
                 :style="m.isEnabled ? { backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' } : { backgroundColor: '#f0eeeb', color: 'var(--color-text-secondary)' }">
@@ -154,6 +170,11 @@ async function addModel() {
   await modelApi.add(form.value)
   showAddForm.value = false
   form.value = { provider: 'ALIYUN', modelName: '', apiKey: '', baseUrl: '' }
+  await loadModels()
+}
+
+async function movePriority(id, newPriority) {
+  await modelApi.updatePriority(id, newPriority)
   await loadModels()
 }
 

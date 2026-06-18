@@ -2,6 +2,7 @@ package com.mindvault;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * MindVault 知忆 — 启动入口
@@ -14,6 +15,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * 所有带 @Agent 注解的 Bean 会自动注册到 AgentScope 运行时。
  */
 @SpringBootApplication
+@EnableScheduling
 public class MindVaultApplication {
 
     public static void main(String[] args) {

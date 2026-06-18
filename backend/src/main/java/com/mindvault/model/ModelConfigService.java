@@ -94,6 +94,19 @@ public class ModelConfigService {
         return repository.findByModelTypeAndIsEnabledTrueOrderByPriorityDesc("EMBEDDING");
     }
 
+    /** 更新模型优先级 */
+    @Transactional
+    public ModelConfig updatePriority(Long id, int priority) {
+        ModelConfig config = repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("模型配置不存在: " + id));
+        config.setPriority(priority);
+        ModelConfig saved = repository.save(config);
+        log.info("更新模型优先级: id={}, priority={}", id, priority);
+        operationLogService.log("MODEL", "UPDATE_PRIORITY", id,
+                "更新模型 " + config.getProvider() + "/" + config.getModelName() + " 优先级为 " + priority);
+        return saved;
+    }
+
     /** 删除模型配置 */
     @Transactional
     public void deleteConfig(Long id) {

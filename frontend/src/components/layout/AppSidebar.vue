@@ -34,6 +34,39 @@
           {{ dueCount }}
         </span>
       </router-link>
+      <router-link to="/flashcards"
+        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150"
+        :class="$route.path === '/flashcards' ? 'font-medium' : ''"
+        :style="$route.path === '/flashcards' ? { backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' } : { color: 'var(--color-text-secondary)' }"
+        @mouseenter="hoverNav($event, '/flashcards')"
+        @mouseleave="unhoverNav($event, '/flashcards')">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+        </svg>
+        知识卡片
+      </router-link>
+      <router-link to="/writing"
+        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150"
+        :class="$route.path === '/writing' ? 'font-medium' : ''"
+        :style="$route.path === '/writing' ? { backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' } : { color: 'var(--color-text-secondary)' }"
+        @mouseenter="hoverNav($event, '/writing')"
+        @mouseleave="unhoverNav($event, '/writing')">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+        </svg>
+        写作辅助
+      </router-link>
+      <router-link to="/daily-review"
+        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150"
+        :class="$route.path === '/daily-review' ? 'font-medium' : ''"
+        :style="$route.path === '/daily-review' ? { backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' } : { color: 'var(--color-text-secondary)' }"
+        @mouseenter="hoverNav($event, '/daily-review')"
+        @mouseleave="unhoverNav($event, '/daily-review')">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        每日复盘
+      </router-link>
       <router-link to="/settings"
         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150"
         :class="$route.path === '/settings' ? 'font-medium' : ''"

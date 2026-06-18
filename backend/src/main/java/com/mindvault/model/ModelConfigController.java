@@ -37,6 +37,12 @@ public class ModelConfigController {
         return ApiResponse.success(modelConfigService.setPrimary(id));
     }
 
+    @PatchMapping("/{id}/priority")
+    public ApiResponse<ModelConfig> updatePriority(@PathVariable Long id,
+                                                   @RequestBody Integer priority) {
+        return ApiResponse.success(modelConfigService.updatePriority(id, priority));
+    }
+
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteConfig(@PathVariable Long id) {
         modelConfigService.deleteConfig(id);
