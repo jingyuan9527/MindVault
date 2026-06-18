@@ -52,7 +52,7 @@ MindVault（知忆）是一个自托管的个人知识库系统，深度融合 L
 | **后端** | Java（虚拟线程）, Spring Boot | JDK 21, 3.2.5 |
 | **ORM** | MyBatis-Plus | 3.5.7 |
 | **数据库** | PostgreSQL 16 + pgvector | 16 |
-| **迁移** | Flyway | — |
+| **迁移** | 手动 SQL | — |
 | **API 文档** | Knife4j（SpringDoc OpenAPI 3） | 4.5.0 |
 | **前端** | Vue 3（组合式 API）, Pinia, Vue Router 4 | ^3.4 |
 | **样式** | Tailwind CSS | ^3.4 |
@@ -131,7 +131,7 @@ mind-vault/
 │   │   └── writing/                  # AI 写作助手
 │   ├── src/main/resources/
 │   │   ├── application.yml           # 主配置文件
-│   │   ├── db/migration/             # Flyway SQL 迁移
+│   │   ├── db/migration/             # 数据库初始化脚本
 │   │   └── logback-spring.xml        # 日志配置
 │   └── pom.xml
 ├── frontend/                         # Vue 3 单页应用

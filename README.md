@@ -52,7 +52,7 @@ Whether you're collecting web bookmarks, processing PDF documents, or writing da
 | **Backend** | Java (Virtual Threads), Spring Boot | JDK 21, 3.2.5 |
 | **ORM** | MyBatis-Plus | 3.5.7 |
 | **Database** | PostgreSQL 16 + pgvector | 16 |
-| **Migrations** | Flyway | — |
+| **Migrations** | Manual SQL | — |
 | **API Docs** | Knife4j (SpringDoc OpenAPI 3) | 4.5.0 |
 | **Frontend** | Vue 3 (Composition API), Pinia, Vue Router 4 | ^3.4 |
 | **Styling** | Tailwind CSS | ^3.4 |
@@ -131,7 +131,7 @@ mind-vault/
 │   │   └── writing/                  # AI writing assistant
 │   ├── src/main/resources/
 │   │   ├── application.yml           # Main config
-│   │   ├── db/migration/             # Flyway SQL migrations
+│   │   ├── db/migration/             # Database initialization scripts
 │   │   └── logback-spring.xml        # Logging config
 │   └── pom.xml
 ├── frontend/                         # Vue 3 SPA
