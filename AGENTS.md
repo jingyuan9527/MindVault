@@ -15,7 +15,7 @@ cd docker && docker compose up -d --build
 ## Commands
 | Task | Command |
 |------|---------|
-| Backend tests (134 total) | `cd backend && mvn test` |
+| Backend tests (188 total) | `cd backend && mvn test` |
 | Single test class | `cd backend && mvn test -Dtest=KnowledgeControllerTest` |
 | Frontend tests (53 total) | `cd frontend && npx vitest run` |
 | Build backend jar | `cd backend && mvn clean package -DskipTests` |
@@ -59,6 +59,48 @@ cd docker && docker compose up -d --build
 - `ModelApiIntegrationTest` runs real API calls against `agnes-2.0-flash` (~29s for 5 tests). Skipped when env var absent.
 - Frontend tests use `happy-dom` environment, `@vue/test-utils`, and `vitest`.
 - Test data SQL (10 knowledge entries) in init script — rerun manually if DB is reset.
+
+## Feature Progress
+
+### Backend (API — 51 endpoints)
+| Module | Backend | Controller Test | Service Test | Coverage |
+|--------|---------|:-:|:-:|:-:|
+| 知识库 Knowledge | CRUD + 搜索 + 导入导出 + 标签 + URL/PDF 解析 | ✅ | ✅ | 54% |
+| 聊天 Chat | 会话 + 消息 + SSE 流式 | ✅ | ✅ | 49% |
+| 模型配置 Model Config | CRUD + 主模型 + 测试连接 + 拉取列表 | ✅ | ✅ | 36% |
+| 复习 Review | SM-2 调度 + 到期查询 | ✅ | ✅ | 99% |
+| 闪卡 FlashCard | CRUD + 自动生成 | ✅ | ✅ | 25% |
+| 每日回顾 DailyReview | LLM 报告生成 + 定时任务 | ✅ | ✅ | 33% |
+| 写作助手 Writing | AI 文章生成 | ✅ | ✅ | 76% |
+| 操作日志 OperationLog | 审计日志查询 | ✅ | ✅ | 31% |
+| Token 用量 TokenUsage | 用量记录 + 日结汇总 | ✅ | ✅ | 89% |
+| 数据备份 Backup | 备份 + 列表 + 下载 + 清理 | ✅ | ✅ | 85% |
+| Agent | LLM failover + 熔断 + 工具调用 | ❌ | ✅ | 3% |
+| 内容解析 Content | Jsoup 网页 + PDFBox PDF | ❌ | ✅ | 13% |
+| **Total** | **12 模块 / 51 接口** | **10/12** | **12/12** | **43%** |
+
+### Frontend (7 routes)
+| Route | View | Responsive | Tests |
+|-------|------|:-:|:-:|
+| `/` | 知识库列表 + 搜索 + 导入导出 | ✅ | ✅ |
+| `/review` | 复习计划 + 执行 SM-2 | ✅ | ❌ |
+| `/flashcards` | 闪卡展示 | ✅ | ❌ |
+| `/writing` | AI 写作 | ✅ | ❌ |
+| `/daily-review` | 每日回顾报告 | ✅ | ❌ |
+| `/operation-logs` | 操作日志 | ✅ | ❌ |
+| `/settings` | 模型配置 + 导出 | ✅ | ❌ |
+
+### API 文档
+- Knife4j UI: `http://localhost:3000/api/doc.html`
+- Swagger UI: `http://localhost:3000/api/swagger-ui/index.html`
+- OpenAPI JSON: `http://localhost:3000/api/v3/api-docs`
+
+### To Do
+- [ ] Agent 集成测试（WireMock）— agent 3% → ~60%
+- [ ] Content 集成测试（WireMock）— content 13% → ~70%
+- [ ] Frontend 7 个 View 的 Vitest 测试（当前只有 3 个组件/View 有测试）
+- [ ] `image` 图床模块（可选）
+- [ ] `search` 搜索日志/热词（可选）
 
 ## Docker Deployment
 - Three containers: `db` (pgvector), `backend` (JDK 21), `frontend` (Nginx)
