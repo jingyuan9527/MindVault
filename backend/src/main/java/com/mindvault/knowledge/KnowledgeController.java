@@ -1,5 +1,6 @@
 package com.mindvault.knowledge;
 
+import com.mindvault.common.annotation.OperationLog;
 import com.mindvault.common.dto.ApiResponse;
 import com.mindvault.content.ContentParserService;
 import com.mindvault.knowledge.entity.Knowledge;
@@ -39,6 +40,7 @@ public class KnowledgeController {
         this.searchEnhanceService = searchEnhanceService;
     }
 
+    @OperationLog(module = "knowledge", action = "create", description = "新增知识")
     @Operation(summary = "新增知识", description = "创建一条新的知识笔记")
     @PostMapping
     public ApiResponse<Knowledge> addKnowledge(@Valid @RequestBody Knowledge knowledge) {
@@ -59,6 +61,7 @@ public class KnowledgeController {
         return ApiResponse.success(knowledgeService.getById(id));
     }
 
+    @OperationLog(module = "knowledge", action = "update", description = "更新知识")
     @Operation(summary = "更新知识", description = "更新指定 ID 的知识内容")
     @PutMapping("/{id}")
     public ApiResponse<Knowledge> updateKnowledge(@Parameter(description = "知识 ID") @PathVariable Long id,
@@ -107,6 +110,7 @@ public class KnowledgeController {
         return ApiResponse.success(associationService.getRelatedKnowledge(id, limit));
     }
 
+    @OperationLog(module = "knowledge", action = "delete", description = "删除知识")
     @Operation(summary = "删除知识", description = "删除指定 ID 的知识及其关联的复习计划")
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteKnowledge(@Parameter(description = "知识 ID") @PathVariable Long id) {

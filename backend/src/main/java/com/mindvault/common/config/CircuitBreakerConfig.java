@@ -1,7 +1,9 @@
 package com.mindvault.common.config;
 
+import com.mindvault.common.service.MetricsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -13,6 +15,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class CircuitBreakerConfig {
 
     private static final Logger log = LoggerFactory.getLogger(CircuitBreakerConfig.class);
+
+    private final MetricsService metricsService;
+
+    public CircuitBreakerConfig(ObjectProvider<MetricsService> metricsServiceProvider) {
+        this.metricsService = metricsServiceProvider.getIfAvailable();
+    }
 
     private final Map<Long, ModelState> modelStates = new ConcurrentHashMap<>();
 
@@ -66,6 +74,9 @@ public class CircuitBreakerConfig {
 
         if (failures >= FAILURE_THRESHOLD) {
             state.status = Status.OPEN;
+            if (metricsService != null) {
+                metricsService.recordCircuitBreakerOpen(modelId);
+            }
             log.warn("熔断器触发: modelId={}，冷却 {} 秒", modelId, COOLDOWN_SECONDS);
         }
     }

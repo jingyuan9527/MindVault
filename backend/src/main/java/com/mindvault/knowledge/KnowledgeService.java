@@ -2,6 +2,7 @@ package com.mindvault.knowledge;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mindvault.common.service.MetricsService;
 import com.mindvault.content.AutoProcessService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mindvault.knowledge.entity.Knowledge;
@@ -49,18 +50,21 @@ public class KnowledgeService {
     private final AutoProcessService autoProcessService;
     private final ReviewService reviewService;
     private final ModelConfigService modelConfigService;
+    private final MetricsService metricsService;
     private final ObjectMapper objectMapper;
 
     public KnowledgeService(KnowledgeMapper mapper,
                             OperationLogService operationLogService,
                             AutoProcessService autoProcessService,
                             ReviewService reviewService,
-                            ModelConfigService modelConfigService) {
+                            ModelConfigService modelConfigService,
+                            MetricsService metricsService) {
         this.mapper = mapper;
         this.operationLogService = operationLogService;
         this.autoProcessService = autoProcessService;
         this.reviewService = reviewService;
         this.modelConfigService = modelConfigService;
+        this.metricsService = metricsService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -478,6 +482,7 @@ public class KnowledgeService {
             exportData.put("exportedAt", LocalDateTime.now().toString());
             exportData.put("count", exportList.size());
             exportData.put("items", exportList);
+            metricsService.recordExport("json");
             return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(exportData);
         } catch (Exception e) {
             log.error("导出失败: {}", e.getMessage());
@@ -686,6 +691,7 @@ public class KnowledgeService {
             }
 
             log.info("导入完成: 共 {} 条 (冲突模式: {})", imported, conflictMode);
+            metricsService.recordImport();
             operationLogService.log("KNOWLEDGE", "IMPORT", null,
                     "导入 " + imported + " 条知识 (冲突模式: " + conflictMode + ")");
             return imported;

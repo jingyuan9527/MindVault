@@ -1,5 +1,6 @@
 package com.mindvault.backup;
 
+import com.mindvault.common.annotation.OperationLog;
 import com.mindvault.common.dto.ApiResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -24,6 +25,7 @@ public class BackupController {
         this.backupService = backupService;
     }
 
+    @OperationLog(module = "backup", action = "create", description = "创建数据库备份")
     @Operation(summary = "创建备份", description = "创建当前数据库的完整备份")
     @PostMapping
     public ApiResponse<Map<String, String>> createBackup() {

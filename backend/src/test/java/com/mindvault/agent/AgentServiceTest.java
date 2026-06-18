@@ -3,6 +3,7 @@ package com.mindvault.agent;
 import com.mindvault.agent.config.AgentConfig;
 import com.mindvault.agent.tool.Tool;
 import com.mindvault.common.config.CircuitBreakerConfig;
+import com.mindvault.common.service.MetricsService;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.tokenusage.TokenUsageService;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,6 +26,7 @@ class AgentServiceTest {
     @Mock private CircuitBreakerConfig circuitBreaker;
     @Mock private Tool tool1;
     @Mock private Tool tool2;
+    @Mock private MetricsService metricsService;
 
     private AgentService service;
 
@@ -32,7 +34,7 @@ class AgentServiceTest {
     void setUp() {
         List<Tool> tools = List.of(tool1, tool2);
         service = new AgentService(modelConfigService, agentConfig, tools,
-                tokenUsageService, circuitBreaker);
+                tokenUsageService, circuitBreaker, metricsService);
     }
 
     @Test

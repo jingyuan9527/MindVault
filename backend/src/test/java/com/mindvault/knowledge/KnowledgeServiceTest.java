@@ -2,6 +2,7 @@ package com.mindvault.knowledge;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mindvault.common.service.MetricsService;
 import com.mindvault.content.AutoProcessService;
 import com.mindvault.knowledge.dto.ImportPreview;
 import com.mindvault.knowledge.entity.Knowledge;
@@ -31,6 +32,7 @@ class KnowledgeServiceTest {
     @Mock private OperationLogService operationLogService;
     @Mock private AutoProcessService autoProcessService;
     @Mock private ReviewService reviewService;
+    @Mock private MetricsService metricsService;
 
     private KnowledgeService service;
     private ObjectMapper objectMapper;
@@ -40,7 +42,7 @@ class KnowledgeServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new KnowledgeService(mapper, operationLogService, autoProcessService, reviewService, null);
+        service = new KnowledgeService(mapper, operationLogService, autoProcessService, reviewService, null, metricsService);
         objectMapper = new ObjectMapper();
     }
 

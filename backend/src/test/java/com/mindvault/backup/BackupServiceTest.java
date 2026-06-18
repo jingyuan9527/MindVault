@@ -1,5 +1,6 @@
 package com.mindvault.backup;
 
+import com.mindvault.common.service.MetricsService;
 import com.mindvault.knowledge.KnowledgeService;
 import com.mindvault.operationlog.OperationLogService;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +22,7 @@ class BackupServiceTest {
 
     @Mock private KnowledgeService knowledgeService;
     @Mock private OperationLogService operationLogService;
+    @Mock private MetricsService metricsService;
 
     private BackupService service;
 
@@ -29,7 +31,7 @@ class BackupServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new BackupService(knowledgeService, operationLogService);
+        service = new BackupService(knowledgeService, operationLogService, metricsService);
         ReflectionTestUtils.setField(service, "backupDir", tempDir.toString());
         ReflectionTestUtils.setField(service, "retentionDays", 7);
     }

@@ -1,5 +1,6 @@
 package com.mindvault.backup;
 
+import com.mindvault.common.service.MetricsService;
 import com.mindvault.knowledge.KnowledgeService;
 import com.mindvault.operationlog.OperationLogService;
 import jakarta.annotation.PostConstruct;
@@ -30,6 +31,7 @@ public class BackupService {
 
     private final KnowledgeService knowledgeService;
     private final OperationLogService operationLogService;
+    private final MetricsService metricsService;
 
     @Value("${mindvault.backup.dir:backups}")
     private String backupDir;
@@ -38,9 +40,11 @@ public class BackupService {
     private int retentionDays;
 
     public BackupService(KnowledgeService knowledgeService,
-                         OperationLogService operationLogService) {
+                         OperationLogService operationLogService,
+                         MetricsService metricsService) {
         this.knowledgeService = knowledgeService;
         this.operationLogService = operationLogService;
+        this.metricsService = metricsService;
     }
 
     @PostConstruct
@@ -74,6 +78,7 @@ public class BackupService {
             Path filePath = Paths.get(backupDir, filename);
             Files.writeString(filePath, json, StandardCharsets.UTF_8);
             log.info("备份创建成功: {} ({} bytes)", filename, json.getBytes(StandardCharsets.UTF_8).length);
+            metricsService.recordBackup();
             operationLogService.log("SYSTEM", "BACKUP", null, "自动备份: " + filename);
             return filename;
         } catch (Exception e) {

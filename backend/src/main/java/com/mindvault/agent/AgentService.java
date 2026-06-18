@@ -5,9 +5,11 @@ import com.mindvault.agent.config.AgentConfig;
 import com.mindvault.agent.config.AgentConfig.LlmEndpoint;
 import com.mindvault.agent.tool.Tool;
 import com.mindvault.common.config.CircuitBreakerConfig;
+import com.mindvault.common.service.MetricsService;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.tokenusage.TokenUsageService;
+import io.micrometer.core.instrument.Timer;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +40,7 @@ public class AgentService {
     private final List<Tool> tools;
     private final TokenUsageService tokenUsageService;
     private final CircuitBreakerConfig circuitBreaker;
+    private final MetricsService metricsService;
     private final ObjectMapper objectMapper;
 
     private List<ModelEndpoint> modelEndpoints = List.of();
@@ -47,12 +50,14 @@ public class AgentService {
                         AgentConfig agentConfig,
                         List<Tool> tools,
                         TokenUsageService tokenUsageService,
-                        CircuitBreakerConfig circuitBreaker) {
+                        CircuitBreakerConfig circuitBreaker,
+                        MetricsService metricsService) {
         this.modelConfigService = modelConfigService;
         this.agentConfig = agentConfig;
         this.tools = tools;
         this.tokenUsageService = tokenUsageService;
         this.circuitBreaker = circuitBreaker;
+        this.metricsService = metricsService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -176,6 +181,7 @@ public class AgentService {
                 errors.add("模型" + me.modelId + " 熔断中");
                 continue;
             }
+            Timer.Sample sample = metricsService.startLlmCall();
             try {
                 JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory();
                 factory.setReadTimeout(120_000);
@@ -215,9 +221,11 @@ public class AgentService {
                         });
 
                 circuitBreaker.recordSuccess(me.modelId);
+                metricsService.recordLlmCallSuccess(sample, me.provider, me.endpoint.getModelName());
                 return;
             } catch (Exception e) {
                 circuitBreaker.recordFailure(me.modelId);
+                metricsService.recordLlmCallError(me.provider, me.endpoint.getModelName());
                 log.warn("模型 id={} 流式调用失败: {}", me.modelId, e.getMessage());
                 errors.add("模型" + me.modelId + ": " + e.getMessage());
             }
@@ -270,6 +278,7 @@ public class AgentService {
                 continue;
             }
 
+            Timer.Sample sample = metricsService.startLlmCall();
             try {
                 RestClient client = RestClient.builder()
                         .baseUrl(me.endpoint.getFullUrl())
@@ -291,12 +300,14 @@ public class AgentService {
                 Map<?, ?> responseMap = objectMapper.readValue(responseJson, Map.class);
                 String content = extractContent(responseMap);
                 circuitBreaker.recordSuccess(me.modelId);
+                metricsService.recordLlmCallSuccess(sample, me.provider, me.endpoint.getModelName());
                 recordUsage(me, responseMap);
                 if (content != null) return content;
 
                 return responseJson;
             } catch (Exception e) {
                 circuitBreaker.recordFailure(me.modelId);
+                metricsService.recordLlmCallError(me.provider, me.endpoint.getModelName());
                 log.warn("模型 id={} 调用失败: {}", me.modelId, e.getMessage());
                 errors.add("模型" + me.modelId + ": " + e.getMessage());
             }
@@ -321,6 +332,7 @@ public class AgentService {
             if (usage != null) {
                 int promptTokens = ((Number) usage.getOrDefault("prompt_tokens", 0)).intValue();
                 int completionTokens = ((Number) usage.getOrDefault("completion_tokens", 0)).intValue();
+                metricsService.recordTokens(promptTokens, completionTokens);
                 ModelConfig mc = new ModelConfig();
                 mc.setId(me.modelId);
                 mc.setProvider(me.provider);

@@ -15,7 +15,7 @@ cd docker && docker compose up -d --build
 ## Commands
 | Task | Command |
 |------|---------|
-| Backend tests (188 total) | `cd backend && mvn test` |
+| Backend tests (189 total) | `cd backend && mvn test` |
 | Single test class | `cd backend && mvn test -Dtest=KnowledgeControllerTest` |
 | Frontend tests (53 total) | `cd frontend && npx vitest run` |
 | Build backend jar | `cd backend && mvn clean package -DskipTests` |
@@ -44,7 +44,9 @@ cd docker && docker compose up -d --build
 | `backup` | DB backup/restore via pg_dump |
 | `tokenusage` | Token usage tracking |
 | `operationlog` | Audit log |
-| `common` | Global exception handler, filters, health endpoint |
+| `common` | Global exception handler, filters, health endpoint, metrics, actuator, AOP operation log |
+| `annotation` | @OperationLog custom annotation |
+| `aspect` | OperationLogAspect — auto-logging around @OperationLog methods |
 
 ## Key Conventions
 - **Controller tests**: `@WebMvcTest` + `@MockBean` pattern, no real DB. Example: `KnowledgeControllerTest.java`
@@ -94,6 +96,14 @@ cd docker && docker compose up -d --build
 - Knife4j UI: `http://localhost:3000/api/doc.html`
 - Swagger UI: `http://localhost:3000/api/swagger-ui/index.html`
 - OpenAPI JSON: `http://localhost:3000/api/v3/api-docs`
+
+### Observability Endpoints
+- Health: `GET /api/v1/system/health` (custom, with DB + disk checks)
+- Info: `GET /api/v1/system/info` (JVM + memory + threads)
+- Metrics: `GET /api/v1/system/metrics`
+- Actuator: `GET /api/v1/actuator/health`, `/api/v1/actuator/info`, `/api/v1/actuator/metrics`, `/api/v1/actuator/prometheus`
+- Prometheus metrics: `mindvault.api.calls`, `mindvault.api.errors`, `mindvault.llm.calls`, `mindvault.llm.duration`, `mindvault.llm.tokens.*`, `mindvault.circuitbreaker.open`, `mindvault.backup.count`, `mindvault.connections.active`
+- Trace ID: Every request gets `X-Trace-Id` header, propagated via SLF4J MDC
 
 ### To Do
 - [ ] Agent 集成测试（WireMock）— agent 3% → ~60%
