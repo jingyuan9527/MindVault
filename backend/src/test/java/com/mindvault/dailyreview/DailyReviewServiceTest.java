@@ -1,10 +1,12 @@
 package com.mindvault.dailyreview;
 
 import com.mindvault.agent.config.AgentConfig;
+import com.mindvault.common.service.MetricsService;
 import com.mindvault.dailyreview.entity.DailyReview;
 import com.mindvault.knowledge.KnowledgeMapper;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
+import com.mindvault.tokenusage.TokenUsageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +31,8 @@ class DailyReviewServiceTest {
     @Mock private AgentConfig agentConfig;
     @Mock private KnowledgeMapper knowledgeMapper;
     @Mock private DailyReviewMapper mapper;
+    @Mock private TokenUsageService tokenUsageService;
+    @Mock private MetricsService metricsService;
 
     private DailyReviewService service;
 
@@ -36,7 +40,7 @@ class DailyReviewServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new DailyReviewService(modelConfigService, agentConfig, knowledgeMapper, mapper);
+        service = new DailyReviewService(modelConfigService, agentConfig, knowledgeMapper, mapper, tokenUsageService, metricsService);
     }
 
     private DailyReview createReport(Long id, LocalDate date, int count, String summary) {

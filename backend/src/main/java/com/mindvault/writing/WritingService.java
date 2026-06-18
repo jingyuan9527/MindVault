@@ -2,10 +2,12 @@ package com.mindvault.writing;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindvault.agent.config.AgentConfig;
+import com.mindvault.common.service.MetricsService;
 import com.mindvault.knowledge.KnowledgeMapper;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
+import com.mindvault.tokenusage.TokenUsageService;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,16 +26,22 @@ public class WritingService {
     private final ModelConfigService modelConfigService;
     private final AgentConfig agentConfig;
     private final KnowledgeMapper knowledgeMapper;
+    private final TokenUsageService tokenUsageService;
+    private final MetricsService metricsService;
     private final ObjectMapper objectMapper;
 
     private List<LlmEndpoint> modelEndpoints = List.of();
 
     public WritingService(ModelConfigService modelConfigService,
                           AgentConfig agentConfig,
-                          KnowledgeMapper knowledgeMapper) {
+                          KnowledgeMapper knowledgeMapper,
+                          TokenUsageService tokenUsageService,
+                          MetricsService metricsService) {
         this.modelConfigService = modelConfigService;
         this.agentConfig = agentConfig;
         this.knowledgeMapper = knowledgeMapper;
+        this.tokenUsageService = tokenUsageService;
+        this.metricsService = metricsService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -46,7 +54,7 @@ public class WritingService {
         try {
             List<ModelConfig> models = modelConfigService.getAvailableChatModels();
             modelEndpoints = models.stream()
-                    .map(mc -> new LlmEndpoint(agentConfig.buildEndpoint(mc)))
+                    .map(mc -> new LlmEndpoint(mc, agentConfig.buildEndpoint(mc)))
                     .toList();
             log.info("WritingService 初始化完成，可用模型数: {}", modelEndpoints.size());
         } catch (Exception e) {
@@ -115,6 +123,7 @@ public class WritingService {
         return results.subList(0, Math.min(results.size(), 5));
     }
 
+    @SuppressWarnings("unchecked")
     private String callLlmWithFailover(String prompt) {
         List<String> errors = new ArrayList<>();
         for (LlmEndpoint me : modelEndpoints) {
@@ -138,7 +147,10 @@ public class WritingService {
 
                 Map<?, ?> responseMap = objectMapper.readValue(responseJson, Map.class);
                 String content = extractContent(responseMap);
-                if (content != null) return content.trim();
+                if (content != null) {
+                    recordUsage(me, responseMap);
+                    return content.trim();
+                }
             } catch (Exception e) {
                 log.warn("模型调用失败: {}", e.getMessage());
                 errors.add(e.getMessage());
@@ -146,6 +158,21 @@ public class WritingService {
         }
         log.warn("所有模型均调用失败: {}", String.join("; ", errors));
         return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void recordUsage(LlmEndpoint me, Map<?, ?> responseMap) {
+        try {
+            Map<String, Object> usage = (Map<String, Object>) responseMap.get("usage");
+            if (usage != null) {
+                int promptTokens = ((Number) usage.getOrDefault("prompt_tokens", 0)).intValue();
+                int completionTokens = ((Number) usage.getOrDefault("completion_tokens", 0)).intValue();
+                metricsService.recordTokens(promptTokens, completionTokens);
+                tokenUsageService.recordUsage(me.modelConfig, promptTokens, completionTokens, "WRITING", null);
+            }
+        } catch (Exception e) {
+            log.warn("记录 Writing Token 用量失败: {}", e.getMessage());
+        }
     }
 
     private String extractContent(Map<?, ?> responseMap) {
@@ -174,5 +201,5 @@ public class WritingService {
         return text.length() <= maxLen ? text : text.substring(0, maxLen);
     }
 
-    private record LlmEndpoint(AgentConfig.LlmEndpoint endpoint) {}
+    private record LlmEndpoint(ModelConfig modelConfig, AgentConfig.LlmEndpoint endpoint) {}
 }

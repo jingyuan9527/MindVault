@@ -1,10 +1,12 @@
 package com.mindvault.writing;
 
 import com.mindvault.agent.config.AgentConfig;
+import com.mindvault.common.service.MetricsService;
 import com.mindvault.knowledge.KnowledgeMapper;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
+import com.mindvault.tokenusage.TokenUsageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,12 +26,14 @@ class WritingServiceTest {
     @Mock private ModelConfigService modelConfigService;
     @Mock private AgentConfig agentConfig;
     @Mock private KnowledgeMapper knowledgeMapper;
+    @Mock private TokenUsageService tokenUsageService;
+    @Mock private MetricsService metricsService;
 
     private WritingService service;
 
     @BeforeEach
     void setUp() {
-        service = new WritingService(modelConfigService, agentConfig, knowledgeMapper);
+        service = new WritingService(modelConfigService, agentConfig, knowledgeMapper, tokenUsageService, metricsService);
     }
 
     private Knowledge createKnowledge(Long id, String title, String content, String summary) {

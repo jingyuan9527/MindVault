@@ -45,6 +45,7 @@ public class AgentService {
 
     private List<ModelEndpoint> modelEndpoints = List.of();
     private String systemPrompt;
+    private static final double TOKEN_ESTIMATE_RATIO = 3.0;
 
     public AgentService(ModelConfigService modelConfigService,
                         AgentConfig agentConfig,
@@ -201,6 +202,9 @@ public class AgentService {
 
                 String jsonBody = objectMapper.writeValueAsString(requestBody);
 
+                String promptText = objectMapper.writeValueAsString(messages);
+                int promptTokens = (int) (promptText.length() / TOKEN_ESTIMATE_RATIO);
+
                 boolean isOllama = me.endpoint.getFullUrl().contains("ollama") || me.endpoint.getFullUrl().contains("11434");
 
                 client.post()
@@ -222,6 +226,7 @@ public class AgentService {
 
                 circuitBreaker.recordSuccess(me.modelId);
                 metricsService.recordLlmCallSuccess(sample, me.provider, me.endpoint.getModelName());
+                recordStreamUsage(me, promptTokens, collector.length());
                 return;
             } catch (Exception e) {
                 circuitBreaker.recordFailure(me.modelId);
@@ -232,6 +237,22 @@ public class AgentService {
         }
         log.error("所有模型流式调用均失败: {}", String.join("; ", errors));
         throw new RuntimeException("所有模型流式调用均失败");
+    }
+
+    private void recordStreamUsage(ModelEndpoint me, int promptTokens, int completionChars) {
+        try {
+            int completionTokens = (int) (completionChars / TOKEN_ESTIMATE_RATIO);
+            if (completionTokens == 0) return;
+            metricsService.recordTokens(promptTokens, completionTokens);
+            ModelConfig mc = new ModelConfig();
+            mc.setId(me.modelId);
+            mc.setProvider(me.provider);
+            mc.setModelName(me.endpoint.getModelName());
+            mc.setModelType("CHAT");
+            tokenUsageService.recordUsage(mc, promptTokens, completionTokens, "CHAT_STREAM", null);
+        } catch (Exception e) {
+            log.warn("记录流式 Token 用量失败: {}", e.getMessage());
+        }
     }
 
     private String parseStreamLine(String line, boolean isOllama) {
