@@ -6,28 +6,38 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 @TableName("chat_message")
+@Schema(description = "聊天消息实体")
 public class ChatMessage {
 
     @TableId(type = IdType.AUTO)
+    @Schema(description = "主键 ID")
     private Long id;
 
     @TableField("session_id")
+    @Schema(description = "会话 ID")
     private Long sessionId;
 
     @TableField("role")
+    @Schema(description = "角色")
     private String role;
 
     @TableField("content")
+    @Schema(description = "内容")
     private String content;
 
     @TableField("metadata")
+    @Schema(description = "元数据")
     private String metadata = "{}";
 
     @TableField("sources")
+    @Schema(description = "来源")
     private String sources = "[]";
 
     @TableField("created_at")
+    @Schema(description = "创建时间")
     private LocalDateTime createdAt;
 
     public Long getId() { return id; }

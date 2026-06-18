@@ -1,13 +1,13 @@
 <template>
   <div class="flex flex-col h-full">
-    <div class="p-5 shrink-0" style="border-bottom: 1px solid var(--color-border)">
-      <h2 class="font-display text-xl mb-4">写作辅助</h2>
+    <div class="p-4 md:p-5 shrink-0" style="border-bottom: 1px solid var(--color-border)">
+      <h2 class="font-display text-lg md:text-xl mb-4">写作辅助</h2>
       <div class="space-y-3">
         <div>
           <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">写作主题</label>
           <input v-model="topic" placeholder="输入文章主题，如「Spring Boot 最佳实践」" class="input-field" />
         </div>
-        <div class="flex gap-4">
+        <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <div class="flex-1">
             <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">写作风格（可选）</label>
             <select v-model="style" class="input-field">
@@ -33,7 +33,7 @@
       </div>
     </div>
 
-    <div class="flex-1 overflow-y-auto p-5">
+    <div class="flex-1 overflow-y-auto p-4 md:p-5">
       <div v-if="generating" class="flex justify-center py-12">
         <div class="w-6 h-6 rounded-full animate-spin" style="border: 2px solid var(--color-border); border-top-color: var(--color-accent)"></div>
       </div>

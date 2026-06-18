@@ -124,7 +124,20 @@
     background-color: var(--color-surface);
     border-radius: 16px;
     box-shadow: 0 20px 60px rgba(45, 42, 36, 0.12);
-    @apply mx-4;
+    @apply mx-3 sm:mx-4;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  @media (max-width: 639px) {
+    .modal-panel {
+      border-radius: 12px;
+      margin-top: 0;
+    }
+    .modal-overlay {
+      align-items: flex-start;
+      padding-top: 2rem;
+    }
   }
 
   .slide-enter {

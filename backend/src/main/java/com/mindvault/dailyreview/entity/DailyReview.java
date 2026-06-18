@@ -7,31 +7,42 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 @TableName("daily_review")
+@Schema(description = "每日回顾实体")
 public class DailyReview {
 
     @TableId(type = IdType.AUTO)
+    @Schema(description = "主键 ID")
     private Long id;
 
     @TableField("report_date")
+    @Schema(description = "报告日期")
     private LocalDate reportDate;
 
     @TableField("total_count")
+    @Schema(description = "总计数")
     private Integer totalCount = 0;
 
     @TableField("summary")
+    @Schema(description = "摘要")
     private String summary;
 
     @TableField("key_insights")
+    @Schema(description = "关键洞察")
     private String keyInsights = "[]";
 
     @TableField("recommendations")
+    @Schema(description = "建议")
     private String recommendations = "[]";
 
     @TableField("category_breakdown")
+    @Schema(description = "分类统计")
     private String categoryBreakdown = "{}";
 
     @TableField("created_at")
+    @Schema(description = "创建时间")
     private LocalDateTime createdAt;
 
     public Long getId() { return id; }

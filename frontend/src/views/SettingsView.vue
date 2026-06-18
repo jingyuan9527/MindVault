@@ -1,94 +1,135 @@
 <template>
-  <div class="p-6 max-w-4xl">
-    <h2 class="font-display text-2xl mb-6" style="color: var(--color-text)">系统设置</h2>
+  <div class="p-4 md:p-6 max-w-4xl">
+    <h2 class="font-display text-xl md:text-2xl mb-4 md:mb-6" style="color: var(--color-text)">系统设置</h2>
 
-    <section class="card p-6">
+    <section class="card p-4 md:p-6">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="font-display text-lg" style="color: var(--color-text)">模型配置</h3>
+        <h3 class="font-display text-base md:text-lg" style="color: var(--color-text)">模型配置</h3>
         <button @click="showAddForm = true" class="btn-primary text-sm">+ 添加模型</button>
       </div>
 
-      <table class="w-full text-sm" v-if="models.length">
-        <thead>
-          <tr style="border-bottom: 1px solid var(--color-border); color: var(--color-text-secondary)">
-            <th class="text-left py-2 font-medium">供应商</th>
-            <th class="text-left py-2 font-medium">模型</th>
-            <th class="text-left py-2 font-medium">类型</th>
-            <th class="text-center py-2 font-medium w-20">优先级</th>
-            <th class="text-center py-2 font-medium">状态</th>
-            <th class="text-center py-2 font-medium">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(m, idx) in models" :key="m.id" style="border-bottom: 1px solid var(--color-border)">
-            <td class="py-3" style="color: var(--color-text)">{{ m.provider }}</td>
-            <td class="py-3">
-              <span style="color: var(--color-text)">{{ m.modelName }}</span>
+      <!-- Desktop table -->
+      <div class="hidden md:block overflow-x-auto" v-if="models.length">
+        <table class="w-full text-sm">
+          <thead>
+            <tr style="border-bottom: 1px solid var(--color-border); color: var(--color-text-secondary)">
+              <th class="text-left py-2 font-medium">供应商</th>
+              <th class="text-left py-2 font-medium">模型</th>
+              <th class="text-left py-2 font-medium">类型</th>
+              <th class="text-center py-2 font-medium w-20">优先级</th>
+              <th class="text-center py-2 font-medium">状态</th>
+              <th class="text-center py-2 font-medium">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(m, idx) in models" :key="m.id" style="border-bottom: 1px solid var(--color-border)">
+              <td class="py-3" style="color: var(--color-text)">{{ m.provider }}</td>
+              <td class="py-3">
+                <span style="color: var(--color-text)">{{ m.modelName }}</span>
+                <span v-if="m.isPrimary" class="ml-2 px-1.5 py-0.5 text-xs rounded"
+                  :style="{ backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' }">主模型</span>
+              </td>
+              <td class="py-3" style="color: var(--color-warm-gray)">{{ m.modelType }}</td>
+              <td class="py-3 text-center">
+                <div class="flex items-center justify-center gap-1">
+                  <button @click="movePriority(m.id, m.priority - 1)" :disabled="idx === 0"
+                    class="text-xs transition-colors duration-150 disabled:opacity-20"
+                    style="color: var(--color-text-secondary)"
+                    @mouseenter="$event.target.style.color = 'var(--color-text)'"
+                    @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">&#9650;</button>
+                  <span class="text-xs w-5 text-center" style="color: var(--color-warm-gray)">{{ m.priority }}</span>
+                  <button @click="movePriority(m.id, m.priority + 1)" :disabled="idx === models.length - 1"
+                    class="text-xs transition-colors duration-150 disabled:opacity-20"
+                    style="color: var(--color-text-secondary)"
+                    @mouseenter="$event.target.style.color = 'var(--color-text)'"
+                    @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">&#9660;</button>
+                </div>
+              </td>
+              <td class="py-3 text-center">
+                <span class="px-2 py-0.5 text-xs rounded"
+                  :style="m.isEnabled ? { backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' } : { backgroundColor: '#f0eeeb', color: 'var(--color-text-secondary)' }">
+                  {{ m.isEnabled ? '启用' : '禁用' }}
+                </span>
+              </td>
+              <td class="py-3 text-center">
+                <div class="flex items-center justify-center gap-2">
+                  <button v-if="!m.isPrimary" @click="setPrimary(m.id)"
+                    class="text-xs transition-colors duration-150"
+                    style="color: var(--color-accent)"
+                    @mouseenter="$event.target.style.color = 'var(--color-accent-hover)'"
+                    @mouseleave="$event.target.style.color = 'var(--color-accent)'">设为主模型</button>
+                  <button @click="testConnection(m.id)"
+                    class="text-xs transition-colors duration-150"
+                    style="color: var(--color-text-secondary)"
+                    @mouseenter="$event.target.style.color = 'var(--color-text)'"
+                    @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">测试</button>
+                  <button @click="deleteModel(m.id)"
+                    class="text-xs transition-colors duration-150"
+                    style="color: var(--color-text-secondary)"
+                    @mouseenter="$event.target.style.color = 'var(--color-accent)'"
+                    @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">删除</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Mobile cards -->
+      <div class="md:hidden space-y-3" v-if="models.length">
+        <div v-for="(m, idx) in models" :key="m.id"
+          class="p-3 rounded-lg"
+          :style="{ backgroundColor: 'var(--color-bg)' }">
+          <div class="flex items-start justify-between mb-2">
+            <div>
+              <span class="text-sm font-medium" style="color: var(--color-text)">{{ m.provider }}</span>
               <span v-if="m.isPrimary" class="ml-2 px-1.5 py-0.5 text-xs rounded"
                 :style="{ backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' }">主模型</span>
-            </td>
-            <td class="py-3" style="color: var(--color-warm-gray)">{{ m.modelType }}</td>
-            <td class="py-3 text-center">
-              <div class="flex items-center justify-center gap-1">
-                <button @click="movePriority(m.id, m.priority - 1)" :disabled="idx === 0"
-                  class="text-xs transition-colors duration-150 disabled:opacity-20"
-                  style="color: var(--color-text-secondary)"
-                  @mouseenter="$event.target.style.color = 'var(--color-text)'"
-                  @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">&#9650;</button>
-                <span class="text-xs w-5 text-center" style="color: var(--color-warm-gray)">{{ m.priority }}</span>
-                <button @click="movePriority(m.id, m.priority + 1)" :disabled="idx === models.length - 1"
-                  class="text-xs transition-colors duration-150 disabled:opacity-20"
-                  style="color: var(--color-text-secondary)"
-                  @mouseenter="$event.target.style.color = 'var(--color-text)'"
-                  @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">&#9660;</button>
-              </div>
-            </td>
-            <td class="py-3 text-center">
-              <span class="px-2 py-0.5 text-xs rounded"
-                :style="m.isEnabled ? { backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' } : { backgroundColor: '#f0eeeb', color: 'var(--color-text-secondary)' }">
-                {{ m.isEnabled ? '启用' : '禁用' }}
-              </span>
-            </td>
-            <td class="py-3 text-center">
-              <div class="flex items-center justify-center gap-2">
-                <button v-if="!m.isPrimary" @click="setPrimary(m.id)"
-                  class="text-xs transition-colors duration-150"
-                  style="color: var(--color-accent)"
-                  @mouseenter="$event.target.style.color = 'var(--color-accent-hover)'"
-                  @mouseleave="$event.target.style.color = 'var(--color-accent)'">设为主模型</button>
-                <button @click="testConnection(m.id)"
-                  class="text-xs transition-colors duration-150"
-                  style="color: var(--color-text-secondary)"
-                  @mouseenter="$event.target.style.color = 'var(--color-text)'"
-                  @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">测试</button>
-                <button @click="deleteModel(m.id)"
-                  class="text-xs transition-colors duration-150"
-                  style="color: var(--color-text-secondary)"
-                  @mouseenter="$event.target.style.color = 'var(--color-accent)'"
-                  @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">删除</button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            </div>
+            <span class="px-2 py-0.5 text-xs rounded shrink-0"
+              :style="m.isEnabled ? { backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' } : { backgroundColor: '#f0eeeb', color: 'var(--color-text-secondary)' }">
+              {{ m.isEnabled ? '启用' : '禁用' }}
+            </span>
+          </div>
+          <p class="text-xs mb-1" style="color: var(--color-text)">{{ m.modelName }}</p>
+          <p class="text-xs mb-2" style="color: var(--color-warm-gray)">{{ m.modelType }} · 优先级 {{ m.priority }}</p>
+          <div class="flex items-center gap-2 flex-wrap">
+            <button @click="movePriority(m.id, m.priority - 1)" :disabled="idx === 0"
+              class="text-xs px-2 py-1 rounded transition-colors duration-150 disabled:opacity-20"
+              style="color: var(--color-text-secondary); border: 1px solid var(--color-border)">上移</button>
+            <button @click="movePriority(m.id, m.priority + 1)" :disabled="idx === models.length - 1"
+              class="text-xs px-2 py-1 rounded transition-colors duration-150 disabled:opacity-20"
+              style="color: var(--color-text-secondary); border: 1px solid var(--color-border)">下移</button>
+            <button v-if="!m.isPrimary" @click="setPrimary(m.id)"
+              class="text-xs transition-colors duration-150"
+              style="color: var(--color-accent)">设为主模型</button>
+            <button @click="testConnection(m.id)"
+              class="text-xs transition-colors duration-150"
+              style="color: var(--color-text-secondary)">测试</button>
+            <button @click="deleteModel(m.id)"
+              class="text-xs transition-colors duration-150"
+              style="color: var(--color-text-secondary)">删除</button>
+          </div>
+        </div>
+      </div>
 
       <p v-else class="text-sm py-4" style="color: var(--color-text-secondary)">暂无模型配置，点击上方按钮添加</p>
     </section>
 
-    <section class="card p-6 mt-6">
-      <h3 class="font-display text-lg mb-4" style="color: var(--color-text)">数据导入/导出</h3>
+    <section class="card p-4 md:p-6 mt-4 md:mt-6">
+      <h3 class="font-display text-base md:text-lg mb-4" style="color: var(--color-text)">数据导入/导出</h3>
       <div class="space-y-4">
-        <div class="flex gap-4 flex-wrap">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <p class="text-sm mb-2" style="color: var(--color-text-secondary)">导出 JSON（完整备份）</p>
-            <button @click="exportJson" :disabled="exporting" class="btn-primary text-sm">
+            <button @click="exportJson" :disabled="exporting" class="btn-primary text-sm w-full sm:w-auto">
               {{ exporting ? '导出中...' : '导出 JSON' }}
             </button>
           </div>
           <div>
             <p class="text-sm mb-2" style="color: var(--color-text-secondary)">导出 Markdown（按标签分类）</p>
             <button @click="exportMarkdown" :disabled="exportingMd"
-              class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+              class="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200"
               :style="{ backgroundColor: 'var(--color-sage)', color: 'white' }"
               @mouseenter="!exportingMd && ($event.target.style.opacity = '0.9')"
               @mouseleave="!exportingMd && ($event.target.style.opacity = '1')">
@@ -98,7 +139,7 @@
           <div>
             <p class="text-sm mb-2" style="color: var(--color-text-secondary)">导出 CSV（表格分析）</p>
             <button @click="exportCsv" :disabled="exportingCsv"
-              class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+              class="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200"
               :style="{ backgroundColor: 'var(--color-warm-gray)', color: 'white' }"
               @mouseenter="!exportingCsv && ($event.target.style.opacity = '0.9')"
               @mouseleave="!exportingCsv && ($event.target.style.opacity = '1')">
@@ -166,9 +207,9 @@
       </div>
     </section>
 
-    <section class="card p-6 mt-6">
+    <section class="card p-4 md:p-6 mt-4 md:mt-6">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="font-display text-lg" style="color: var(--color-text)">自动备份</h3>
+        <h3 class="font-display text-base md:text-lg" style="color: var(--color-text)">自动备份</h3>
         <button @click="createBackup" :disabled="backingUp" class="btn-primary text-sm">
           {{ backingUp ? '备份中...' : '立即备份' }}
         </button>
@@ -194,8 +235,8 @@
 
     <transition name="fade">
       <div v-if="showAddForm" class="modal-overlay" @click.self="showAddForm = false">
-        <div class="modal-panel w-96">
-          <div class="p-6">
+        <div class="modal-panel w-[calc(100%-2rem)] sm:w-96">
+          <div class="p-4 sm:p-6">
             <h3 class="font-display text-lg mb-4">添加模型</h3>
             <div class="space-y-3">
               <div>

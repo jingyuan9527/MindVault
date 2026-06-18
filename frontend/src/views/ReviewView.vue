@@ -1,13 +1,13 @@
 <template>
   <div class="flex flex-col h-full">
-    <div class="p-5 shrink-0" style="border-bottom: 1px solid var(--color-border)">
-      <h2 class="font-display text-xl">间隔复习</h2>
+    <div class="p-4 md:p-5 shrink-0" style="border-bottom: 1px solid var(--color-border)">
+      <h2 class="font-display text-lg md:text-xl">间隔复习</h2>
       <p class="text-sm mt-1" style="color: var(--color-text-secondary)">
         今日待复习: <span style="color: var(--color-accent); font-weight: 600">{{ dueCount }}</span> 条
       </p>
     </div>
 
-    <div class="flex-1 overflow-y-auto p-5">
+    <div class="flex-1 overflow-y-auto p-4 md:p-5">
       <div v-if="loading" class="flex justify-center py-12">
         <div class="w-6 h-6 rounded-full animate-spin"
           style="border: 2px solid var(--color-border); border-top-color: var(--color-accent)"></div>

@@ -15,10 +15,11 @@ import java.util.List;
 import java.util.Map;
 
 import com.mindvault.knowledge.dto.ImportPreview;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
-/**
- * 知识库 REST API
- */
+@Tag(name = "知识库", description = "知识的增删改查、搜索、导入导出、标签管理")
 @RestController
 @RequestMapping("/api/v1/knowledge")
 public class KnowledgeController {
@@ -38,34 +39,39 @@ public class KnowledgeController {
         this.searchEnhanceService = searchEnhanceService;
     }
 
+    @Operation(summary = "新增知识", description = "创建一条新的知识笔记")
     @PostMapping
     public ApiResponse<Knowledge> addKnowledge(@Valid @RequestBody Knowledge knowledge) {
         return ApiResponse.success(knowledgeService.addKnowledge(knowledge));
     }
 
+    @Operation(summary = "知识列表", description = "分页获取知识列表，按创建时间倒序")
     @GetMapping
     public ApiResponse<List<Knowledge>> listAll(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @Parameter(description = "页码，从 0 开始") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "每页条数") @RequestParam(defaultValue = "20") int size) {
         return ApiResponse.success(knowledgeService.listAll(page, size));
     }
 
+    @Operation(summary = "知识详情", description = "根据 ID 获取单条知识")
     @GetMapping("/{id}")
-    public ApiResponse<Knowledge> getById(@PathVariable Long id) {
+    public ApiResponse<Knowledge> getById(@Parameter(description = "知识 ID") @PathVariable Long id) {
         return ApiResponse.success(knowledgeService.getById(id));
     }
 
+    @Operation(summary = "更新知识", description = "更新指定 ID 的知识内容")
     @PutMapping("/{id}")
-    public ApiResponse<Knowledge> updateKnowledge(@PathVariable Long id,
+    public ApiResponse<Knowledge> updateKnowledge(@Parameter(description = "知识 ID") @PathVariable Long id,
                                                    @Valid @RequestBody Knowledge knowledge) {
         return ApiResponse.success(knowledgeService.updateKnowledge(id, knowledge));
     }
 
+    @Operation(summary = "搜索知识", description = "混合搜索（向量+关键字），支持语义重排序和标签过滤")
     @GetMapping("/search")
     public ApiResponse<?> search(
-            @RequestParam String q,
-            @RequestParam(defaultValue = "5") int topN,
-            @RequestParam(required = false) String tag) {
+            @Parameter(description = "搜索关键词") @RequestParam String q,
+            @Parameter(description = "返回条数") @RequestParam(defaultValue = "5") int topN,
+            @Parameter(description = "标签过滤（可选）") @RequestParam(required = false) String tag) {
         if (tag != null && !tag.isBlank()) {
             return ApiResponse.success(knowledgeService.searchByKeywordWithTag(q, topN, tag));
         }
@@ -74,36 +80,41 @@ public class KnowledgeController {
         return ApiResponse.success(reranked);
     }
 
+    @Operation(summary = "HyDE 搜索", description = "基于假设文档嵌入的增强语义搜索")
     @GetMapping("/search/hyde")
     public ApiResponse<?> searchHyde(
-            @RequestParam String q,
-            @RequestParam(defaultValue = "5") int topN) {
+            @Parameter(description = "搜索关键词") @RequestParam String q,
+            @Parameter(description = "返回条数") @RequestParam(defaultValue = "5") int topN) {
         List<Map<String, Object>> results = searchEnhanceService.hydeSearch(q, topN * 2);
         List<Map<String, Object>> reranked = searchEnhanceService.rerankResults(q, results, topN);
         return ApiResponse.success(reranked);
     }
 
+    @Operation(summary = "查询改写搜索", description = "LLM 改写查询后进行语义搜索")
     @GetMapping("/search/rewrite")
     public ApiResponse<?> searchWithRewrite(
-            @RequestParam String q,
-            @RequestParam(defaultValue = "5") int topN) {
+            @Parameter(description = "搜索关键词") @RequestParam String q,
+            @Parameter(description = "返回条数") @RequestParam(defaultValue = "5") int topN) {
         List<Map<String, Object>> results = searchEnhanceService.searchWithRewrite(q, topN);
         return ApiResponse.success(results);
     }
 
+    @Operation(summary = "相关知识", description = "基于向量相似度获取相关知识推荐")
     @GetMapping("/{id}/related")
     public ApiResponse<List<Map<String, Object>>> getRelated(
-            @PathVariable Long id,
-            @RequestParam(defaultValue = "5") int limit) {
+            @Parameter(description = "知识 ID") @PathVariable Long id,
+            @Parameter(description = "返回条数") @RequestParam(defaultValue = "5") int limit) {
         return ApiResponse.success(associationService.getRelatedKnowledge(id, limit));
     }
 
+    @Operation(summary = "删除知识", description = "删除指定 ID 的知识及其关联的复习计划")
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> deleteKnowledge(@PathVariable Long id) {
+    public ApiResponse<Void> deleteKnowledge(@Parameter(description = "知识 ID") @PathVariable Long id) {
         knowledgeService.deleteKnowledge(id);
         return ApiResponse.success(null);
     }
 
+    @Operation(summary = "解析 URL", description = "从网页 URL 提取内容并创建知识")
     @PostMapping("/parse-url")
     public ApiResponse<Knowledge> parseUrl(@RequestBody Map<String, String> body) {
         String url = body.get("url");
@@ -122,6 +133,7 @@ public class KnowledgeController {
         return ApiResponse.success(knowledgeService.addKnowledge(knowledge));
     }
 
+    @Operation(summary = "解析 PDF", description = "上传 PDF 文件，提取内容并创建知识")
     @PostMapping("/parse-pdf")
     public ApiResponse<Knowledge> parsePdf(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) {
@@ -143,6 +155,7 @@ public class KnowledgeController {
         }
     }
 
+    @Operation(summary = "导出 JSON", description = "导出全部知识为 JSON 格式文件")
     @GetMapping("/export/json")
     public ResponseEntity<String> exportJson() {
         String json = knowledgeService.exportAllAsJson();
@@ -152,6 +165,7 @@ public class KnowledgeController {
                 .body(json);
     }
 
+    @Operation(summary = "导出 Markdown", description = "导出全部知识为 Markdown 文件（ZIP 压缩包）")
     @GetMapping("/export/markdown")
     public ResponseEntity<byte[]> exportMarkdown() {
         byte[] zip = knowledgeService.exportAllAsMarkdown();
@@ -161,6 +175,7 @@ public class KnowledgeController {
                 .body(zip);
     }
 
+    @Operation(summary = "导出 CSV", description = "导出全部知识为 CSV 格式文件")
     @GetMapping("/export/csv")
     public ResponseEntity<String> exportCsv() {
         String csv = knowledgeService.exportAllAsCsv();
@@ -170,16 +185,18 @@ public class KnowledgeController {
                 .body(csv);
     }
 
+    @Operation(summary = "预览导入", description = "预览 JSON 导入的内容，显示冲突信息")
     @PostMapping("/import/preview")
     public ApiResponse<ImportPreview> previewImport(@RequestBody String jsonBody) {
         ImportPreview preview = knowledgeService.previewImport(jsonBody);
         return ApiResponse.success(preview);
     }
 
+    @Operation(summary = "导入 JSON", description = "导入 JSON 格式的知识数据，支持冲突策略（skip/overwrite）")
     @PostMapping("/import")
     public ApiResponse<Map<String, Object>> importJson(
             @RequestBody String jsonBody,
-            @RequestParam(defaultValue = "skip") String conflict) {
+            @Parameter(description = "冲突策略：skip 跳过 / overwrite 覆盖") @RequestParam(defaultValue = "skip") String conflict) {
         int count = knowledgeService.importFromJsonWithConflict(jsonBody, conflict);
         Map<String, Object> result = new HashMap<>();
         result.put("imported", count);
@@ -187,12 +204,14 @@ public class KnowledgeController {
         return ApiResponse.success(result);
     }
 
+    @Operation(summary = "批量删除", description = "根据 ID 列表批量删除知识")
     @PostMapping("/batch/delete")
     public ApiResponse<Void> batchDelete(@RequestBody List<Long> ids) {
         knowledgeService.batchDelete(ids);
         return ApiResponse.success(null);
     }
 
+    @Operation(summary = "批量打标签", description = "为多条知识批量添加/替换标签")
     @PostMapping("/batch/tag")
     public ApiResponse<Void> batchTag(@RequestBody Map<String, Object> body) {
         @SuppressWarnings("unchecked")
@@ -203,6 +222,7 @@ public class KnowledgeController {
         return ApiResponse.success(null);
     }
 
+    @Operation(summary = "批量导出", description = "按 ID 列表批量导出知识为 JSON 文件")
     @PostMapping("/batch/export")
     public ResponseEntity<String> batchExport(@RequestBody List<Long> ids) {
         String json = knowledgeService.batchExport(ids);
@@ -212,6 +232,7 @@ public class KnowledgeController {
                 .body(json);
     }
 
+    @Operation(summary = "标签列表", description = "获取所有标签及其使用次数")
     @GetMapping("/tags")
     public ApiResponse<List<Map<String, Object>>> getAllTags() {
         return ApiResponse.success(knowledgeService.getAllTags());

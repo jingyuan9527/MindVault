@@ -6,11 +6,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * 操作日志查询 API
- *
- * 提供前端查看操作日志的能力
- */
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+@Tag(name = "操作日志", description = "用户操作行为审计日志")
 @RestController
 @RequestMapping("/api/v1/operation-logs")
 public class OperationLogController {
@@ -21,10 +21,10 @@ public class OperationLogController {
         this.operationLogService = operationLogService;
     }
 
-    /** 按模块查询操作日志 */
+    @Operation(summary = "操作日志列表", description = "获取操作日志列表，可按模块筛选")
     @GetMapping
     public ApiResponse<List<OperationLog>> list(
-            @RequestParam(required = false) String module) {
+            @Parameter(description = "模块名称（可选）") @RequestParam(required = false) String module) {
         if (module != null) {
             return ApiResponse.success(operationLogService.listByModule(module));
         }

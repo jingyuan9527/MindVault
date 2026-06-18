@@ -1,10 +1,10 @@
 <template>
   <div class="flex flex-col h-full">
-    <div class="p-5 shrink-0" style="border-bottom: 1px solid var(--color-border)">
-      <div class="flex items-center justify-between">
-        <h2 class="font-display text-xl">知识卡片</h2>
-        <div class="flex items-center gap-2">
-          <select v-model="selectedKnowledgeId" class="input-field text-sm py-1.5 w-64">
+    <div class="p-4 md:p-5 shrink-0" style="border-bottom: 1px solid var(--color-border)">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <h2 class="font-display text-lg md:text-xl">知识卡片</h2>
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <select v-model="selectedKnowledgeId" class="input-field text-sm py-1.5 w-full sm:w-64">
             <option value="">选择知识生成卡片</option>
             <option v-for="k in store.items" :key="k.id" :value="k.id">{{ k.title }}</option>
           </select>
@@ -19,7 +19,7 @@
       </p>
     </div>
 
-    <div class="flex-1 overflow-y-auto p-5">
+    <div class="flex-1 overflow-y-auto p-4 md:p-5">
       <div v-if="loading" class="flex justify-center py-12">
         <div class="w-6 h-6 rounded-full animate-spin" style="border: 2px solid var(--color-border); border-top-color: var(--color-accent)"></div>
       </div>

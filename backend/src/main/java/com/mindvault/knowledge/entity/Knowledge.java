@@ -7,34 +7,48 @@ import com.baomidou.mybatisplus.annotation.TableName;
 
 import java.time.LocalDateTime;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 @TableName("knowledge")
+@Schema(description = "知识实体")
 public class Knowledge {
 
     @TableId(type = IdType.AUTO)
+    @Schema(description = "主键 ID")
     private Long id;
 
+    @Schema(description = "标题")
     private String title;
 
+    @Schema(description = "内容")
     private String content;
 
     @TableField("content_type")
+    @Schema(description = "内容类型")
     private String contentType = "TEXT";
 
     @TableField("source_url")
+    @Schema(description = "来源 URL")
     private String sourceUrl;
 
+    @Schema(description = "摘要")
     private String summary;
 
+    @Schema(description = "标签")
     private String tags = "[]";
 
+    @Schema(description = "向量嵌入")
     private String embedding;
 
+    @Schema(description = "元数据")
     private String metadata = "{}";
 
     @TableField("created_at")
+    @Schema(description = "创建时间")
     private LocalDateTime createdAt;
 
     @TableField("updated_at")
+    @Schema(description = "更新时间")
     private LocalDateTime updatedAt;
 
     public Long getId() { return id; }

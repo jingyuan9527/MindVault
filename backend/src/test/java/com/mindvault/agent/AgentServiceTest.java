@@ -1,0 +1,57 @@
+package com.mindvault.agent;
+
+import com.mindvault.agent.config.AgentConfig;
+import com.mindvault.agent.tool.Tool;
+import com.mindvault.common.config.CircuitBreakerConfig;
+import com.mindvault.model.ModelConfigService;
+import com.mindvault.tokenusage.TokenUsageService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class AgentServiceTest {
+
+    @Mock private ModelConfigService modelConfigService;
+    @Mock private AgentConfig agentConfig;
+    @Mock private TokenUsageService tokenUsageService;
+    @Mock private CircuitBreakerConfig circuitBreaker;
+    @Mock private Tool tool1;
+    @Mock private Tool tool2;
+
+    private AgentService service;
+
+    @BeforeEach
+    void setUp() {
+        List<Tool> tools = List.of(tool1, tool2);
+        service = new AgentService(modelConfigService, agentConfig, tools,
+                tokenUsageService, circuitBreaker);
+    }
+
+    @Test
+    void processMessage_noModels_shouldReturnErrorMessage() {
+        String result = service.processMessage("hello");
+
+        assertEquals("系统未配置主模型，请先在设置中添加并设置主模型。", result);
+        verifyNoInteractions(modelConfigService);
+    }
+
+    @Test
+    void getTools_shouldReturnInjectedTools() {
+        when(tool1.getName()).thenReturn("search");
+        when(tool2.getName()).thenReturn("summary");
+
+        List<Tool> result = service.getTools();
+
+        assertEquals(2, result.size());
+        assertEquals("search", result.get(0).getName());
+        assertEquals("summary", result.get(1).getName());
+    }
+}

@@ -56,6 +56,17 @@ mybatis-plus:
       update-strategy: not_null
       insert-strategy: not_null
 
+# Knife4j / SpringDoc 配置
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+  packages-to-scan: com.mindvault
+  default-produces-media-type: application/json
+
 # 日志级别
 logging:
   level:

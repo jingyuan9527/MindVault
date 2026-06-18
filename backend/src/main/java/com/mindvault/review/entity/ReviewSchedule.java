@@ -7,34 +7,46 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 @TableName("review_schedule")
+@Schema(description = "复习调度实体（SM-2 算法）")
 public class ReviewSchedule {
 
     @TableId(type = IdType.AUTO)
+    @Schema(description = "主键 ID")
     private Long id;
 
     @TableField("knowledge_id")
+    @Schema(description = "知识 ID")
     private Long knowledgeId;
 
     @TableField("ease_factor")
+    @Schema(description = "简易系数")
     private BigDecimal easeFactor = new BigDecimal("2.50");
 
     @TableField("interval_days")
+    @Schema(description = "间隔天数")
     private Integer intervalDays = 0;
 
     @TableField("review_count")
+    @Schema(description = "复习次数")
     private Integer reviewCount = 0;
 
     @TableField("next_review_at")
+    @Schema(description = "下次复习时间")
     private LocalDateTime nextReviewAt = LocalDateTime.now();
 
     @TableField("last_review_at")
+    @Schema(description = "上次复习时间")
     private LocalDateTime lastReviewAt;
 
     @TableField("created_at")
+    @Schema(description = "创建时间")
     private LocalDateTime createdAt;
 
     @TableField("updated_at")
+    @Schema(description = "更新时间")
     private LocalDateTime updatedAt;
 
     public Long getId() { return id; }

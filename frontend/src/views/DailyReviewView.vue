@@ -1,8 +1,8 @@
 <template>
   <div class="flex flex-col h-full">
-    <div class="p-5 shrink-0" style="border-bottom: 1px solid var(--color-border)">
+    <div class="p-4 md:p-5 shrink-0" style="border-bottom: 1px solid var(--color-border)">
       <div class="flex items-center justify-between">
-        <h2 class="font-display text-xl">每日复盘</h2>
+        <h2 class="font-display text-lg md:text-xl">每日复盘</h2>
         <button @click="generateReport" :disabled="generating"
           class="btn-primary text-sm">
           {{ generating ? '生成中...' : '生成今日复盘' }}
@@ -10,7 +10,7 @@
       </div>
     </div>
 
-    <div class="flex-1 overflow-y-auto p-5">
+    <div class="flex-1 overflow-y-auto p-4 md:p-5">
       <div v-if="loading" class="flex justify-center py-12">
         <div class="w-6 h-6 rounded-full animate-spin" style="border: 2px solid var(--color-border); border-top-color: var(--color-accent)"></div>
       </div>

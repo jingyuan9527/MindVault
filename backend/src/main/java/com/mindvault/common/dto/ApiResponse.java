@@ -4,18 +4,18 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * 统一 API 响应格式
- *
- * 所有 REST 接口返回此格式，便于前端统一处理
- * code: 0 表示成功，非 0 表示错误码
- */
+import io.swagger.v3.oas.annotations.media.Schema;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "统一 API 响应格式")
 public class ApiResponse<T> {
+    @Schema(description = "响应码（0 成功，非 0 错误）")
     private int code;
+    @Schema(description = "响应消息")
     private String message;
+    @Schema(description = "响应数据")
     private T data;
 
     public static <T> ApiResponse<T> success(T data) {

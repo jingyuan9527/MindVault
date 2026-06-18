@@ -1,9 +1,20 @@
 <template>
   <aside class="w-72 flex flex-col h-screen shrink-0"
     :style="{ backgroundColor: 'var(--color-surface)', borderRight: '1px solid var(--color-border)' }">
-    <div class="p-5" style="border-bottom: 1px solid var(--color-border)">
-      <h1 class="font-display text-2xl font-bold" style="color: var(--color-accent)">MindVault</h1>
-      <p class="text-xs mt-1" style="color: var(--color-text-secondary)">知忆 · 你的AI增强第二大脑</p>
+    <div class="p-5 flex items-center justify-between" style="border-bottom: 1px solid var(--color-border)">
+      <div>
+        <h1 class="font-display text-2xl font-bold" style="color: var(--color-accent)">MindVault</h1>
+        <p class="text-xs mt-1" style="color: var(--color-text-secondary)">知忆 · 你的AI增强第二大脑</p>
+      </div>
+      <button @click="$emit('close')"
+        class="lg:hidden p-1.5 rounded-lg transition-colors duration-150"
+        style="color: var(--color-text-secondary)"
+        @mouseenter="$event.target.style.color = 'var(--color-text)'"
+        @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
     </div>
 
     <nav class="p-3 space-y-1 flex-1">
@@ -67,6 +78,17 @@
         </svg>
         每日复盘
       </router-link>
+      <router-link to="/operation-logs"
+        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150"
+        :class="$route.path === '/operation-logs' ? 'font-medium' : ''"
+        :style="$route.path === '/operation-logs' ? { backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' } : { color: 'var(--color-text-secondary)' }"
+        @mouseenter="hoverNav($event, '/operation-logs')"
+        @mouseleave="unhoverNav($event, '/operation-logs')">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        操作日志
+      </router-link>
       <router-link to="/settings"
         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150"
         :class="$route.path === '/settings' ? 'font-medium' : ''"
@@ -108,6 +130,8 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { reviewApi } from '@/api/review'
 import { knowledgeApi } from '@/api/knowledge'
+
+defineEmits(['close'])
 
 const dueCount = ref(0)
 const tags = ref([])

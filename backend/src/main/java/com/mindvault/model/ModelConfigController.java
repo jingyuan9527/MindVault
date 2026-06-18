@@ -8,11 +8,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 模型配置 REST API
- *
- * 提供 Web 端模型管理的后端接口
- */
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+@Tag(name = "模型配置", description = "LLM 模型配置的增删改查（OpenAI/DeepSeek/Alibaba/Ollama）")
 @RestController
 @RequestMapping("/api/v1/models")
 public class ModelConfigController {
@@ -23,33 +23,39 @@ public class ModelConfigController {
         this.modelConfigService = modelConfigService;
     }
 
+    @Operation(summary = "新增模型配置", description = "添加一个新的 LLM 模型配置")
     @PostMapping
     public ApiResponse<ModelConfig> addConfig(@Valid @RequestBody ModelConfig config) {
         return ApiResponse.success(modelConfigService.addConfig(config));
     }
 
+    @Operation(summary = "模型配置列表", description = "获取所有 LLM 模型配置")
     @GetMapping
     public ApiResponse<List<ModelConfig>> listAll() {
         return ApiResponse.success(modelConfigService.listAll());
     }
 
+    @Operation(summary = "设置默认模型", description = "将指定模型设为主要使用的模型")
     @PatchMapping("/{id}/primary")
-    public ApiResponse<ModelConfig> setPrimary(@PathVariable Long id) {
+    public ApiResponse<ModelConfig> setPrimary(@Parameter(description = "模型配置 ID") @PathVariable Long id) {
         return ApiResponse.success(modelConfigService.setPrimary(id));
     }
 
+@Operation(summary = "更新模型优先级", description = "更新指定模型的优先级排序")
     @PatchMapping("/{id}/priority")
-    public ApiResponse<ModelConfig> updatePriority(@PathVariable Long id,
-                                                   @RequestBody Integer priority) {
+    public ApiResponse<ModelConfig> updatePriority(@Parameter(description = "模型配置 ID") @PathVariable Long id,
+                                                    @RequestBody Integer priority) {
         return ApiResponse.success(modelConfigService.updatePriority(id, priority));
     }
 
+    @Operation(summary = "删除模型配置", description = "删除指定 ID 的模型配置")
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> deleteConfig(@PathVariable Long id) {
+    public ApiResponse<Void> deleteConfig(@Parameter(description = "模型配置 ID") @PathVariable Long id) {
         modelConfigService.deleteConfig(id);
         return ApiResponse.success(null);
     }
 
+    @Operation(summary = "获取模型列表", description = "从指定供应商拉取可用模型列表")
     @PostMapping("/fetch")
     public ApiResponse<List<String>> fetchModels(@RequestBody Map<String, String> request) {
         String provider = request.get("provider");
@@ -59,8 +65,9 @@ public class ModelConfigController {
         return ApiResponse.success(models);
     }
 
+    @Operation(summary = "测试连接", description = "测试指定模型的 API 连接是否正常")
     @PostMapping("/{id}/test")
-    public ApiResponse<Boolean> testConnection(@PathVariable Long id) {
+    public ApiResponse<Boolean> testConnection(@Parameter(description = "模型配置 ID") @PathVariable Long id) {
         boolean result = modelConfigService.testConnection(id);
         return result
                 ? ApiResponse.success(true)

@@ -9,6 +9,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+@Tag(name = "数据备份", description = "数据库的备份与恢复")
 @RestController
 @RequestMapping("/api/v1/backup")
 public class BackupController {
@@ -19,19 +24,22 @@ public class BackupController {
         this.backupService = backupService;
     }
 
+    @Operation(summary = "创建备份", description = "创建当前数据库的完整备份")
     @PostMapping
     public ApiResponse<Map<String, String>> createBackup() {
         String filename = backupService.createBackup();
         return ApiResponse.success(Map.of("filename", filename));
     }
 
+    @Operation(summary = "备份列表", description = "获取所有备份文件列表")
     @GetMapping
     public ApiResponse<List<String>> listBackups() {
         return ApiResponse.success(backupService.listBackups());
     }
 
+    @Operation(summary = "下载备份", description = "下载指定文件名的备份文件")
     @GetMapping("/download/{filename}")
-    public ResponseEntity<byte[]> downloadBackup(@PathVariable String filename) {
+    public ResponseEntity<byte[]> downloadBackup(@Parameter(description = "备份文件名") @PathVariable String filename) {
         byte[] data = backupService.getBackup(filename);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)

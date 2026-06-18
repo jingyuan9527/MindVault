@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col h-full">
-    <div class="p-5 shrink-0" style="border-bottom: 1px solid var(--color-border)">
+    <div class="p-4 md:p-5 shrink-0" style="border-bottom: 1px solid var(--color-border)">
       <div class="flex items-center justify-between mb-3">
         <div class="flex items-center gap-3">
           <h2 class="font-display text-xl">知识库</h2>
@@ -12,23 +12,58 @@
           </div>
         </div>
         <div class="flex items-center gap-1.5">
-          <button @click="openAddForm('url')" class="btn-secondary flex items-center gap-1 text-sm" title="解析网页">
+          <button @click="openAddForm('url')" class="btn-secondary items-center gap-1 text-sm hidden sm:flex" title="解析网页">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
             </svg>
-            解析URL
+            <span class="hidden md:inline">解析URL</span>
           </button>
-          <button @click="openAddForm('pdf')" class="btn-secondary flex items-center gap-1 text-sm" title="解析PDF">
+          <button @click="openAddForm('pdf')" class="btn-secondary items-center gap-1 text-sm hidden sm:flex" title="解析PDF">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
             </svg>
-            解析PDF
+            <span class="hidden md:inline">解析PDF</span>
           </button>
+          <div class="relative" ref="moreMenuRef">
+            <button @click="showMoreMenu = !showMoreMenu"
+              class="btn-secondary flex items-center justify-center text-sm sm:hidden"
+              style="width: 36px; height: 36px">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+              </svg>
+            </button>
+            <transition name="fade">
+              <div v-if="showMoreMenu"
+                class="absolute right-0 top-full mt-1 w-36 rounded-lg shadow-lg z-20 py-1"
+                :style="{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }">
+                <button @click="openAddForm('url'); showMoreMenu = false"
+                  class="flex items-center gap-2 w-full px-3 py-2 text-sm text-left transition-colors duration-150"
+                  style="color: var(--color-text)"
+                  @mouseenter="$event.target.style.backgroundColor = 'var(--color-sage-light)'"
+                  @mouseleave="$event.target.style.backgroundColor = 'transparent'">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                  </svg>
+                  解析URL
+                </button>
+                <button @click="openAddForm('pdf'); showMoreMenu = false"
+                  class="flex items-center gap-2 w-full px-3 py-2 text-sm text-left transition-colors duration-150"
+                  style="color: var(--color-text)"
+                  @mouseenter="$event.target.style.backgroundColor = 'var(--color-sage-light)'"
+                  @mouseleave="$event.target.style.backgroundColor = 'transparent'">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                  </svg>
+                  解析PDF
+                </button>
+              </div>
+            </transition>
+          </div>
           <button @click="openAddForm('text')" class="btn-primary flex items-center gap-1.5 text-sm">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
-            新建笔记
+            <span class="hidden sm:inline">新建笔记</span>
           </button>
         </div>
       </div>
@@ -51,19 +86,19 @@
       </div>
     </div>
 
-    <div v-if="selectedIds.length" class="px-5 py-2 flex items-center gap-3 shrink-0"
+    <div v-if="selectedIds.length" class="px-3 md:px-5 py-2 flex items-center gap-2 md:gap-3 shrink-0 flex-wrap"
       style="background-color: var(--color-sage-light); border-bottom: 1px solid var(--color-border)">
-      <span class="text-sm font-medium" style="color: var(--color-sage)">已选 {{ selectedIds.length }} 项</span>
-      <button @click="batchDelete" class="text-xs px-2.5 py-1 rounded transition-colors duration-150"
+      <span class="text-xs md:text-sm font-medium" style="color: var(--color-sage)">已选 {{ selectedIds.length }} 项</span>
+      <button @click="batchDelete" class="text-xs px-2 md:px-2.5 py-1 rounded transition-colors duration-150"
         style="color: var(--color-accent)" @mouseenter="$event.target.style.backgroundColor = 'rgba(207,112,88,0.1)'" @mouseleave="$event.target.style.backgroundColor = 'transparent'">
         批量删除</button>
-      <button @click="showBatchTag = true" class="text-xs px-2.5 py-1 rounded transition-colors duration-150"
+      <button @click="showBatchTag = true" class="text-xs px-2 md:px-2.5 py-1 rounded transition-colors duration-150"
         style="color: var(--color-sage)" @mouseenter="$event.target.style.backgroundColor = 'rgba(163,177,138,0.2)'" @mouseleave="$event.target.style.backgroundColor = 'transparent'">
-        批量打标签</button>
-      <button @click="batchExport" class="text-xs px-2.5 py-1 rounded transition-colors duration-150"
+        打标签</button>
+      <button @click="batchExport" class="text-xs px-2 md:px-2.5 py-1 rounded transition-colors duration-150"
         style="color: var(--color-text-secondary)" @mouseenter="$event.target.style.backgroundColor = 'rgba(0,0,0,0.05)'" @mouseleave="$event.target.style.backgroundColor = 'transparent'">
-        批量导出</button>
-      <button @click="clearSelection" class="text-xs ml-auto px-2.5 py-1 rounded"
+        导出</button>
+      <button @click="clearSelection" class="text-xs ml-auto px-2 md:px-2.5 py-1 rounded"
         style="color: var(--color-text-secondary)">取消选择</button>
     </div>
 
@@ -80,7 +115,7 @@
       </div>
 
       <!-- 卡片视图 -->
-      <div v-else-if="viewMode === 'card'" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-5 stagger-enter">
+      <div v-else-if="viewMode === 'card'" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4 p-4 md:p-5 stagger-enter">
         <div v-for="note in filteredItems" :key="note.id" class="relative">
           <div class="absolute top-3 left-3 z-10" @click.stop>
             <input type="checkbox" :checked="selectedIds.includes(note.id)" @change="toggleSelect(note.id)"
@@ -99,7 +134,7 @@
       </div>
 
       <!-- 网格视图 -->
-      <div v-else class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 p-5 stagger-enter">
+      <div v-else class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-3 p-4 md:p-5 stagger-enter">
         <div v-for="note in filteredItems" :key="note.id" class="relative">
           <div class="absolute top-2 left-2 z-10" @click.stop>
             <input type="checkbox" :checked="selectedIds.includes(note.id)" @change="toggleSelect(note.id)"
@@ -123,7 +158,7 @@
     <!-- 详情 / 编辑 Modal -->
     <transition name="fade">
       <div v-if="detailNote" class="modal-overlay" @click.self="closeDetail">
-        <div class="modal-panel w-[600px] max-h-[80vh] overflow-y-auto">
+        <div class="modal-panel w-[calc(100%-2rem)] sm:w-[600px] max-h-[80vh] overflow-y-auto">
           <template v-if="!isEditing">
             <div class="p-6">
               <div class="flex items-start justify-between mb-4">
@@ -204,7 +239,7 @@
     <!-- 新建笔记 Modal -->
     <transition name="fade">
       <div v-if="showAddForm" class="modal-overlay" @click.self="closeAddForm">
-        <div class="modal-panel w-[520px]">
+        <div class="modal-panel w-[calc(100%-2rem)] sm:w-[520px]">
           <div class="p-6">
             <div class="flex items-center gap-2 mb-5" style="border-bottom: 1px solid var(--color-border); padding-bottom: 1rem">
               <button v-for="tab in addTabs" :key="tab.key"
@@ -260,8 +295,8 @@
     <!-- 批量打标签 Modal -->
     <transition name="fade">
       <div v-if="showBatchTag" class="modal-overlay" @click.self="showBatchTag = false">
-        <div class="modal-panel w-96">
-          <div class="p-6">
+        <div class="modal-panel w-[calc(100%-2rem)] sm:w-96">
+          <div class="p-4 sm:p-6">
             <h3 class="font-display text-lg mb-4">批量打标签</h3>
             <p class="text-xs mb-3" style="color: var(--color-text-secondary)">为选中的 {{ selectedIds.length }} 条知识添加标签</p>
             <input v-model="batchTagInput" placeholder="输入标签名" class="input-field" @keyup.enter="doBatchTag" />
@@ -277,7 +312,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import { knowledgeApi } from '@/api/knowledge'
@@ -305,6 +340,14 @@ const viewMode = ref('card')
 const selectedIds = ref([])
 const showBatchTag = ref(false)
 const batchTagInput = ref('')
+const showMoreMenu = ref(false)
+const moreMenuRef = ref(null)
+
+function onClickOutside(e) {
+  if (moreMenuRef.value && !moreMenuRef.value.contains(e.target)) {
+    showMoreMenu.value = false
+  }
+}
 
 const viewModes = [
   { key: 'card', label: '卡片视图', icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>' },
@@ -588,6 +631,11 @@ onMounted(() => {
     searchText.value = '#' + route.query.tag
   }
   store.loadItems()
+  document.addEventListener('click', onClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', onClickOutside)
 })
 
 watch(() => route.query, (query) => {
