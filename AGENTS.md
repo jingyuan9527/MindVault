@@ -24,7 +24,7 @@ cd docker && docker compose up -d --build
 | Restart backend with new jar | `docker compose exec backend rm -f /app/app.jar && docker cp ../backend/target/*.jar docker-backend-1:/app/app.jar && docker compose restart backend` |
 
 ## Architecture
-- **Backend**: Spring Boot 3.2.5, JDK 21 (virtual threads), MyBatis-Plus (NOT JPA), Flyway migrations
+- **Backend**: Spring Boot 3.2.5, JDK 21 (virtual threads), MyBatis-Plus (NOT JPA)
 - **Frontend**: Vue 3 + Pinia + Vue Router 4, Tailwind CSS, Vite, `marked` for markdown rendering
 - **DB**: PostgreSQL 16 with pgvector extension (Docker image `pgvector/pgvector:pg16`)
 - **Proxy**: Nginx (frontend container) proxies `/api/` → `http://backend:8080`
@@ -54,7 +54,6 @@ cd docker && docker compose up -d --build
 - **Secrets**: `application-test.yml` and `application-local.yml` are gitignored. Template at `application-test.yml.example`.
 - **MyBatis-Plus**: Entity fields use `@TableField`, mappers extend `BaseMapper`. Custom SQL via `@Select` on mapper interface.
 - **JSONB columns**: Stored as String in Java, need `::jsonb` cast in raw SQL inserts. Future: add `@TableField(typeHandler = JacksonTypeHandler.class)`.
-- **Flyway**: Production migrations in `db/migration/`. Do NOT modify existing migrations.
 - **TIMESTAMPTZ** → `TIMESTAMP`: All timestamp columns use `TIMESTAMP` (no timezone) to match Java `LocalDateTime`.
 
 ## Testing Notes
