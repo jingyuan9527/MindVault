@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 模型配置 REST API
@@ -47,6 +48,15 @@ public class ModelConfigController {
     public ApiResponse<Void> deleteConfig(@PathVariable Long id) {
         modelConfigService.deleteConfig(id);
         return ApiResponse.success(null);
+    }
+
+    @PostMapping("/fetch")
+    public ApiResponse<List<String>> fetchModels(@RequestBody Map<String, String> request) {
+        String provider = request.get("provider");
+        String apiKey = request.get("apiKey");
+        String baseUrl = request.get("baseUrl");
+        List<String> models = modelConfigService.fetchAvailableModels(provider, apiKey, baseUrl);
+        return ApiResponse.success(models);
     }
 
     @PostMapping("/{id}/test")

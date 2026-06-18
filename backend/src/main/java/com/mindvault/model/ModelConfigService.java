@@ -1,13 +1,20 @@
 package com.mindvault.model;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.operationlog.OperationLogService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClient;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 模型配置服务
@@ -24,6 +31,7 @@ public class ModelConfigService {
 
     private final ModelConfigRepository repository;
     private final OperationLogService operationLogService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public ModelConfigService(ModelConfigRepository repository,
                               OperationLogService operationLogService) {
@@ -48,21 +56,20 @@ public class ModelConfigService {
     }
 
     /**
-     * 设置为主模型（自动取消旧主模型）
+     * 设置为主模型（自动取消同类型的旧主模型）
      *
-     * V2 迁移的全局唯一索引 idx_single_primary 要求全表只有一个 is_primary = true 的记录，
-     * 因此需要先清除所有类型的旧主模型。
+     * V8 迁移后采用 per-model-type 部分唯一索引 idx_single_primary_per_type，
+     * 每种 model_type 各有一个主模型，因此只清除同类型的旧主模型。
      */
     @Transactional
     public ModelConfig setPrimary(Long id) {
         ModelConfig config = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("模型配置不存在: " + id));
 
-        // 清除所有类型的旧主模型（全局唯一约束）
-        List<ModelConfig> allPrimary = repository.findAll().stream()
-                .filter(ModelConfig::getIsPrimary)
+        List<ModelConfig> sameTypePrimary = repository.findAll().stream()
+                .filter(mc -> mc.getIsPrimary() && config.getModelType().equals(mc.getModelType()))
                 .toList();
-        for (ModelConfig old : allPrimary) {
+        for (ModelConfig old : sameTypePrimary) {
             old.setIsPrimary(false);
             repository.save(old);
         }
@@ -107,6 +114,61 @@ public class ModelConfigService {
         return saved;
     }
 
+    public List<String> fetchAvailableModels(String provider, String apiKey, String baseUrl) {
+        String modelUrl = resolveListModelsUrl(provider, baseUrl);
+        if (modelUrl == null) return List.of();
+
+        try {
+            RestClient.Builder builder = RestClient.builder().baseUrl(modelUrl)
+                    .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
+            if (apiKey != null && !apiKey.isBlank()) {
+                builder.defaultHeader("Authorization", "Bearer " + apiKey);
+            }
+
+            String responseJson = builder.build().get()
+                    .retrieve()
+                    .body(String.class);
+
+            return parseModelList(provider, responseJson);
+        } catch (Exception e) {
+            log.warn("拉取模型列表失败: provider={}, error={}", provider, e.getMessage());
+            return List.of();
+        }
+    }
+
+    private String resolveListModelsUrl(String provider, String baseUrl) {
+        return switch (provider.toUpperCase()) {
+            case "ALIYUN" -> "https://dashscope.aliyuncs.com/compatible-mode/v1/models";
+            case "DEEPSEEK" -> (baseUrl != null ? baseUrl : "https://api.deepseek.com") + "/v1/models";
+            case "OPENAI" -> (baseUrl != null ? baseUrl : "https://api.openai.com") + "/v1/models";
+            case "ANTHROPIC" -> (baseUrl != null ? baseUrl : "https://api.anthropic.com") + "/v1/models";
+            case "OLLAMA" -> (baseUrl != null ? baseUrl : "http://localhost:11434") + "/api/tags";
+            default -> null;
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> parseModelList(String provider, String json) {
+        List<String> models = new ArrayList<>();
+        try {
+            Map<String, Object> root = objectMapper.readValue(json, Map.class);
+            if (root.containsKey("data")) {
+                List<Map<String, Object>> data = (List<Map<String, Object>>) root.get("data");
+                for (Map<String, Object> item : data) {
+                    if (item.get("id") instanceof String id) models.add(id);
+                }
+            } else if (root.containsKey("models")) {
+                List<Map<String, Object>> data = (List<Map<String, Object>>) root.get("models");
+                for (Map<String, Object> item : data) {
+                    if (item.get("name") instanceof String name) models.add(name);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("解析模型列表 JSON 失败: {}", e.getMessage());
+        }
+        return models;
+    }
+
     /** 删除模型配置 */
     @Transactional
     public void deleteConfig(Long id) {
@@ -118,18 +180,87 @@ public class ModelConfigService {
                 "删除模型 " + config.getProvider() + "/" + config.getModelName());
     }
 
-    /** 测试模型连接（v0.1 简化版本：只验证配置是否完整） */
     public boolean testConnection(Long id) {
         ModelConfig config = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("模型配置不存在: " + id));
-        // v0.1: 简单校验必填字段
-        // v0.3: 实际调用 LLM API 做健康检查
+
         if (config.getApiKey() == null || config.getApiKey().isBlank()) {
+            log.warn("测试模型连接失败: API Key 为空, id={}", id);
             return false;
         }
-        log.info("测试模型连接: id={}, result=OK", id);
-        operationLogService.log("MODEL", "TEST", id,
-                "测试模型 " + config.getProvider() + "/" + config.getModelName());
-        return true;
+
+        String fullUrl = buildTestUrl(config);
+        if (fullUrl == null) {
+            log.warn("测试模型连接失败: 不支持的 provider={}, id={}", config.getProvider(), id);
+            return false;
+        }
+
+        try {
+            RestClient.Builder builder = RestClient.builder()
+                    .baseUrl(fullUrl)
+                    .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
+
+            if ("ANTHROPIC".equalsIgnoreCase(config.getProvider())) {
+                builder.defaultHeader("x-api-key", config.getApiKey());
+                builder.defaultHeader("anthropic-version", "2023-06-01");
+            } else {
+                builder.defaultHeader("Authorization", "Bearer " + config.getApiKey());
+            }
+
+            Map<String, Object> requestBody = buildTestRequestBody(config);
+            String jsonBody = objectMapper.writeValueAsString(requestBody);
+
+            String responseJson = builder.build().post()
+                    .body(jsonBody)
+                    .retrieve()
+                    .body(String.class);
+
+            Map<?, ?> responseMap = objectMapper.readValue(responseJson, Map.class);
+            boolean ok = responseMap != null && (
+                    responseMap.containsKey("choices") ||
+                    responseMap.containsKey("content") ||
+                    responseMap.containsKey("message") ||
+                    responseMap.containsKey("response"));
+
+            log.info("测试模型连接: id={}, provider={}, model={}, result={}",
+                    id, config.getProvider(), config.getModelName(), ok ? "OK" : "FAIL");
+            operationLogService.log("MODEL", "TEST", id,
+                    "测试模型 " + config.getProvider() + "/" + config.getModelName() + ": " + (ok ? "成功" : "失败"));
+            return ok;
+        } catch (Exception e) {
+            log.warn("测试模型连接失败: id={}, error={}", id, e.getMessage());
+            operationLogService.log("MODEL", "TEST", id,
+                    "测试模型 " + config.getProvider() + "/" + config.getModelName() + ": " + e.getMessage());
+            return false;
+        }
+    }
+
+    private String buildTestUrl(ModelConfig config) {
+        return switch (config.getProvider().toUpperCase()) {
+            case "ALIYUN" -> "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
+            case "DEEPSEEK" -> (config.getBaseUrl() != null ? config.getBaseUrl() : "https://api.deepseek.com/v1") + "/chat/completions";
+            case "OPENAI" -> (config.getBaseUrl() != null ? config.getBaseUrl() : "https://api.openai.com/v1") + "/chat/completions";
+            case "ANTHROPIC" -> (config.getBaseUrl() != null ? config.getBaseUrl() : "https://api.anthropic.com") + "/v1/messages";
+            case "OLLAMA" -> (config.getBaseUrl() != null ? config.getBaseUrl() : "http://localhost:11434") + "/api/chat";
+            default -> null;
+        };
+    }
+
+    private Map<String, Object> buildTestRequestBody(ModelConfig config) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        if ("ANTHROPIC".equalsIgnoreCase(config.getProvider())) {
+            body.put("model", config.getModelName());
+            body.put("max_tokens", 10);
+            body.put("messages", List.of(Map.of("role", "user", "content", "Hi")));
+        } else if ("OLLAMA".equalsIgnoreCase(config.getProvider())) {
+            body.put("model", config.getModelName());
+            body.put("messages", List.of(Map.of("role", "user", "content", "Hi")));
+            body.put("stream", false);
+        } else {
+            body.put("model", config.getModelName());
+            body.put("messages", List.of(Map.of("role", "user", "content", "Hi")));
+            body.put("max_tokens", 10);
+        }
+        return body;
     }
 }

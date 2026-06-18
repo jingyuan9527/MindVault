@@ -11,6 +11,7 @@ import com.mindvault.model.entity.ModelConfig;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -35,7 +36,7 @@ public class AutoProcessService {
 
     public AutoProcessService(ModelConfigService modelConfigService,
                               AgentConfig agentConfig,
-                              KnowledgeService knowledgeService) {
+                              @Lazy KnowledgeService knowledgeService) {
         this.modelConfigService = modelConfigService;
         this.agentConfig = agentConfig;
         this.knowledgeService = knowledgeService;
@@ -79,6 +80,8 @@ public class AutoProcessService {
                 log.error("自动处理保存失败: {}", e.getMessage());
             }
         }
+
+        generateEmbedding(knowledgeId, title, content);
     }
 
     private String generateSummary(String title, String content) {
@@ -105,6 +108,80 @@ public class AutoProcessService {
             }
         } catch (Exception e) {
             log.warn("生成标签失败: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    private void generateEmbedding(Long knowledgeId, String title, String content) {
+        List<ModelConfig> embeddingModels = modelConfigService.getAvailableEmbeddingModels();
+        if (embeddingModels.isEmpty()) {
+            return;
+        }
+
+        ModelConfig embModel = embeddingModels.get(0);
+        String text = (title + "\n" + content);
+        if (text.length() > 8000) text = text.substring(0, 8000);
+
+        try {
+            String embedUrl = buildEmbeddingUrl(embModel);
+            if (embedUrl == null) return;
+
+            RestClient.Builder builder = RestClient.builder()
+                    .baseUrl(embedUrl)
+                    .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    .defaultHeader("Authorization", "Bearer " + embModel.getApiKey());
+
+            Map<String, Object> requestBody = new LinkedHashMap<>();
+            requestBody.put("model", embModel.getModelName());
+
+            if ("OLLAMA".equalsIgnoreCase(embModel.getProvider())) {
+                requestBody.put("prompt", text);
+            } else {
+                requestBody.put("input", text);
+            }
+
+            String responseJson = builder.build().post()
+                    .body(objectMapper.writeValueAsString(requestBody))
+                    .retrieve()
+                    .body(String.class);
+
+            List<Double> vector = parseEmbeddingResponse(embModel.getProvider(), responseJson);
+            if (vector != null && !vector.isEmpty()) {
+                String vectorStr = "[" + vector.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(",")) + "]";
+                knowledgeService.updateEmbedding(knowledgeId, vectorStr);
+                log.info("嵌入向量生成完成: knowledgeId={}, dim={}", knowledgeId, vector.size());
+            }
+        } catch (Exception e) {
+            log.warn("嵌入向量生成失败: knowledgeId={}, error={}", knowledgeId, e.getMessage());
+        }
+    }
+
+    private String buildEmbeddingUrl(ModelConfig config) {
+        return switch (config.getProvider().toUpperCase()) {
+            case "ALIYUN" -> "https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings";
+            case "DEEPSEEK" -> (config.getBaseUrl() != null ? config.getBaseUrl() : "https://api.deepseek.com/v1") + "/embeddings";
+            case "OPENAI" -> (config.getBaseUrl() != null ? config.getBaseUrl() : "https://api.openai.com/v1") + "/embeddings";
+            case "OLLAMA" -> (config.getBaseUrl() != null ? config.getBaseUrl() : "http://localhost:11434") + "/api/embeddings";
+            default -> null;
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Double> parseEmbeddingResponse(String provider, String json) {
+        try {
+            Map<String, Object> root = objectMapper.readValue(json, Map.class);
+            if ("OLLAMA".equalsIgnoreCase(provider)) {
+                if (root.containsKey("embedding")) {
+                    return (List<Double>) root.get("embedding");
+                }
+            } else {
+                List<Map<String, Object>> data = (List<Map<String, Object>>) root.get("data");
+                if (data != null && !data.isEmpty()) {
+                    return (List<Double>) data.get(0).get("embedding");
+                }
+            }
+        } catch (Exception e) {
+            log.warn("解析嵌入向量响应失败: {}", e.getMessage());
         }
         return null;
     }

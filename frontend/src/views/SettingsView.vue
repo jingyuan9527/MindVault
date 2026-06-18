@@ -117,7 +117,7 @@
             <div class="space-y-3">
               <div>
                 <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">供应商</label>
-                <select v-model="form.provider" class="input-field">
+                <select v-model="form.provider" @change="onProviderChange" class="input-field">
                   <option value="ALIYUN">阿里通义千问</option>
                   <option value="DEEPSEEK">DeepSeek</option>
                   <option value="OPENAI">OpenAI</option>
@@ -126,16 +126,32 @@
                 </select>
               </div>
               <div>
-                <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">模型名称</label>
-                <input v-model="form.modelName" placeholder="如 qwen-turbo" class="input-field" />
-              </div>
-              <div>
                 <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">API Key</label>
                 <input v-model="form.apiKey" type="password" placeholder="sk-..." class="input-field" />
               </div>
               <div>
                 <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">Base URL（可选）</label>
                 <input v-model="form.baseUrl" placeholder="https://api.openai.com/v1" class="input-field" />
+              </div>
+              <div>
+                <button @click="fetchModels" :disabled="!form.apiKey || fetching"
+                  class="text-sm px-3 py-1.5 rounded-lg transition-all duration-150 mb-2"
+                  :style="{ backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' }"
+                  @mouseenter="!fetching && ($event.target.style.opacity = '0.8')"
+                  @mouseleave="!fetching && ($event.target.style.opacity = '1')">
+                  {{ fetching ? '拉取中...' : '从远端拉取模型列表' }}
+                </button>
+                <div v-if="fetchedModelList.length" class="mt-1">
+                  <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">选择模型</label>
+                  <select v-model="form.modelName" class="input-field">
+                    <option value="" disabled>请选择一个模型</option>
+                    <option v-for="m in fetchedModelList" :key="m" :value="m">{{ m }}</option>
+                  </select>
+                </div>
+                <div v-else>
+                  <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">模型名称</label>
+                  <input v-model="form.modelName" placeholder="如 qwen-turbo（或先拉取列表）" class="input-field" />
+                </div>
               </div>
             </div>
             <div class="flex justify-end gap-2 mt-6">
@@ -157,6 +173,8 @@ import { knowledgeApi } from '@/api/knowledge'
 const models = ref([])
 const showAddForm = ref(false)
 const form = ref({ provider: 'ALIYUN', modelName: '', apiKey: '', baseUrl: '' })
+const fetching = ref(false)
+const fetchedModelList = ref([])
 const exporting = ref(false)
 const exportingMd = ref(false)
 const importResult = ref(null)
@@ -164,6 +182,29 @@ const importResult = ref(null)
 async function loadModels() {
   const res = await modelApi.list()
   models.value = res.data.data || []
+}
+
+function onProviderChange() {
+  fetchedModelList.value = []
+  form.value.modelName = ''
+}
+
+async function fetchModels() {
+  if (!form.value.apiKey) return
+  fetching.value = true
+  fetchedModelList.value = []
+  try {
+    const res = await modelApi.fetchModels({
+      provider: form.value.provider,
+      apiKey: form.value.apiKey,
+      baseUrl: form.value.baseUrl || undefined
+    })
+    fetchedModelList.value = res.data.data || []
+  } catch {
+    fetchedModelList.value = []
+  } finally {
+    fetching.value = false
+  }
 }
 
 async function addModel() {

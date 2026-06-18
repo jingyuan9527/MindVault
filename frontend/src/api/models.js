@@ -9,6 +9,7 @@ export const modelApi = {
   updatePriority: (id, priority) => api.patch(`/models/${id}/priority`, priority, {
     headers: { 'Content-Type': 'application/json' }
   }),
+  fetchModels: (data) => api.post('/models/fetch', data),
   testConnection: (id) => api.post(`/models/${id}/test`),
   delete: (id) => api.delete(`/models/${id}`)
 }

@@ -6,6 +6,7 @@ import com.mindvault.operationlog.OperationLogService;
 import com.mindvault.review.entity.ReviewSchedule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +25,7 @@ public class ReviewService {
     private final OperationLogService operationLogService;
 
     public ReviewService(ReviewScheduleRepository repository,
-                         KnowledgeService knowledgeService,
+                         @Lazy KnowledgeService knowledgeService,
                          OperationLogService operationLogService) {
         this.repository = repository;
         this.knowledgeService = knowledgeService;
