@@ -6,6 +6,7 @@
 <script setup>
 import { computed, useAttrs } from 'vue'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 
 const attrs = useAttrs()
 
@@ -21,7 +22,8 @@ marked.setOptions({
 
 const rendered = computed(() => {
   if (!props.content) return ''
-  return marked.parse(props.content)
+  const html = marked.parse(props.content)
+  return DOMPurify.sanitize(html)
 })
 
 const plainText = computed(() => {

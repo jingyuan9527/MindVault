@@ -31,6 +31,7 @@ class ModelConfigControllerTest {
         c.setProvider("OPENAI");
         c.setModelName("gpt-4o");
         c.setModelType("CHAT");
+        c.setApiKey("sk-test");
         c.setIsPrimary(true);
         c.setIsEnabled(true);
         c.setCreatedAt(LocalDateTime.now());

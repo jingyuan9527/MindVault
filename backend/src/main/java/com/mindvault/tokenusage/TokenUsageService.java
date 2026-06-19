@@ -1,5 +1,6 @@
 package com.mindvault.tokenusage;
 
+import com.mindvault.common.config.MindVaultProperties;
 import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.tokenusage.entity.TokenUsage;
 import org.slf4j.Logger;
@@ -19,26 +20,11 @@ public class TokenUsageService {
     private static final Logger log = LoggerFactory.getLogger(TokenUsageService.class);
 
     private final TokenUsageMapper mapper;
+    private final MindVaultProperties properties;
 
-    private static final Map<String, Map<String, BigDecimal[]>> PRICING = Map.of(
-            "ALIYUN", Map.of(
-                    "qwen-turbo", new BigDecimal[]{BigDecimal.valueOf(0.0003), BigDecimal.valueOf(0.0006)},
-                    "qwen-plus", new BigDecimal[]{BigDecimal.valueOf(0.0008), BigDecimal.valueOf(0.002)},
-                    "qwen-max", new BigDecimal[]{BigDecimal.valueOf(0.002), BigDecimal.valueOf(0.006)}
-            ),
-            "DEEPSEEK", Map.of(
-                    "deepseek-chat", new BigDecimal[]{BigDecimal.valueOf(0.00014), BigDecimal.valueOf(0.00028)},
-                    "deepseek-coder", new BigDecimal[]{BigDecimal.valueOf(0.00014), BigDecimal.valueOf(0.00028)}
-            ),
-            "OPENAI", Map.of(
-                    "gpt-3.5-turbo", new BigDecimal[]{BigDecimal.valueOf(0.0015), BigDecimal.valueOf(0.002)},
-                    "gpt-4", new BigDecimal[]{BigDecimal.valueOf(0.03), BigDecimal.valueOf(0.06)},
-                    "gpt-4o", new BigDecimal[]{BigDecimal.valueOf(0.005), BigDecimal.valueOf(0.015)}
-            )
-    );
-
-    public TokenUsageService(TokenUsageMapper mapper) {
+    public TokenUsageService(TokenUsageMapper mapper, MindVaultProperties properties) {
         this.mapper = mapper;
+        this.properties = properties;
     }
 
     public TokenUsage recordUsage(ModelConfig model, int promptTokens, int completionTokens,
@@ -110,7 +96,9 @@ public class TokenUsageService {
     }
 
     private BigDecimal calculateCost(String provider, String modelName, int promptTokens, int completionTokens) {
-        Map<String, BigDecimal[]> modelPrices = PRICING.get(provider.toUpperCase());
+        Map<String, Map<String, BigDecimal[]>> pricing = properties.getPricing().getModels();
+        if (pricing == null) return BigDecimal.ZERO;
+        Map<String, BigDecimal[]> modelPrices = pricing.get(provider.toUpperCase());
         if (modelPrices == null) return BigDecimal.ZERO;
 
         BigDecimal[] prices = null;

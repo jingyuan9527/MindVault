@@ -80,10 +80,8 @@
                 </thead>
                 <tbody>
                   <tr v-for="(item, idx) in dailyData" :key="idx"
-                    class="transition-colors duration-150"
-                    style="border-bottom: 1px solid var(--color-border)"
-                    @mouseenter="$event.currentTarget.style.backgroundColor = 'var(--color-sage-light)'"
-                    @mouseleave="$event.currentTarget.style.backgroundColor = 'transparent'">
+                    class="transition-colors duration-150 hover-sage-bg"
+                    style="border-bottom: 1px solid var(--color-border)">
                     <td class="p-3" style="color: var(--color-text)">{{ formatDateShort(item.date) }}</td>
                     <td class="p-3">
                       <span class="tag-pill text-xs">{{ item.provider }}</span>

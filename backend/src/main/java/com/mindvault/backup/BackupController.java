@@ -1,6 +1,7 @@
 package com.mindvault.backup;
 
 import com.mindvault.common.annotation.OperationLog;
+import com.mindvault.common.annotation.RateLimit;
 import com.mindvault.common.dto.ApiResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -25,6 +26,7 @@ public class BackupController {
         this.backupService = backupService;
     }
 
+    @RateLimit(capacity = 2, duration = 3600, key = "create-backup")
     @OperationLog(module = "backup", action = "create", description = "创建数据库备份")
     @Operation(summary = "创建备份", description = "创建当前数据库的完整备份")
     @PostMapping

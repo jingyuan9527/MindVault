@@ -20,7 +20,12 @@
     </div>
 
     <div class="flex-1 overflow-y-auto p-4 md:p-5">
-      <div v-if="loading" class="flex justify-center py-12">
+      <div v-if="error" class="flex flex-col items-center justify-center py-16">
+        <p class="text-sm" style="color: #ef4444">{{ error }}</p>
+        <button @click="loadCards" class="text-sm mt-2 underline" style="color: var(--color-accent)">重试</button>
+      </div>
+
+      <div v-else-if="loading" class="flex justify-center py-12">
         <div class="w-6 h-6 rounded-full animate-spin" style="border: 2px solid var(--color-border); border-top-color: var(--color-accent)"></div>
       </div>
 
@@ -40,10 +45,8 @@
                 {{ diffLabel(card.difficulty) }}
               </span>
               <button @click.stop="deleteCard(card.id, idx)"
-                class="text-xs transition-colors duration-150"
-                style="color: var(--color-text-secondary)"
-                @mouseenter="$event.target.style.color = 'var(--color-accent)'"
-                @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">删除</button>
+                class="text-xs transition-colors duration-150 hover-accent"
+                style="color: var(--color-text-secondary)">删除</button>
             </div>
             <div class="min-h-[120px] flex flex-col justify-center">
               <p class="text-sm font-medium mb-2" style="color: var(--color-text-secondary)">{{ flipped[idx] ? '答案' : '问题' }}</p>
@@ -72,6 +75,7 @@ const loading = ref(false)
 const generating = ref(false)
 const selectedKnowledgeId = ref('')
 const flipped = ref([])
+const error = ref('')
 
 const diffStyle = (d) => {
   if (d === 'EASY') return { backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' }
@@ -91,10 +95,13 @@ function flipCard(idx) {
 
 async function loadCards() {
   loading.value = true
+  error.value = ''
   try {
     const res = await flashcardApi.list()
     cards.value = res.data.data || []
     flipped.value = cards.value.map(() => false)
+  } catch (e) {
+    error.value = e.response?.data?.message || '加载失败'
   } finally {
     loading.value = false
   }

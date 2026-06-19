@@ -12,16 +12,12 @@
       <p class="text-xs mb-4" style="color: var(--color-text-secondary)">数据库备份将在每天 3:00 自动执行，保留最近 7 天的备份</p>
       <div v-if="backups.length" class="space-y-2">
         <div v-for="bak in backups" :key="bak"
-          class="flex items-center justify-between px-4 py-2.5 rounded-lg transition-colors duration-150"
-          style="background-color: var(--color-bg)"
-          @mouseenter="$event.currentTarget.style.backgroundColor = 'var(--color-sage-light)'"
-          @mouseleave="$event.currentTarget.style.backgroundColor = 'var(--color-bg)'">
+          class="flex items-center justify-between px-4 py-2.5 rounded-lg transition-colors duration-150 hover-sage-bg"
+          style="background-color: var(--color-bg)">
           <span class="text-sm" style="color: var(--color-text)">{{ bak }}</span>
           <button @click="downloadBackup(bak)"
-            class="text-xs px-3 py-1 rounded transition-colors duration-150"
-            style="color: var(--color-accent)"
-            @mouseenter="$event.target.style.backgroundColor = 'rgba(207,112,88,0.1)'"
-            @mouseleave="$event.target.style.backgroundColor = 'transparent'">
+            class="text-xs px-3 py-1 rounded transition-colors duration-150 hover-accent-bg"
+            style="color: var(--color-accent)">
             下载
           </button>
         </div>

@@ -37,20 +37,16 @@
                 class="absolute right-0 top-full mt-1 w-36 rounded-lg shadow-lg z-20 py-1"
                 :style="{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }">
                 <button @click="openAddForm('url'); showMoreMenu = false"
-                  class="flex items-center gap-2 w-full px-3 py-2 text-sm text-left transition-colors duration-150"
-                  style="color: var(--color-text)"
-                  @mouseenter="$event.target.style.backgroundColor = 'var(--color-sage-light)'"
-                  @mouseleave="$event.target.style.backgroundColor = 'transparent'">
+                  class="flex items-center gap-2 w-full px-3 py-2 text-sm text-left transition-colors duration-150 hover-sage-bg"
+                  style="color: var(--color-text)">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
                   </svg>
                   解析URL
                 </button>
                 <button @click="openAddForm('pdf'); showMoreMenu = false"
-                  class="flex items-center gap-2 w-full px-3 py-2 text-sm text-left transition-colors duration-150"
-                  style="color: var(--color-text)"
-                  @mouseenter="$event.target.style.backgroundColor = 'var(--color-sage-light)'"
-                  @mouseleave="$event.target.style.backgroundColor = 'transparent'">
+                  class="flex items-center gap-2 w-full px-3 py-2 text-sm text-left transition-colors duration-150 hover-sage-bg"
+                  style="color: var(--color-text)">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                   </svg>
@@ -89,14 +85,14 @@
     <div v-if="selectedIds.length" class="px-3 md:px-5 py-2 flex items-center gap-2 md:gap-3 shrink-0 flex-wrap"
       style="background-color: var(--color-sage-light); border-bottom: 1px solid var(--color-border)">
       <span class="text-xs md:text-sm font-medium" style="color: var(--color-sage)">已选 {{ selectedIds.length }} 项</span>
-      <button @click="batchDelete" class="text-xs px-2 md:px-2.5 py-1 rounded transition-colors duration-150"
-        style="color: var(--color-accent)" @mouseenter="$event.target.style.backgroundColor = 'rgba(207,112,88,0.1)'" @mouseleave="$event.target.style.backgroundColor = 'transparent'">
+      <button @click="batchDelete" class="text-xs px-2 md:px-2.5 py-1 rounded transition-colors duration-150 hover-accent-bg"
+        style="color: var(--color-accent)">
         批量删除</button>
-      <button @click="showBatchTag = true" class="text-xs px-2 md:px-2.5 py-1 rounded transition-colors duration-150"
-        style="color: var(--color-sage)" @mouseenter="$event.target.style.backgroundColor = 'rgba(163,177,138,0.2)'" @mouseleave="$event.target.style.backgroundColor = 'transparent'">
+      <button @click="showBatchTag = true" class="text-xs px-2 md:px-2.5 py-1 rounded transition-colors duration-150 hover-sage-bg"
+        style="color: var(--color-sage)">
         打标签</button>
-      <button @click="batchExport" class="text-xs px-2 md:px-2.5 py-1 rounded transition-colors duration-150"
-        style="color: var(--color-text-secondary)" @mouseenter="$event.target.style.backgroundColor = 'rgba(0,0,0,0.05)'" @mouseleave="$event.target.style.backgroundColor = 'transparent'">
+      <button @click="batchExport" class="text-xs px-2 md:px-2.5 py-1 rounded transition-colors duration-150 hover-accent-bg"
+        style="color: var(--color-text-secondary)">
         导出</button>
       <button @click="clearSelection" class="text-xs ml-auto px-2 md:px-2.5 py-1 rounded"
         style="color: var(--color-text-secondary)">取消选择</button>
@@ -164,10 +160,10 @@
               <div class="flex items-start justify-between mb-4">
                 <h3 class="font-display text-xl font-bold" style="color: var(--color-text)">{{ detailNote.title }}</h3>
                 <div class="flex items-center gap-2 shrink-0 ml-4">
-                  <button @click="startEditing" class="text-sm transition-colors duration-150"
-                    style="color: var(--color-accent)" @mouseenter="$event.target.style.color = 'var(--color-accent-hover)'" @mouseleave="$event.target.style.color = 'var(--color-accent)'">编辑</button>
-                  <button @click="closeDetail" class="text-lg leading-none transition-colors duration-150"
-                    style="color: var(--color-text-secondary)" @mouseenter="$event.target.style.color = 'var(--color-text)'" @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">&times;</button>
+                  <button @click="startEditing" class="text-sm transition-colors duration-150 hover-accent-hover"
+                    style="color: var(--color-accent)">编辑</button>
+                  <button @click="closeDetail" class="text-lg leading-none transition-colors duration-150 hover-text"
+                    style="color: var(--color-text-secondary)">&times;</button>
                 </div>
               </div>
               <div class="flex flex-wrap gap-1.5 mb-4" v-if="detailTags.length">
@@ -188,10 +184,8 @@
                 <p class="text-xs font-medium mb-2" style="color: var(--color-text-secondary)">相关笔记</p>
                 <div class="space-y-2">
                   <div v-for="item in relatedItems" :key="item.id"
-                    class="px-3 py-2 rounded-lg cursor-pointer transition-colors duration-150 text-sm"
-                    style="background-color: var(--color-bg)"
-                    @mouseenter="$event.target.style.backgroundColor = 'var(--color-sage-light)'"
-                    @mouseleave="$event.target.style.backgroundColor = 'var(--color-bg)'">
+                    class="px-3 py-2 rounded-lg cursor-pointer transition-colors duration-150 text-sm hover-sage-bg"
+                    style="background-color: var(--color-bg)">
                     <p class="font-medium" style="color: var(--color-text)">{{ item.title }}</p>
                     <p class="text-xs mt-0.5" style="color: var(--color-text-secondary)">
                       相似度 {{ (item.similarity * 100).toFixed(0) }}%
@@ -205,8 +199,8 @@
             <div class="p-6">
               <div class="flex items-start justify-between mb-4">
                 <h3 class="font-display text-xl font-bold">编辑笔记</h3>
-                <button @click="cancelEditing" class="text-lg leading-none transition-colors duration-150"
-                  style="color: var(--color-text-secondary)" @mouseenter="$event.target.style.color = 'var(--color-text)'" @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">&times;</button>
+                <button @click="cancelEditing" class="text-lg leading-none transition-colors duration-150 hover-text"
+                  style="color: var(--color-text-secondary)">&times;</button>
               </div>
               <div class="space-y-3">
                 <div>

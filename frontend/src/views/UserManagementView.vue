@@ -35,10 +35,8 @@
               <td class="py-3 text-center">
                 <button v-if="u.role !== 'ADMIN'"
                   @click="toggleEnabled(u)"
-                  class="text-xs transition-colors duration-150"
-                  :style="{ color: u.enabled ? 'var(--color-accent)' : 'var(--color-sage)' }"
-                  @mouseenter="$event.target.style.opacity = '0.7'"
-                  @mouseleave="$event.target.style.opacity = '1'">
+                  class="text-xs transition-colors duration-150 hover-opacity-80"
+                  :style="{ color: u.enabled ? 'var(--color-accent)' : 'var(--color-sage)' }">
                   {{ u.enabled ? '禁用' : '启用' }}
                 </button>
                 <span v-else class="text-xs" style="color: var(--color-text-secondary)">-</span>

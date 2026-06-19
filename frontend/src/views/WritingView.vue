@@ -47,10 +47,8 @@
           <div class="flex items-start justify-between mb-4">
             <h3 class="font-display text-lg font-bold" style="color: var(--color-text)">{{ topic }}</h3>
             <button @click="copyArticle"
-              class="text-xs px-3 py-1.5 rounded-lg transition-colors duration-150"
-              style="color: var(--color-text-secondary); border: 1px solid var(--color-border)"
-              @mouseenter="$event.target.style.borderColor = 'var(--color-accent)'; $event.target.style.color = 'var(--color-accent)'"
-              @mouseleave="$event.target.style.borderColor = 'var(--color-border)'; $event.target.style.color = 'var(--color-text-secondary)'">
+              class="text-xs px-3 py-1.5 rounded-lg transition-colors duration-150 hover-border-accent hover-accent"
+              style="color: var(--color-text-secondary); border: 1px solid var(--color-border)">
               {{ copied ? '已复制' : '复制全文' }}
             </button>
           </div>

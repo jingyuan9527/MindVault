@@ -33,16 +33,12 @@
               <td class="py-3 text-center">
                 <div class="flex items-center justify-center gap-1">
                   <button @click="movePriority(m.id, m.priority - 1)" :disabled="idx === 0"
-                    class="text-xs transition-colors duration-150 disabled:opacity-20"
-                    style="color: var(--color-text-secondary)"
-                    @mouseenter="$event.target.style.color = 'var(--color-text)'"
-                    @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">&#9650;</button>
+                    class="text-xs transition-colors duration-150 disabled:opacity-20 hover-text"
+                    style="color: var(--color-text-secondary)">&#9650;</button>
                   <span class="text-xs w-5 text-center" style="color: var(--color-warm-gray)">{{ m.priority }}</span>
                   <button @click="movePriority(m.id, m.priority + 1)" :disabled="idx === models.length - 1"
-                    class="text-xs transition-colors duration-150 disabled:opacity-20"
-                    style="color: var(--color-text-secondary)"
-                    @mouseenter="$event.target.style.color = 'var(--color-text)'"
-                    @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">&#9660;</button>
+                    class="text-xs transition-colors duration-150 disabled:opacity-20 hover-text"
+                    style="color: var(--color-text-secondary)">&#9660;</button>
                 </div>
               </td>
               <td class="py-3 text-center">
@@ -54,20 +50,14 @@
               <td class="py-3 text-center">
                 <div class="flex items-center justify-center gap-2">
                   <button v-if="!m.isPrimary" @click="setPrimary(m.id)"
-                    class="text-xs transition-colors duration-150"
-                    style="color: var(--color-accent)"
-                    @mouseenter="$event.target.style.color = 'var(--color-accent-hover)'"
-                    @mouseleave="$event.target.style.color = 'var(--color-accent)'">设为主模型</button>
+                    class="text-xs transition-colors duration-150 hover-accent-hover"
+                    style="color: var(--color-accent)">设为主模型</button>
                   <button @click="testConnection(m.id)"
-                    class="text-xs transition-colors duration-150"
-                    style="color: var(--color-text-secondary)"
-                    @mouseenter="$event.target.style.color = 'var(--color-text)'"
-                    @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">测试</button>
+                    class="text-xs transition-colors duration-150 hover-text"
+                    style="color: var(--color-text-secondary)">测试</button>
                   <button @click="deleteModel(m.id)"
-                    class="text-xs transition-colors duration-150"
-                    style="color: var(--color-text-secondary)"
-                    @mouseenter="$event.target.style.color = 'var(--color-accent)'"
-                    @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">删除</button>
+                    class="text-xs transition-colors duration-150 hover-accent"
+                    style="color: var(--color-text-secondary)">删除</button>
                 </div>
               </td>
             </tr>
@@ -129,20 +119,16 @@
           <div>
             <p class="text-sm mb-2" style="color: var(--color-text-secondary)">导出 Markdown（按标签分类）</p>
             <button @click="exportMarkdown" :disabled="exportingMd"
-              class="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200"
-              :style="{ backgroundColor: 'var(--color-sage)', color: 'white' }"
-              @mouseenter="!exportingMd && ($event.target.style.opacity = '0.9')"
-              @mouseleave="!exportingMd && ($event.target.style.opacity = '1')">
+              class="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover-opacity-90"
+              :style="{ backgroundColor: 'var(--color-sage)', color: 'white' }">
               {{ exportingMd ? '导出中...' : '导出 Markdown' }}
             </button>
           </div>
           <div>
             <p class="text-sm mb-2" style="color: var(--color-text-secondary)">导出 CSV（表格分析）</p>
             <button @click="exportCsv" :disabled="exportingCsv"
-              class="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200"
-              :style="{ backgroundColor: 'var(--color-warm-gray)', color: 'white' }"
-              @mouseenter="!exportingCsv && ($event.target.style.opacity = '0.9')"
-              @mouseleave="!exportingCsv && ($event.target.style.opacity = '1')">
+              class="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover-opacity-90"
+              :style="{ backgroundColor: 'var(--color-warm-gray)', color: 'white' }">
               {{ exportingCsv ? '导出中...' : '导出 CSV' }}
             </button>
           </div>
@@ -211,10 +197,8 @@
       <router-link to="/backups"
         class="flex items-center justify-between group">
         <h3 class="font-display text-base md:text-lg" style="color: var(--color-text)">数据备份</h3>
-        <span class="text-sm transition-colors duration-150"
-          style="color: var(--color-text-secondary)"
-          @mouseenter="$event.target.style.color = 'var(--color-accent)'"
-          @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">
+        <span class="text-sm transition-colors duration-150 hover-accent"
+          style="color: var(--color-text-secondary)">
           管理备份 →
         </span>
       </router-link>
@@ -227,10 +211,8 @@
       </div>
       <div v-if="tokens.length" class="space-y-2">
         <div v-for="t in tokens" :key="t.id"
-          class="flex items-center justify-between px-4 py-2.5 rounded-lg transition-colors duration-150"
-          style="background-color: var(--color-bg)"
-          @mouseenter="$event.currentTarget.style.backgroundColor = 'var(--color-sage-light)'"
-          @mouseleave="$event.currentTarget.style.backgroundColor = 'var(--color-bg)'">
+          class="flex items-center justify-between px-4 py-2.5 rounded-lg transition-colors duration-150 hover-sage-bg"
+          style="background-color: var(--color-bg)">
           <div class="flex-1 min-w-0">
             <span class="text-sm font-medium" style="color: var(--color-text)">{{ t.name }}</span>
             <span class="text-xs ml-2" style="color: var(--color-warm-gray)">创建于 {{ t.createdAt?.slice(0, 10) }}</span>
@@ -241,10 +223,8 @@
             </span>
           </div>
           <button @click="deleteToken(t.id)"
-            class="text-xs px-3 py-1 rounded transition-colors duration-150 shrink-0 ml-2"
-            style="color: var(--color-text-secondary)"
-            @mouseenter="$event.target.style.color = 'var(--color-accent)'"
-            @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">删除</button>
+            class="text-xs px-3 py-1 rounded transition-colors duration-150 shrink-0 ml-2 hover-accent"
+            style="color: var(--color-text-secondary)">删除</button>
         </div>
       </div>
       <p v-else class="text-sm py-4" style="color: var(--color-text-secondary)">暂无 API Token</p>
@@ -283,10 +263,8 @@
             <div class="flex items-center gap-2 p-3 rounded-lg" style="background-color: var(--color-bg)">
               <code class="text-sm flex-1 break-all select-all" style="color: var(--color-text)">{{ newTokenValue }}</code>
               <button @click="copyTokenValue"
-                class="text-xs px-3 py-1 rounded transition-colors duration-150 shrink-0"
-                style="color: var(--color-text-secondary)"
-                @mouseenter="$event.target.style.color = 'var(--color-sage)'"
-                @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">复制</button>
+                class="text-xs px-3 py-1 rounded transition-colors duration-150 shrink-0 hover-accent"
+                style="color: var(--color-text-secondary)">复制</button>
             </div>
             <div class="flex justify-end mt-4">
               <button @click="newTokenValue = ''" class="btn-primary">关闭</button>
@@ -322,10 +300,8 @@
               </div>
               <div>
                 <button @click="fetchModels" :disabled="!form.apiKey || fetching"
-                  class="text-sm px-3 py-1.5 rounded-lg transition-all duration-150 mb-2"
-                  :style="{ backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' }"
-                  @mouseenter="!fetching && ($event.target.style.opacity = '0.8')"
-                  @mouseleave="!fetching && ($event.target.style.opacity = '1')">
+                  class="text-sm px-3 py-1.5 rounded-lg transition-all duration-150 mb-2 hover-opacity-80"
+                  :style="{ backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' }">
                   {{ fetching ? '拉取中...' : '从远端拉取模型列表' }}
                 </button>
                 <div v-if="fetchedModelList.length" class="mt-1">

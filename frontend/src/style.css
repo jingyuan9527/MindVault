@@ -217,7 +217,19 @@
 .fade-leave-active {
   transition: opacity 0.2s ease;
 }
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
+  .fade-enter-from,
+  .fade-leave-to {
+    opacity: 0;
+  }
+
+/* Hover utilities */
+.hover-accent:hover { color: var(--color-accent); }
+.hover-accent-bg:hover { background-color: rgba(198, 95, 57, 0.08); }
+.hover-text:hover { color: var(--color-text); }
+.hover-text-secondary:hover { color: var(--color-text-secondary); }
+.hover-sage-bg:hover { background-color: var(--color-sage-light); }
+.hover-opacity-80:hover { opacity: 0.8; }
+.hover-opacity-90:hover { opacity: 0.9; }
+.hover-scale-105:hover { transform: scale(1.05); }
+.hover-border-accent:hover { border-color: var(--color-accent); }
+.hover-accent-hover:hover { color: var(--color-accent-hover); }

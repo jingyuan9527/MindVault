@@ -10,6 +10,7 @@ import com.mindvault.auth.entity.User;
 import com.mindvault.auth.service.ApiTokenService;
 import com.mindvault.auth.service.UserService;
 import com.mindvault.common.dto.ApiResponse;
+import com.mindvault.common.annotation.RateLimit;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -36,6 +37,7 @@ public class AuthController {
         this.sessionManager = sessionManager;
     }
 
+    @RateLimit(capacity = 5, duration = 60, key = "login")
     @Operation(summary = "登录", description = "用户名密码登录，返回会话令牌")
     @PostMapping("/login")
     public ApiResponse<Map<String, Object>> login(@Valid @RequestBody LoginRequest request) {

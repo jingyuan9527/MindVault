@@ -1,5 +1,6 @@
 package com.mindvault.tokenusage;
 
+import com.mindvault.common.config.MindVaultProperties;
 import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.tokenusage.entity.TokenUsage;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -32,7 +34,24 @@ class TokenUsageServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new TokenUsageService(mapper);
+        MindVaultProperties props = new MindVaultProperties();
+        Map<String, Map<String, BigDecimal[]>> pricing = new LinkedHashMap<>();
+        Map<String, BigDecimal[]> aliyun = new LinkedHashMap<>();
+        aliyun.put("qwen-turbo", new BigDecimal[]{BigDecimal.valueOf(0.0003), BigDecimal.valueOf(0.0006)});
+        aliyun.put("qwen-plus", new BigDecimal[]{BigDecimal.valueOf(0.0008), BigDecimal.valueOf(0.002)});
+        aliyun.put("qwen-max", new BigDecimal[]{BigDecimal.valueOf(0.002), BigDecimal.valueOf(0.006)});
+        pricing.put("ALIYUN", aliyun);
+        Map<String, BigDecimal[]> deepseek = new LinkedHashMap<>();
+        deepseek.put("deepseek-chat", new BigDecimal[]{BigDecimal.valueOf(0.00014), BigDecimal.valueOf(0.00028)});
+        deepseek.put("deepseek-coder", new BigDecimal[]{BigDecimal.valueOf(0.00014), BigDecimal.valueOf(0.00028)});
+        pricing.put("DEEPSEEK", deepseek);
+        Map<String, BigDecimal[]> openai = new LinkedHashMap<>();
+        openai.put("gpt-3.5-turbo", new BigDecimal[]{BigDecimal.valueOf(0.0015), BigDecimal.valueOf(0.002)});
+        openai.put("gpt-4", new BigDecimal[]{BigDecimal.valueOf(0.03), BigDecimal.valueOf(0.06)});
+        openai.put("gpt-4o", new BigDecimal[]{BigDecimal.valueOf(0.005), BigDecimal.valueOf(0.015)});
+        pricing.put("OPENAI", openai);
+        props.getPricing().setModels(pricing);
+        service = new TokenUsageService(mapper, props);
     }
 
     private ModelConfig createModelConfig(Long id, String provider, String modelName, String modelType) {

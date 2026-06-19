@@ -10,10 +10,8 @@
     <div class="flex items-center justify-between pt-2 text-xs" style="border-top: 1px solid var(--color-border)">
       <span style="color: var(--color-text-secondary)">{{ formatTime(note.createdAt) }}</span>
       <button @click.stop="$emit('delete', note.id)"
-        class="transition-colors duration-150"
-        style="color: var(--color-text-secondary)"
-        @mouseenter="$event.target.style.color = 'var(--color-accent)'"
-        @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">删除</button>
+        class="transition-colors duration-150 hover-accent"
+        style="color: var(--color-text-secondary)">删除</button>
     </div>
   </div>
 </template>

@@ -22,6 +22,8 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Component
 @Order(1)
@@ -33,6 +35,13 @@ public class LoggingFilter extends OncePerRequestFilter {
     private static final Set<String> SKIP_PATHS = new HashSet<>(Arrays.asList(
             "/actuator", "/api/v1/actuator", "/v3/api-docs", "/swagger-ui", "/webjars", "/doc.html"
     ));
+
+    private static final Pattern SENSITIVE_PATTERN = Pattern.compile(
+            "\"(apiKey|password|oldPassword|newPassword|secret|token)\"\\s*:\\s*\"([^\"]+)\"",
+            Pattern.CASE_INSENSITIVE
+    );
+
+    private static final String MASK = "\"$1\":\"***\"";
 
     private final MetricsService metricsService;
 
@@ -109,9 +118,15 @@ public class LoggingFilter extends OncePerRequestFilter {
     private String getRequestBody(ContentCachingRequestWrapper wrapper) {
         byte[] buf = wrapper.getContentAsByteArray();
         if (buf.length > 0) {
-            return new String(buf, StandardCharsets.UTF_8);
+            String body = new String(buf, StandardCharsets.UTF_8);
+            return maskSensitive(body);
         }
         return null;
+    }
+
+    private String maskSensitive(String body) {
+        if (body == null) return null;
+        return SENSITIVE_PATTERN.matcher(body).replaceAll(MASK);
     }
 
     private String truncate(String s, int maxLen) {

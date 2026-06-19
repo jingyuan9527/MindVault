@@ -1,6 +1,7 @@
 package com.mindvault.common.controller;
 
 import com.mindvault.common.dto.ApiResponse;
+import com.mindvault.model.ModelConfigService;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -30,10 +31,12 @@ public class SystemController {
 
     private final DataSource dataSource;
     private final MeterRegistry meterRegistry;
+    private final ModelConfigService modelConfigService;
 
-    public SystemController(DataSource dataSource, MeterRegistry meterRegistry) {
+    public SystemController(DataSource dataSource, MeterRegistry meterRegistry, ModelConfigService modelConfigService) {
         this.dataSource = dataSource;
         this.meterRegistry = meterRegistry;
+        this.modelConfigService = modelConfigService;
     }
 
     @GetMapping("/health")
@@ -47,6 +50,7 @@ public class SystemController {
         Map<String, Object> checks = new LinkedHashMap<>();
         checks.put("database", checkDatabase());
         checks.put("disk", checkDisk());
+        checks.put("llm", checkLlm());
         status.put("checks", checks);
 
         int http200 = httpStatusCode();
@@ -116,6 +120,20 @@ public class SystemController {
             disk.put("error", e.getMessage());
         }
         return disk;
+    }
+
+    private Map<String, Object> checkLlm() {
+        Map<String, Object> llm = new LinkedHashMap<>();
+        llm.put("name", "LLM");
+        try {
+            var models = modelConfigService.getAvailableChatModels();
+            llm.put("status", models.isEmpty() ? "NO_MODELS_CONFIGURED" : "UP");
+            llm.put("configuredCount", models.size());
+        } catch (Exception e) {
+            llm.put("status", "DOWN");
+            llm.put("error", e.getMessage());
+        }
+        return llm;
     }
 
     private int httpStatusCode() {

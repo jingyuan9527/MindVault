@@ -8,7 +8,12 @@
     </div>
 
     <div class="flex-1 overflow-y-auto p-4 md:p-5">
-      <div v-if="loading" class="flex justify-center py-12">
+      <div v-if="error" class="flex flex-col items-center justify-center py-16">
+        <p class="text-sm" style="color: #ef4444">{{ error }}</p>
+        <button @click="loadDue" class="text-sm mt-2 underline" style="color: var(--color-accent)">重试</button>
+      </div>
+
+      <div v-else-if="loading" class="flex justify-center py-12">
         <div class="w-6 h-6 rounded-full animate-spin"
           style="border: 2px solid var(--color-border); border-top-color: var(--color-accent)"></div>
       </div>
@@ -65,13 +70,11 @@
           <div class="flex flex-wrap gap-2">
             <button v-for="opt in qualityOptions" :key="opt.value"
               @click="submitReview(opt.value)"
-              class="px-4 py-2 rounded-lg text-sm transition-all duration-150"
+              class="px-4 py-2 rounded-lg text-sm transition-all duration-150 hover-scale-105"
               :style="{
                 backgroundColor: opt.bg,
                 color: opt.color
-              }"
-              @mouseenter="$event.target.style.transform = 'scale(1.05)'"
-              @mouseleave="$event.target.style.transform = 'scale(1)'">
+              }">
               {{ opt.label }}
             </button>
           </div>
@@ -94,6 +97,7 @@ const loading = ref(true)
 const dueItems = ref([])
 const dueCount = ref(0)
 const reviewIndex = ref(0)
+const error = ref('')
 
 const currentReview = computed(() => dueItems.value[reviewIndex.value] || null)
 
@@ -113,6 +117,7 @@ const qualityOptions = [
 
 async function loadDue() {
   loading.value = true
+  error.value = ''
   try {
     const [dueRes, countRes] = await Promise.all([
       reviewApi.getDue(20),
@@ -120,6 +125,8 @@ async function loadDue() {
     ])
     dueItems.value = dueRes.data.data || []
     dueCount.value = countRes.data.data?.count || 0
+  } catch (e) {
+    error.value = e.response?.data?.message || '加载失败'
   } finally {
     loading.value = false
   }

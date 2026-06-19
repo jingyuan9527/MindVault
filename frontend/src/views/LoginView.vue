@@ -50,9 +50,10 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
+const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
@@ -66,7 +67,8 @@ async function handleLogin() {
   error.value = ''
   try {
     await auth.login(username.value, password.value)
-    router.push('/')
+    const redirect = route.query.redirect || '/'
+    router.push(redirect)
   } catch (e) {
     error.value = e.response?.data?.message || '登录失败，请检查用户名和密码'
   } finally {

@@ -1,5 +1,6 @@
 package com.mindvault.content;
 
+import com.mindvault.common.config.MindVaultProperties;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -14,6 +15,12 @@ import java.io.IOException;
 public class ContentParserService {
 
     private static final Logger log = LoggerFactory.getLogger(ContentParserService.class);
+
+    private final int jsoupTimeoutMs;
+
+    public ContentParserService(MindVaultProperties properties) {
+        this.jsoupTimeoutMs = properties.getJsoup().getTimeoutMs();
+    }
 
     public ParseResult parsePdf(byte[] pdfData, String fileName) {
         try (PDDocument doc = Loader.loadPDF(pdfData)) {
@@ -47,7 +54,7 @@ public class ContentParserService {
         try {
             org.jsoup.nodes.Document doc = Jsoup.connect(url)
                     .userAgent("Mozilla/5.0 (compatible; MindVault/1.0)")
-                    .timeout(15000)
+                    .timeout(jsoupTimeoutMs)
                     .get();
             String title = doc.title();
             String body = extractStructuredText(doc.body());

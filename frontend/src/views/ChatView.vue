@@ -1,7 +1,12 @@
 <template>
   <div class="flex flex-col h-full">
     <div class="flex-1 overflow-y-auto p-4 space-y-4" ref="messageContainer">
-      <div v-if="!store.messages.length" class="flex flex-col items-center justify-center h-full text-gray-400">
+      <div v-if="error" class="flex flex-col items-center justify-center h-full">
+        <p class="text-sm" style="color: #ef4444">{{ error }}</p>
+        <button @click="retry" class="text-sm mt-2 underline" style="color: var(--color-accent)">重试</button>
+      </div>
+
+      <div v-else-if="!store.messages.length" class="flex flex-col items-center justify-center h-full text-gray-400">
         <p class="text-4xl mb-4">🧠</p>
         <p class="text-lg font-medium text-gray-600">开始你的第一段对话</p>
         <p class="text-sm mt-1">输入问题或分享知识，知忆会帮你整理和检索</p>
@@ -35,6 +40,7 @@ import ThinkingIndicator from '@/components/chat/ThinkingIndicator.vue'
 
 const store = useChatStore()
 const messageContainer = ref(null)
+const error = ref('')
 
 watch(() => store.messages.length, async () => {
   await nextTick()
@@ -50,6 +56,15 @@ function formatTime(dateStr) {
 }
 
 async function handleSend(content) {
-  await store.sendMessage(content)
+  error.value = ''
+  try {
+    await store.sendMessage(content)
+  } catch (e) {
+    error.value = e.response?.data?.message || '发送失败，请稍后重试'
+  }
+}
+
+function retry() {
+  error.value = ''
 }
 </script>

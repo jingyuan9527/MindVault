@@ -1,9 +1,7 @@
 <template>
-  <div class="flex items-center px-5 py-3 cursor-pointer transition-colors duration-150 hover:opacity-80"
+  <div class="flex items-center px-5 py-3 cursor-pointer transition-colors duration-150 hover:opacity-80 hover-sage-bg"
     style="border-bottom: 1px solid var(--color-border)"
-    @click="$emit('click', note)"
-    @mouseenter="$event.currentTarget.style.backgroundColor = 'var(--color-sage-light)'"
-    @mouseleave="$event.currentTarget.style.backgroundColor = 'transparent'">
+    @click="$emit('click', note)">
     <div class="flex items-center mr-3" @click.stop>
       <input type="checkbox" :checked="selected" @change="$emit('toggle-select', note.id)"
         class="w-4 h-4 rounded cursor-pointer"

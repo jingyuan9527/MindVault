@@ -1,6 +1,7 @@
 package com.mindvault.auth.config;
 
 import com.mindvault.auth.entity.User;
+import com.mindvault.common.config.MindVaultProperties;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,9 +17,14 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SessionManager {
 
     private static final Logger log = LoggerFactory.getLogger(SessionManager.class);
-    private static final long SESSION_TTL_HOURS = 24;
+
+    private final long sessionTtlHours;
 
     private final ConcurrentHashMap<String, SessionInfo> sessions = new ConcurrentHashMap<>();
+
+    public SessionManager(MindVaultProperties properties) {
+        this.sessionTtlHours = properties.getSession().getTtlHours();
+    }
 
     @PostConstruct
     public void init() {
@@ -26,7 +32,7 @@ public class SessionManager {
             while (true) {
                 try {
                     Thread.sleep(60_000);
-                    Instant cutoff = Instant.now().minus(SESSION_TTL_HOURS, ChronoUnit.HOURS);
+                    Instant cutoff = Instant.now().minus(sessionTtlHours, ChronoUnit.HOURS);
                     sessions.entrySet().removeIf(e -> e.getValue().createdAt().isBefore(cutoff));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -47,7 +53,7 @@ public class SessionManager {
     public SessionInfo validate(String token) {
         SessionInfo info = sessions.get(token);
         if (info == null) return null;
-        if (info.createdAt().isBefore(Instant.now().minus(SESSION_TTL_HOURS, ChronoUnit.HOURS))) {
+        if (info.createdAt().isBefore(Instant.now().minus(sessionTtlHours, ChronoUnit.HOURS))) {
             sessions.remove(token);
             return null;
         }

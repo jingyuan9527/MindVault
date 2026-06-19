@@ -1,6 +1,7 @@
 package com.mindvault.common.controller;
 
 import com.mindvault.common.service.MetricsService;
+import com.mindvault.model.ModelConfigService;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,7 @@ class SystemControllerTest {
     @MockBean private DataSource dataSource;
     @MockBean private MeterRegistry meterRegistry;
     @MockBean private MetricsService metricsService;
+    @MockBean private ModelConfigService modelConfigService;
 
     @Test
     void health_shouldReturnUp() throws Exception {

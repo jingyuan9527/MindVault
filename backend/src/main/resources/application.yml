@@ -39,6 +39,29 @@ mindvault:
     dir: backups
     retention-days: 7
 
+  # Session 配置（共享内存会话，重启后失效）
+  session:
+    ttl-hours: 24
+
+  # Jsoup HTML 解析配置
+  jsoup:
+    timeout-ms: 15000
+
+  # LLM 定价配置（单位：元/千 token，格式：[prompt_price, completion_price]）
+  pricing:
+    models:
+      ALIYUN:
+        qwen-turbo: [0.0003, 0.0006]
+        qwen-plus: [0.0008, 0.002]
+        qwen-max: [0.002, 0.006]
+      DEEPSEEK:
+        deepseek-chat: [0.00014, 0.00028]
+        deepseek-coder: [0.00014, 0.00028]
+      OPENAI:
+        gpt-3.5-turbo: [0.0015, 0.002]
+        gpt-4: [0.03, 0.06]
+        gpt-4o: [0.005, 0.015]
+
 # MyBatis-Plus 配置
 mybatis-plus:
   configuration:

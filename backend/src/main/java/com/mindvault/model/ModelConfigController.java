@@ -1,5 +1,6 @@
 package com.mindvault.model;
 
+import com.mindvault.common.annotation.RateLimit;
 import com.mindvault.common.dto.ApiResponse;
 import com.mindvault.model.entity.ModelConfig;
 import jakarta.validation.Valid;
@@ -55,6 +56,7 @@ public class ModelConfigController {
         return ApiResponse.success(null);
     }
 
+    @RateLimit(capacity = 3, duration = 60, key = "fetch-models")
     @Operation(summary = "获取模型列表", description = "从指定供应商拉取可用模型列表")
     @PostMapping("/fetch")
     public ApiResponse<List<String>> fetchModels(@RequestBody Map<String, String> request) {

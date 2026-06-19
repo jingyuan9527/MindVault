@@ -7,8 +7,8 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.time.LocalDateTime;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
 
 @TableName("model_config")
 @Data
@@ -19,10 +19,12 @@ public class ModelConfig {
     @Schema(description = "主键 ID")
     private Long id;
 
+    @NotBlank(message = "提供商不能为空")
     @TableField("provider")
     @Schema(description = "提供商")
     private String provider;
 
+    @NotBlank(message = "模型名称不能为空")
     @TableField("model_name")
     @Schema(description = "模型名称")
     private String modelName;
@@ -31,9 +33,9 @@ public class ModelConfig {
     @Schema(description = "模型类型")
     private String modelType = "CHAT";
 
+    @NotBlank(message = "API 密钥不能为空")
     @TableField("api_key")
     @Schema(description = "API 密钥")
-    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String apiKey;
 
     @TableField("base_url")
