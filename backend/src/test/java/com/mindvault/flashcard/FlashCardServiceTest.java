@@ -1,6 +1,6 @@
 package com.mindvault.flashcard;
 
-import com.mindvault.agent.config.AgentConfig;
+import com.mindvault.common.service.LlmFailoverService;
 import com.mindvault.flashcard.entity.FlashCard;
 import com.mindvault.knowledge.KnowledgeService;
 import com.mindvault.model.ModelConfigService;
@@ -21,7 +21,7 @@ import static org.mockito.Mockito.*;
 class FlashCardServiceTest {
 
     @Mock private ModelConfigService modelConfigService;
-    @Mock private AgentConfig agentConfig;
+    @Mock private LlmFailoverService llmFailoverService;
     @Mock private KnowledgeService knowledgeService;
     @Mock private FlashCardMapper mapper;
 
@@ -29,7 +29,7 @@ class FlashCardServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new FlashCardService(modelConfigService, agentConfig, knowledgeService, mapper);
+        service = new FlashCardService(modelConfigService, llmFailoverService, knowledgeService, mapper);
     }
 
     private FlashCard createCard(Long id, Long knowledgeId, String question, String answer) {

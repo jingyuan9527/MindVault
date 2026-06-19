@@ -2,8 +2,7 @@ package com.mindvault.knowledge;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mindvault.agent.config.AgentConfig;
-import com.mindvault.agent.config.AgentConfig.LlmEndpoint;
+import com.mindvault.common.service.LlmFailoverService;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
@@ -24,15 +23,15 @@ public class SearchEnhanceService {
 
     private final KnowledgeService knowledgeService;
     private final ModelConfigService modelConfigService;
-    private final AgentConfig agentConfig;
+    private final LlmFailoverService llmFailoverService;
     private final ObjectMapper objectMapper;
 
     public SearchEnhanceService(KnowledgeService knowledgeService,
                                 ModelConfigService modelConfigService,
-                                AgentConfig agentConfig) {
+                                LlmFailoverService llmFailoverService) {
         this.knowledgeService = knowledgeService;
         this.modelConfigService = modelConfigService;
-        this.agentConfig = agentConfig;
+        this.llmFailoverService = llmFailoverService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -89,34 +88,7 @@ public class SearchEnhanceService {
                 原始问题: %s
                 """.formatted(query);
 
-        List<String> errors = new ArrayList<>();
-        for (ModelConfig mc : chatModels) {
-            try {
-                LlmEndpoint endpoint = agentConfig.buildEndpoint(mc);
-                RestClient client = RestClient.builder()
-                        .baseUrl(endpoint.getFullUrl())
-                        .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                        .defaultHeader("Authorization", "Bearer " + endpoint.getApiKey())
-                        .build();
-
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("model", endpoint.getModelName());
-                body.put("messages", List.of(Map.of("role", "user", "content", prompt)));
-                body.put("temperature", 0.2);
-                body.put("max_tokens", 100);
-
-                String json = objectMapper.writeValueAsString(body);
-                String response = client.post().body(json).retrieve().body(String.class);
-                Map<?, ?> map = objectMapper.readValue(response, Map.class);
-                String content = extractContent(map);
-                if (content != null && !content.isBlank()) return content.trim();
-            } catch (Exception e) {
-                log.warn("查询重写失败 ({}): {}", mc.getModelName(), e.getMessage());
-                errors.add(e.getMessage());
-            }
-        }
-        log.warn("所有模型查询重写均失败: {}", String.join("; ", errors));
-        return null;
+        return llmFailoverService.call(chatModels, new LlmFailoverService.LlmCallOptions(prompt, 0.2, 100, false, null));
     }
 
     private String generateHypotheticalDocument(String query) {
@@ -130,34 +102,7 @@ public class SearchEnhanceService {
                 用户问题: %s
                 """.formatted(query);
 
-        List<String> errors = new ArrayList<>();
-        for (ModelConfig mc : chatModels) {
-            try {
-                LlmEndpoint endpoint = agentConfig.buildEndpoint(mc);
-                RestClient client = RestClient.builder()
-                        .baseUrl(endpoint.getFullUrl())
-                        .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                        .defaultHeader("Authorization", "Bearer " + endpoint.getApiKey())
-                        .build();
-
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("model", endpoint.getModelName());
-                body.put("messages", List.of(Map.of("role", "user", "content", prompt)));
-                body.put("temperature", 0.3);
-                body.put("max_tokens", 500);
-
-                String json = objectMapper.writeValueAsString(body);
-                String response = client.post().body(json).retrieve().body(String.class);
-                Map<?, ?> map = objectMapper.readValue(response, Map.class);
-                String content = extractContent(map);
-                if (content != null && !content.isBlank()) return content.trim();
-            } catch (Exception e) {
-                log.warn("HyDE 文档生成失败 ({}): {}", mc.getModelName(), e.getMessage());
-                errors.add(e.getMessage());
-            }
-        }
-        log.warn("所有模型 HyDE 生成均失败: {}", String.join("; ", errors));
-        return null;
+        return llmFailoverService.call(chatModels, new LlmFailoverService.LlmCallOptions(prompt, 0.3, 500, false, null));
     }
 
     private String generateEmbeddingForText(String text, ModelConfig embModel) {
@@ -240,24 +185,7 @@ public class SearchEnhanceService {
         sb.append("请只返回 JSON 数组格式的评分，例如 [9, 5, 7]，不要额外说明。");
 
         try {
-            ModelConfig mc = chatModels.get(0);
-            LlmEndpoint endpoint = agentConfig.buildEndpoint(mc);
-            RestClient client = RestClient.builder()
-                    .baseUrl(endpoint.getFullUrl())
-                    .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                    .defaultHeader("Authorization", "Bearer " + endpoint.getApiKey())
-                    .build();
-
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("model", endpoint.getModelName());
-            body.put("messages", List.of(Map.of("role", "user", "content", sb.toString())));
-            body.put("temperature", 0.1);
-            body.put("max_tokens", 200);
-
-            String json = objectMapper.writeValueAsString(body);
-            String response = client.post().body(json).retrieve().body(String.class);
-            Map<?, ?> map = objectMapper.readValue(response, Map.class);
-            String content = extractContent(map);
+            String content = llmFailoverService.call(chatModels, new LlmFailoverService.LlmCallOptions(sb.toString(), 0.1, 200, false, null));
 
             if (content != null) {
                 String cleaned = content.trim();
@@ -286,26 +214,5 @@ public class SearchEnhanceService {
             log.warn("LLM 重排序失败: {}", e.getMessage());
         }
         return results.stream().limit(topN).toList();
-    }
-
-    private String extractContent(Map<?, ?> responseMap) {
-        if (responseMap.containsKey("choices")) {
-            List<?> choices = (List<?>) responseMap.get("choices");
-            if (!choices.isEmpty()) {
-                Map<?, ?> choice = (Map<?, ?>) choices.get(0);
-                Map<?, ?> message = (Map<?, ?>) choice.get("message");
-                if (message != null && message.get("content") instanceof String s) return s;
-                if (choice.get("text") instanceof String s) return s;
-            }
-        }
-        if (responseMap.containsKey("message")) {
-            Map<?, ?> message = (Map<?, ?>) responseMap.get("message");
-            if (message.get("content") instanceof String s) return s;
-        }
-        if (responseMap.containsKey("response")) {
-            Object resp = responseMap.get("response");
-            if (resp instanceof String s) return s;
-        }
-        return null;
     }
 }

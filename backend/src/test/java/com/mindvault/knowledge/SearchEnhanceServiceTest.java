@@ -1,9 +1,7 @@
 package com.mindvault.knowledge;
 
-import com.mindvault.agent.config.AgentConfig;
-import com.mindvault.agent.config.AgentConfig.LlmEndpoint;
+import com.mindvault.common.service.LlmFailoverService;
 import com.mindvault.model.ModelConfigService;
-import com.mindvault.model.entity.ModelConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,13 +20,13 @@ class SearchEnhanceServiceTest {
 
     @Mock private KnowledgeService knowledgeService;
     @Mock private ModelConfigService modelConfigService;
-    @Mock private AgentConfig agentConfig;
+    @Mock private LlmFailoverService llmFailoverService;
 
     private SearchEnhanceService service;
 
     @BeforeEach
     void setUp() {
-        service = new SearchEnhanceService(knowledgeService, modelConfigService, agentConfig);
+        service = new SearchEnhanceService(knowledgeService, modelConfigService, llmFailoverService);
     }
 
     @Test
@@ -45,12 +43,8 @@ class SearchEnhanceServiceTest {
 
     @Test
     void searchWithRewrite_shouldFallbackToHybridWhenRewriteFails() {
-        ModelConfig mc = new ModelConfig();
-        mc.setProvider("OPENAI");
-        mc.setModelName("gpt-4");
-        mc.setApiKey("sk-test");
-        when(modelConfigService.getAvailableChatModels()).thenReturn(List.of(mc));
-        when(agentConfig.buildEndpoint(mc)).thenThrow(new RuntimeException("API error"));
+        when(modelConfigService.getAvailableChatModels()).thenReturn(List.of(new com.mindvault.model.entity.ModelConfig()));
+        when(llmFailoverService.call(anyList(), any())).thenReturn(null);
 
         List<Map<String, Object>> expected = List.of(Map.of("title", "fallback"));
         when(knowledgeService.hybridSearch("test", 5)).thenReturn(expected);

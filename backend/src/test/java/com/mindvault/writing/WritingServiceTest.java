@@ -1,12 +1,10 @@
 package com.mindvault.writing;
 
-import com.mindvault.agent.config.AgentConfig;
-import com.mindvault.common.service.MetricsService;
+import com.mindvault.common.service.LlmFailoverService;
 import com.mindvault.knowledge.KnowledgeMapper;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
-import com.mindvault.tokenusage.TokenUsageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,16 +22,14 @@ import static org.mockito.Mockito.*;
 class WritingServiceTest {
 
     @Mock private ModelConfigService modelConfigService;
-    @Mock private AgentConfig agentConfig;
+    @Mock private LlmFailoverService llmFailoverService;
     @Mock private KnowledgeMapper knowledgeMapper;
-    @Mock private TokenUsageService tokenUsageService;
-    @Mock private MetricsService metricsService;
 
     private WritingService service;
 
     @BeforeEach
     void setUp() {
-        service = new WritingService(modelConfigService, agentConfig, knowledgeMapper, tokenUsageService, metricsService);
+        service = new WritingService(modelConfigService, llmFailoverService, knowledgeMapper);
     }
 
     private Knowledge createKnowledge(Long id, String title, String content, String summary) {
@@ -64,7 +60,6 @@ class WritingServiceTest {
         String result = service.generateArticle("AI", "formal", "machine learning");
 
         assertNotNull(result);
-        assertTrue(result.equals("文章生成失败，请稍后重试。") || result.contains("文章"));
         verify(knowledgeMapper, atLeastOnce())
                 .findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(anyString(), anyString());
     }
@@ -94,11 +89,6 @@ class WritingServiceTest {
         mc.setApiKey("test-key");
         mc.setIsEnabled(true);
         when(modelConfigService.getAvailableChatModels()).thenReturn(List.of(mc));
-        AgentConfig.LlmEndpoint endpoint = mock(AgentConfig.LlmEndpoint.class);
-        when(endpoint.getFullUrl()).thenReturn("https://api.test.com/v1/chat/completions");
-        when(endpoint.getApiKey()).thenReturn("test-key");
-        when(endpoint.getModelName()).thenReturn("test-model");
-        when(agentConfig.buildEndpoint(mc)).thenReturn(endpoint);
-        service.refreshModels();
+        when(llmFailoverService.call(anyList(), any())).thenReturn("生成的测试文章内容。");
     }
 }

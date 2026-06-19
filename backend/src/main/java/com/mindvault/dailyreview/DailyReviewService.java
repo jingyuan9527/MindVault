@@ -1,23 +1,17 @@
 package com.mindvault.dailyreview;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mindvault.agent.config.AgentConfig;
-import com.mindvault.common.service.MetricsService;
+import com.mindvault.common.service.LlmFailoverService;
 import com.mindvault.dailyreview.entity.DailyReview;
 import com.mindvault.knowledge.KnowledgeMapper;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
-import com.mindvault.tokenusage.TokenUsageService;
-import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestClient;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,45 +24,20 @@ public class DailyReviewService {
     private static final Logger log = LoggerFactory.getLogger(DailyReviewService.class);
 
     private final ModelConfigService modelConfigService;
-    private final AgentConfig agentConfig;
+    private final LlmFailoverService llmFailoverService;
     private final KnowledgeMapper knowledgeMapper;
     private final DailyReviewMapper mapper;
-    private final TokenUsageService tokenUsageService;
-    private final MetricsService metricsService;
     private final ObjectMapper objectMapper;
 
-    private volatile List<LlmEndpoint> modelEndpoints = List.of();
-
     public DailyReviewService(ModelConfigService modelConfigService,
-                              AgentConfig agentConfig,
+                              LlmFailoverService llmFailoverService,
                               KnowledgeMapper knowledgeMapper,
-                              DailyReviewMapper mapper,
-                              TokenUsageService tokenUsageService,
-                              MetricsService metricsService) {
+                              DailyReviewMapper mapper) {
         this.modelConfigService = modelConfigService;
-        this.agentConfig = agentConfig;
+        this.llmFailoverService = llmFailoverService;
         this.knowledgeMapper = knowledgeMapper;
         this.mapper = mapper;
-        this.tokenUsageService = tokenUsageService;
-        this.metricsService = metricsService;
         this.objectMapper = new ObjectMapper();
-    }
-
-    @PostConstruct
-    public void init() {
-        refreshModels();
-    }
-
-    public void refreshModels() {
-        try {
-            List<ModelConfig> models = modelConfigService.getAvailableChatModels();
-            modelEndpoints = models.stream()
-                    .map(mc -> new LlmEndpoint(mc, agentConfig.buildEndpoint(mc)))
-                    .toList();
-            log.info("DailyReviewService 初始化完成，可用模型数: {}", modelEndpoints.size());
-        } catch (Exception e) {
-            log.warn("DailyReviewService 初始化失败: {}", e.getMessage());
-        }
     }
 
     @Scheduled(cron = "0 30 2 * * ?")
@@ -145,6 +114,9 @@ public class DailyReviewService {
     }
 
     private String callLlmForReport(String knowledgeSummary) {
+        List<ModelConfig> models = modelConfigService.getAvailableChatModels();
+        if (models.isEmpty()) return null;
+
         String prompt = "你是一个每日知识复盘助手。请根据以下今日新增知识，生成一份复盘报告。" +
                 "返回JSON格式，包含以下字段：\n" +
                 "1. summary: 一段概括性总结（50-100字）\n" +
@@ -153,8 +125,7 @@ public class DailyReviewService {
                 "4. categoryBreakdown: 知识分类统计对象\n\n" +
                 "只返回JSON，不要额外说明。\n\n" + knowledgeSummary;
 
-        String result = callLlmWithFailover(prompt);
-        return result;
+        return llmFailoverService.call(models, new LlmFailoverService.LlmCallOptions(prompt, 0.3, 1500, true, "DAILY_REVIEW"));
     }
 
     private Map<String, Object> parseReportJson(String json) {
@@ -187,79 +158,4 @@ public class DailyReviewService {
                 .findFirst()
                 .orElseGet(() -> generateReport(LocalDate.now()));
     }
-
-    @SuppressWarnings("unchecked")
-    private String callLlmWithFailover(String prompt) {
-        List<String> errors = new ArrayList<>();
-        for (LlmEndpoint me : modelEndpoints) {
-            try {
-                RestClient client = RestClient.builder()
-                        .baseUrl(me.endpoint.getFullUrl())
-                        .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                        .defaultHeader("Authorization", "Bearer " + me.endpoint.getApiKey())
-                        .build();
-
-                Map<String, Object> requestBody = new LinkedHashMap<>();
-                requestBody.put("model", me.endpoint.getModelName());
-                requestBody.put("messages", List.of(Map.of("role", "user", "content", prompt)));
-                requestBody.put("temperature", 0.3);
-                requestBody.put("max_tokens", 1500);
-
-                String responseJson = client.post()
-                        .body(objectMapper.writeValueAsString(requestBody))
-                        .retrieve()
-                        .body(String.class);
-
-                Map<?, ?> responseMap = objectMapper.readValue(responseJson, Map.class);
-                String content = extractContent(responseMap);
-                if (content != null) {
-                    recordUsage(me, responseMap);
-                    return content.trim();
-                }
-            } catch (Exception e) {
-                log.warn("模型调用失败: {}", e.getMessage());
-                errors.add(e.getMessage());
-            }
-        }
-        log.warn("所有模型均调用失败: {}", String.join("; ", errors));
-        return null;
-    }
-
-    @SuppressWarnings("unchecked")
-    private void recordUsage(LlmEndpoint me, Map<?, ?> responseMap) {
-        try {
-            Map<String, Object> usage = (Map<String, Object>) responseMap.get("usage");
-            if (usage != null) {
-                int promptTokens = ((Number) usage.getOrDefault("prompt_tokens", 0)).intValue();
-                int completionTokens = ((Number) usage.getOrDefault("completion_tokens", 0)).intValue();
-                metricsService.recordTokens(promptTokens, completionTokens);
-                tokenUsageService.recordUsage(me.modelConfig, promptTokens, completionTokens, "DAILY_REVIEW", null);
-            }
-        } catch (Exception e) {
-            log.warn("记录 DailyReview Token 用量失败: {}", e.getMessage());
-        }
-    }
-
-    private String extractContent(Map<?, ?> responseMap) {
-        if (responseMap.containsKey("choices")) {
-            List<?> choices = (List<?>) responseMap.get("choices");
-            if (!choices.isEmpty()) {
-                Map<?, ?> choice = (Map<?, ?>) choices.get(0);
-                Map<?, ?> message = (Map<?, ?>) choice.get("message");
-                if (message != null && message.get("content") instanceof String s) return s;
-                if (choice.get("text") instanceof String s) return s;
-            }
-        }
-        if (responseMap.containsKey("message")) {
-            Map<?, ?> message = (Map<?, ?>) responseMap.get("message");
-            if (message.get("content") instanceof String s) return s;
-        }
-        if (responseMap.containsKey("response")) {
-            Object resp = responseMap.get("response");
-            if (resp instanceof String s) return s;
-        }
-        return null;
-    }
-
-    private record LlmEndpoint(ModelConfig modelConfig, AgentConfig.LlmEndpoint endpoint) {}
 }
