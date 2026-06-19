@@ -399,7 +399,9 @@ public class KnowledgeService {
             if (k.getTags() != null && !k.getTags().equals("[]")) {
                 try {
                     existingTags = objectMapper.readValue(k.getTags(), new TypeReference<List<String>>() {});
-                } catch (Exception ignored) {}
+                } catch (Exception e) {
+                    log.warn("反序列化标签失败: id={}, tags={}", id, k.getTags(), e);
+                }
             }
             if (!existingTags.contains(tag)) {
                 existingTags.add(tag);
@@ -565,7 +567,9 @@ public class KnowledgeService {
                     try {
                         List<String> tagList = objectMapper.readValue(k.getTags(), new TypeReference<List<String>>() {});
                         tags = String.join("; ", tagList);
-                    } catch (Exception ignored) {}
+                    } catch (Exception e) {
+                        log.warn("CSV 导出标签解析失败: id={}", k.getId(), e);
+                    }
                 }
                 sb.append(escapeCsv(k.getTitle())).append(",");
                 sb.append(escapeCsv(k.getContent())).append(",");

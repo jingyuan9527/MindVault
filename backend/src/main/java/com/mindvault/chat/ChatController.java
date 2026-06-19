@@ -3,6 +3,8 @@ package com.mindvault.chat;
 import com.mindvault.chat.entity.ChatMessage;
 import com.mindvault.chat.entity.ChatSession;
 import com.mindvault.common.dto.ApiResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -18,6 +20,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @RestController
 @RequestMapping("/api/v1/chat")
 public class ChatController {
+
+    private static final Logger log = LoggerFactory.getLogger(ChatController.class);
 
     private final ChatService chatService;
 
@@ -66,7 +70,9 @@ public class ChatController {
             try {
                 emitter.send(SseEmitter.event().name("error").data("消息内容不能为空"));
                 emitter.complete();
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                log.warn("发送空消息错误响应失败: {}", e.getMessage());
+            }
             return emitter;
         }
         return chatService.sendMessageStream(id, content);

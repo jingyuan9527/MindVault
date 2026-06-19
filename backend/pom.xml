@@ -25,6 +25,7 @@
         <!-- AgentScope Java 版本 -->
         <agentscope.version>2.0.0-RC2</agentscope.version>
         <jacoco.version>0.8.12</jacoco.version>
+        <lombok.version>1.18.38</lombok.version>
     </properties>
 
     <dependencies>
@@ -95,6 +96,12 @@
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+
+        <!-- BCrypt 密码加密 -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
         </dependency>
 
         <!-- AOP — 操作日志注解 -->

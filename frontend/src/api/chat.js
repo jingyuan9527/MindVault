@@ -1,22 +1,23 @@
-import axios from 'axios'
-
-const api = axios.create({ baseURL: '/api/v1' })
+import client from './client'
 
 export const chatApi = {
-  createSession: () => api.post('/chat/sessions'),
-  listSessions: () => api.get('/chat/sessions'),
-  getMessages: (sessionId) => api.get(`/chat/sessions/${sessionId}/messages`),
+  createSession: () => client.post('/chat/sessions'),
+  listSessions: () => client.get('/chat/sessions'),
+  getMessages: (sessionId) => client.get(`/chat/sessions/${sessionId}/messages`),
   sendMessage: (sessionId, content) =>
-    api.post(`/chat/sessions/${sessionId}/messages`, { content }),
+    client.post(`/chat/sessions/${sessionId}/messages`, { content }),
 
   sendMessageStream: (sessionId, content, callbacks) => {
     const controller = new AbortController()
     const { onToken, onDone, onError, onSources } = callbacks
     let currentEvent = ''
 
+    const token = localStorage.getItem('mindvault_token')
+    const headers = { 'Content-Type': 'application/json' }
+    if (token) headers['Authorization'] = `Bearer ${token}`
     fetch(`/api/v1/chat/sessions/${sessionId}/messages/stream`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ content }),
       signal: controller.signal
     }).then(async (response) => {

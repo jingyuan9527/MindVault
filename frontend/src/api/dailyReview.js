@@ -1,10 +1,8 @@
-import axios from 'axios'
-
-const api = axios.create({ baseURL: '/api/v1' })
+import client from './client'
 
 export const dailyReviewApi = {
-  getLatest: () => api.get('/daily-review/latest'),
-  getByDate: (date) => api.get(`/daily-review/date/${date}`),
-  getRecent: (limit = 7) => api.get(`/daily-review/recent?limit=${limit}`),
-  generate: (date) => api.post(`/daily-review/generate${date ? `?date=${date}` : ''}`)
+  getLatest: () => client.get('/daily-review/latest'),
+  getByDate: (date) => client.get(`/daily-review/date/${date}`),
+  getRecent: (limit = 20) => client.get(`/daily-review/recent?limit=${limit}`),
+  generate: (date) => client.post('/daily-review/generate', { date })
 }

@@ -1,10 +1,8 @@
-import axios from 'axios'
-
-const api = axios.create({ baseURL: '/api/v1' })
+import client from './client'
 
 export const flashcardApi = {
-  list: () => api.get('/flashcards'),
-  listByKnowledge: (knowledgeId) => api.get(`/flashcards/knowledge/${knowledgeId}`),
-  generate: (knowledgeId) => api.post(`/flashcards/generate/${knowledgeId}`),
-  delete: (id) => api.delete(`/flashcards/${id}`)
+  list: () => client.get('/flashcards'),
+  listByKnowledge: (id) => client.get(`/flashcards/knowledge/${id}`),
+  generate: (knowledgeId) => client.post(`/flashcards/generate/${knowledgeId}`),
+  delete: (id) => client.delete(`/flashcards/${id}`)
 }

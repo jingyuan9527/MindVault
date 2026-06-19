@@ -38,6 +38,9 @@ services:
       TZ: Asia/Shanghai
       JAVA_OPTS: -Duser.timezone=Asia/Shanghai
       MINDT_VAULT_BACKUP_DIR: /app/backups
+      # 首次部署时设置管理员账号（后续启动会自动跳过已存在的用户）
+      MINDVAULT_ADMIN_USERNAME: admin
+      MINDVAULT_ADMIN_PASSWORD: mindvault123
     volumes:
       - backup_data:/app/backups
     depends_on:

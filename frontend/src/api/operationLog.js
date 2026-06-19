@@ -1,7 +1,5 @@
-import axios from 'axios'
-
-const api = axios.create({ baseURL: '/api/v1' })
+import client from './client'
 
 export const operationLogApi = {
-  list: (module) => api.get('/operation-logs', { params: module ? { module } : {} })
+  list: (params = {}) => client.get('/operation-logs', { params })
 }

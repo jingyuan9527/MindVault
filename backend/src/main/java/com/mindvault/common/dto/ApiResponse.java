@@ -1,12 +1,14 @@
 package com.mindvault.common.dto;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Schema(description = "统一 API 响应格式")

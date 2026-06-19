@@ -36,6 +36,41 @@ MindVault（知忆）是一个自托管的个人知识库系统，深度融合 L
 - **每日复盘** — AI 生成的每日学习总结报告
 - **写作助手** — 根据主题/提示生成文章
 
+### 认证与授权
+- **用户账号** — 密码登录，BCrypt 哈希存储
+- **会话管理** — 内存会话 Token，24 小时 TTL
+- **API Token** — 基于 UUID 的长效令牌，用于外部集成
+- **管理员自动创建** — 通过 `MINDVAULT_ADMIN_USERNAME` / `MINDVAULT_ADMIN_PASSWORD` 环境变量在首次运行时自动创建管理员
+
+### 外部 API（Token 认证）
+所有知识库接口均支持 Bearer API Token 认证，方便外部系统集成：
+
+```bash
+# 生成 Token（需先登录）
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"mindvault123"}'
+# → 获取会话 Token
+
+curl -X POST http://localhost:8080/api/v1/auth/tokens \
+  -H "Authorization: Bearer <session_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-app","expireDays":365}'
+# → 获取 API Token
+
+# 使用 API Token 进行 CRUD 操作
+curl -X POST http://localhost:8080/api/v1/knowledge \
+  -H "Authorization: Bearer <api_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"我的笔记","content":"你好","tags":"[\"标签1\"]"}'
+
+curl -X GET http://localhost:8080/api/v1/knowledge/1 \
+  -H "Authorization: Bearer <api_token>"
+
+curl -X DELETE http://localhost:8080/api/v1/knowledge/1 \
+  -H "Authorization: Bearer <api_token>"
+```
+
 ### 可观测性与管理
 - **Token 用量追踪** — 监控各供应商的 LLM 费用
 - **操作审计日志** — AOP 自动化日志记录
@@ -115,11 +150,13 @@ mind-vault/
 ├── backend/                          # Spring Boot 后端（JDK 21）
 │   ├── src/main/java/com/mindvault/
 │   │   ├── agent/                    # LLM 编排、故障转移、工具调用
+│   │   ├── auth/                     # 用户认证、登录、API Token、SessionManager、AuthFilter
 │   │   ├── backup/                   # pg_dump 备份/恢复
 │   │   ├── chat/                     # 聊天会话 + SSE 流式
-│   │   ├── common/                   # 异常处理、配置、过滤器、指标
+│   │   ├── common/                   # 异常处理、配置、过滤器、指标、处理器
 │   │   │   ├── annotation/           # @OperationLog 注解
-│   │   │   └── aspect/               # OperationLogAspect 切面
+│   │   │   ├── aspect/               # OperationLogAspect 切面
+│   │   │   └── handler/              # 自定义 MyBatis 类型处理器（JsonbStringTypeHandler）
 │   │   ├── content/                  # URL（Jsoup）和 PDF（PDFBox）解析
 │   │   ├── dailyreview/              # AI 生成的每日复盘报告
 │   │   ├── flashcard/                # 知识卡片增删改查 + 自动生成
@@ -131,7 +168,6 @@ mind-vault/
 │   │   └── writing/                  # AI 写作助手
 │   ├── src/main/resources/
 │   │   ├── application.yml           # 主配置文件
-│   │   ├── db/migration/             # 数据库初始化脚本
 │   │   └── logback-spring.xml        # 日志配置
 │   └── pom.xml
 ├── frontend/                         # Vue 3 单页应用

@@ -31,7 +31,7 @@ public class FlashCardService {
     private final FlashCardMapper mapper;
     private final ObjectMapper objectMapper;
 
-    private List<LlmEndpoint> modelEndpoints = List.of();
+    private volatile List<LlmEndpoint> modelEndpoints = List.of();
 
     public FlashCardService(ModelConfigService modelConfigService,
                             AgentConfig agentConfig,

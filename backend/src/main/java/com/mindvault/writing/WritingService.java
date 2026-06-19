@@ -30,7 +30,7 @@ public class WritingService {
     private final MetricsService metricsService;
     private final ObjectMapper objectMapper;
 
-    private List<LlmEndpoint> modelEndpoints = List.of();
+    private volatile List<LlmEndpoint> modelEndpoints = List.of();
 
     public WritingService(ModelConfigService modelConfigService,
                           AgentConfig agentConfig,

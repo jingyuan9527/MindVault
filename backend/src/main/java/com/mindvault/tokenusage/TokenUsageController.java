@@ -9,6 +9,7 @@ import java.util.Map;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.annotation.PostConstruct;
 
 @Tag(name = "Token 用量", description = "Token 消耗记录查询")
 @RestController
@@ -16,9 +17,15 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class TokenUsageController {
 
     private final TokenUsageService tokenUsageService;
+    private LocalDate defaultEnd;
 
     public TokenUsageController(TokenUsageService tokenUsageService) {
         this.tokenUsageService = tokenUsageService;
+    }
+
+    @PostConstruct
+    public void init() {
+        this.defaultEnd = LocalDate.now().plusDays(1);
     }
 
     @Operation(summary = "每日用量统计", description = "获取最近 N 天的 Token 消耗统计")
@@ -30,9 +37,10 @@ public class TokenUsageController {
     @Operation(summary = "总计用量统计", description = "获取指定时间范围内的 Token 消耗汇总统计")
     @GetMapping("/total")
     public ApiResponse<?> getTotalStats(
-            @Parameter(description = "开始日期（yyyy-MM-dd）") @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().minusDays(30).toString()}") String start,
-            @Parameter(description = "结束日期（yyyy-MM-dd）") @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().plusDays(1).toString()}") String end) {
-        return ApiResponse.success(tokenUsageService.getTotalStats(
-                LocalDate.parse(start), LocalDate.parse(end)));
+            @Parameter(description = "开始日期（yyyy-MM-dd）") @RequestParam(required = false) String start,
+            @Parameter(description = "结束日期（yyyy-MM-dd）") @RequestParam(required = false) String end) {
+        LocalDate startDate = start != null ? LocalDate.parse(start) : LocalDate.now().minusDays(30);
+        LocalDate endDate = end != null ? LocalDate.parse(end) : defaultEnd;
+        return ApiResponse.success(tokenUsageService.getTotalStats(startDate, endDate));
     }
 }

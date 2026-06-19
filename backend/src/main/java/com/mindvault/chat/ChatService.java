@@ -159,14 +159,18 @@ public class ChatService {
                         try {
                             emitter.send(SseEmitter.event().name("error").data(error));
                             emitter.complete();
-                        } catch (IOException ignored) {}
+                        } catch (IOException e) {
+                            log.warn("SSE 发送错误消息失败: {}", e.getMessage());
+                        }
                     }
                 });
-            } catch (Exception e) {
+            } catch (Exception ex) {
                 try {
-                    emitter.send(SseEmitter.event().name("error").data(e.getMessage()));
+                    emitter.send(SseEmitter.event().name("error").data(ex.getMessage()));
                     emitter.complete();
-                } catch (IOException ignored) {}
+                } catch (IOException ie) {
+                    log.warn("SSE 异常处理失败: {}", ie.getMessage());
+                }
             }
         });
 
@@ -201,7 +205,9 @@ public class ChatService {
                         source.put("title", knowledge.getTitle());
                         source.put("url", knowledge.getSourceUrl());
                         sources.add(source);
-                    } catch (Exception ignored) {}
+                    } catch (Exception e) {
+                        log.warn("提取来源失败: id={}", id, e);
+                    }
                 }
             }
             return objectMapper.writeValueAsString(sources);

@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('axios', () => {
+  const mockHandlers = { use: vi.fn() }
   const mockAxios = {
     create: vi.fn(() => mockAxios),
+    interceptors: { request: mockHandlers, response: mockHandlers },
     get: vi.fn(),
     post: vi.fn(),
     put: vi.fn(),

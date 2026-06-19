@@ -43,7 +43,7 @@ public class AgentService {
     private final MetricsService metricsService;
     private final ObjectMapper objectMapper;
 
-    private List<ModelEndpoint> modelEndpoints = List.of();
+    private volatile List<ModelEndpoint> modelEndpoints = List.of();
     private String systemPrompt;
     private static final double TOKEN_ESTIMATE_RATIO = 3.0;
 
@@ -265,7 +265,9 @@ public class AgentService {
                     if (content instanceof String s && !s.isEmpty()) return s;
                 }
                 if (data.containsKey("done") && Boolean.TRUE.equals(data.get("done"))) return null;
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                log.debug("Ollama 流式解析行失败: {}", e.getMessage());
+            }
             return null;
         }
 
@@ -283,7 +285,9 @@ public class AgentService {
                 Map<?, ?> delta = (Map<?, ?>) choice.get("delta");
                 if (delta != null && delta.get("content") instanceof String s && !s.isEmpty()) return s;
             }
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            log.debug("SSE 流式解析行失败: {}", e.getMessage());
+        }
         return null;
     }
 
@@ -338,7 +342,10 @@ public class AgentService {
             log.warn("所有模型失败，{} 秒后重试 ({}/2)", (retryCount + 1) * 2, retryCount + 1);
             try {
                 Thread.sleep((retryCount + 1L) * 2000);
-            } catch (InterruptedException ignored) {}
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("线程被中断", e);
+            }
             return callLlmWithRetry(messages, retryCount + 1);
         }
 

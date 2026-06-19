@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @TableName("model_config")
@@ -32,6 +33,7 @@ public class ModelConfig {
 
     @TableField("api_key")
     @Schema(description = "API 密钥")
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String apiKey;
 
     @TableField("base_url")

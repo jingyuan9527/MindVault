@@ -15,13 +15,16 @@ cd docker && docker compose up -d --build
 ## Commands
 | Task | Command |
 |------|---------|
-| Backend tests (189 total) | `cd backend && mvn test` |
+| Backend tests (220 total) | `cd backend && mvn test` |
 | Single test class | `cd backend && mvn test -Dtest=KnowledgeControllerTest` |
 | Frontend tests (53 total) | `cd frontend && npx vitest run` |
 | Build backend jar | `cd backend && mvn clean package -DskipTests` |
 | Build frontend | `cd frontend && npm run build` |
 | Docker rebuild+deploy | `cd docker && docker compose up -d --build` |
-| Restart backend with new jar | `docker compose exec backend rm -f /app/app.jar && docker cp ../backend/target/*.jar docker-backend-1:/app/app.jar && docker compose restart backend` |
+| Login as admin (Docker) | `curl -X POST localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' -d '{"username":"admin","password":"mindvault123"}'` |
+| Create API token | `curl -X POST localhost:8080/api/v1/auth/tokens -H 'Authorization: Bearer <session>' -H 'Content-Type: application/json' -d '{"name":"ext","expireDays":365}'` |
+| List API tokens | `curl localhost:8080/api/v1/auth/tokens -H 'Authorization: Bearer <token>'` |
+| Delete API token | `curl -X DELETE localhost:8080/api/v1/auth/tokens/{id} -H 'Authorization: Bearer <token>'` |
 
 ## Architecture
 - **Backend**: Spring Boot 3.2.5, JDK 21 (virtual threads), MyBatis-Plus (NOT JPA)
@@ -36,6 +39,7 @@ cd docker && docker compose up -d --build
 | `knowledge` | CRUD + tags + search + export/import |
 | `chat` | Chat sessions, messages, SSE streaming |
 | `agent` | LLM calling with failover, tool execution |
+| `auth` | User auth, login, API tokens, session manager, auth filter, admin initializer |
 | `model` | Model config CRUD (OpenAI/DeepSeek/Alibaba/Ollama) |
 | `content` | URL (Jsoup) and PDF (PDFBox) parsing → markdown |
 | `review` | SM-2 spaced repetition scheduling |
@@ -44,7 +48,7 @@ cd docker && docker compose up -d --build
 | `backup` | DB backup/restore via pg_dump |
 | `tokenusage` | Token usage tracking |
 | `operationlog` | Audit log |
-| `common` | Global exception handler, filters, health endpoint, metrics, actuator, AOP operation log |
+| `common` | Global exception handler, filters, health endpoint, metrics, actuator, AOP operation log, custom type handlers |
 | `annotation` | @OperationLog custom annotation |
 | `aspect` | OperationLogAspect — auto-logging around @OperationLog methods |
 
@@ -53,13 +57,15 @@ cd docker && docker compose up -d --build
 - **Integration tests**: Use `application-test.yml` with H2 in PostgreSQL mode. Requires `MINDVAULT_TEST_API_KEY` env var for model API tests (auto-skipped if missing).
 - **Secrets**: `application-test.yml` and `application-local.yml` are gitignored. Template at `application-test.yml.example`.
 - **MyBatis-Plus**: Entity fields use `@TableField`, mappers extend `BaseMapper`. Custom SQL via `@Select` on mapper interface.
-- **JSONB columns**: Stored as String in Java, need `::jsonb` cast in raw SQL inserts. Future: add `@TableField(typeHandler = JacksonTypeHandler.class)`.
+- **JSONB columns**: Stored as String in Java, use `@TableField(typeHandler = JsonbStringTypeHandler.class)` on the field. Custom handler at `common.handler.JsonbStringTypeHandler` — wraps value in PGobject with type `jsonb` for write, reads as raw String from ResultSet.
 - **TIMESTAMPTZ** → `TIMESTAMP`: All timestamp columns use `TIMESTAMP` (no timezone) to match Java `LocalDateTime`.
+- **Lombok**: Version pinned to 1.18.38 via `<lombok.version>` property. Spring Boot 3.2.5's default 1.18.32 is incompatible with JDK 21.0.11+.
 
 ## Testing Notes
 - `ModelApiIntegrationTest` runs real API calls against `agnes-2.0-flash` (~29s for 5 tests). Skipped when env var absent.
 - Frontend tests use `happy-dom` environment, `@vue/test-utils`, and `vitest`.
 - Test data SQL (10 knowledge entries) in init script — rerun manually if DB is reset.
+- Auth is disabled in tests via `mindvault.auth.enabled=false` in `src/test/resources/application.properties`.
 
 ## Feature Progress
 
@@ -78,11 +84,13 @@ cd docker && docker compose up -d --build
 | 数据备份 Backup | 备份 + 列表 + 下载 + 清理 | ✅ | ✅ | 85% |
 | Agent | LLM failover + 熔断 + 工具调用 | ❌ | ✅ | 3% |
 | 内容解析 Content | Jsoup 网页 + PDFBox PDF | ❌ | ✅ | 13% |
-| **Total** | **12 模块 / 54 接口** | **10/12** | **12/12** | **43%** |
+| 认证 Auth | 登录 + Token 管理 + 密码修改 | ✅ | ✅ | — |
+| **Total** | **13 模块 / 54 接口** | **11/13** | **13/13** | **43%** |
 
-### Frontend (9 routes)
+### Frontend (10 routes)
 | Route | View | Responsive | Tests |
 |-------|------|:-:|:-:|
+| `/login` | 登录页面 | ✅ | ❌ |
 | `/` | 知识库列表 + 搜索 + 导入导出 | ✅ | ✅ |
 | `/chat` | AI 对话 | ✅ | ❌ |
 | `/review` | 复习计划 + 执行 SM-2 | ✅ | ❌ |
@@ -119,3 +127,4 @@ cd docker && docker compose up -d --build
 - Dockerfiles: `Dockerfile.backend` (multi-stage Maven build), `Dockerfile.frontend` (node build → nginx)
 - Networks: `mindvault` bridge
 - Health checks: DB (`pg_isready`), Backend (`GET /api/v1/system/health`)
+- Admin user auto-created on first boot via env vars: `MINDVAULT_ADMIN_USERNAME` / `MINDVAULT_ADMIN_PASSWORD`

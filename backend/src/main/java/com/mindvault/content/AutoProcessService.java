@@ -32,7 +32,7 @@ public class AutoProcessService {
     private final KnowledgeService knowledgeService;
     private final ObjectMapper objectMapper;
 
-    private List<ModelEndpoint> modelEndpoints = List.of();
+    private volatile List<ModelEndpoint> modelEndpoints = List.of();
 
     public AutoProcessService(ModelConfigService modelConfigService,
                               AgentConfig agentConfig,

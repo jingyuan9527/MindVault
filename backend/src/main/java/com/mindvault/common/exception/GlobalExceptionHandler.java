@@ -52,7 +52,7 @@ public class GlobalExceptionHandler {
         if (metricsService != null) {
             metricsService.recordApiError("UNKNOWN", "runtime", 500);
         }
-        return ApiResponse.error(500, "服务器内部错误: " + e.getMessage());
+        return ApiResponse.error(500, "服务器内部错误");
     }
 
     @ExceptionHandler(Exception.class)

@@ -1,7 +1,5 @@
-import axios from 'axios'
-
-const api = axios.create({ baseURL: '/api/v1' })
+import client from './client'
 
 export const writingApi = {
-  generate: (topic, style, keywords) => api.post('/writing/generate', { topic, style, keywords })
+  generate: (data) => client.post('/writing/generate', data)
 }

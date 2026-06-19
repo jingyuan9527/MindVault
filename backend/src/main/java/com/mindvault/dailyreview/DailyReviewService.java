@@ -37,7 +37,7 @@ public class DailyReviewService {
     private final MetricsService metricsService;
     private final ObjectMapper objectMapper;
 
-    private List<LlmEndpoint> modelEndpoints = List.of();
+    private volatile List<LlmEndpoint> modelEndpoints = List.of();
 
     public DailyReviewService(ModelConfigService modelConfigService,
                               AgentConfig agentConfig,

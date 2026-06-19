@@ -37,6 +37,41 @@ Whether you're collecting web bookmarks, processing PDF documents, or writing da
 - **Daily Review** — AI-generated daily study summaries
 - **Writing Assistant** — Article generation from topics/prompts
 
+### Authentication & API
+- **User accounts** — Password-based login with BCrypt hashing
+- **Session management** — In-memory session tokens with 24h TTL
+- **API Tokens** — UUID-based long-lived tokens for external integrations
+- **Admin auto-provisioning** — First-run admin creation via `MINDVAULT_ADMIN_USERNAME` / `MINDVAULT_ADMIN_PASSWORD` env vars
+
+### External API (Token-based)
+All knowledge endpoints accept Bearer API tokens for automated access:
+
+```bash
+# Generate a token (requires prior login)
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"mindvault123"}'
+# → get session token
+
+curl -X POST http://localhost:8080/api/v1/auth/tokens \
+  -H "Authorization: Bearer <session_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-app","expireDays":365}'
+# → get API token
+
+# Use API token for CRUD
+curl -X POST http://localhost:8080/api/v1/knowledge \
+  -H "Authorization: Bearer <api_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"My Note","content":"Hello","tags":"[\"tag1\"]"}'
+
+curl -X GET http://localhost:8080/api/v1/knowledge/1 \
+  -H "Authorization: Bearer <api_token>"
+
+curl -X DELETE http://localhost:8080/api/v1/knowledge/1 \
+  -H "Authorization: Bearer <api_token>"
+```
+
 ### Observability & Management
 - **Token usage tracking** — Monitor per-provider LLM costs
 - **Operation audit log** — AOP-based automatic logging
@@ -116,11 +151,13 @@ mind-vault/
 ├── backend/                          # Spring Boot backend (JDK 21)
 │   ├── src/main/java/com/mindvault/
 │   │   ├── agent/                    # LLM orchestration, failover, tools
+│   │   ├── auth/                     # User auth, login, API tokens, SessionManager, AuthFilter
 │   │   ├── backup/                   # pg_dump backup/restore
 │   │   ├── chat/                     # Chat sessions + SSE streaming
-│   │   ├── common/                   # Exception handler, config, filter, metrics
+│   │   ├── common/                   # Exception handler, config, filter, metrics, handlers
 │   │   │   ├── annotation/           # @OperationLog annotation
-│   │   │   └── aspect/               # OperationLogAspect
+│   │   │   ├── aspect/               # OperationLogAspect
+│   │   │   └── handler/              # Custom MyBatis type handlers (JsonbStringTypeHandler)
 │   │   ├── content/                  # URL (Jsoup) and PDF (PDFBox) parsing
 │   │   ├── dailyreview/              # AI-generated daily review reports
 │   │   ├── flashcard/                # Flashcard CRUD + auto-generation
@@ -132,7 +169,6 @@ mind-vault/
 │   │   └── writing/                  # AI writing assistant
 │   ├── src/main/resources/
 │   │   ├── application.yml           # Main config
-│   │   ├── db/migration/             # Database initialization scripts
 │   │   └── logback-spring.xml        # Logging config
 │   └── pom.xml
 ├── frontend/                         # Vue 3 SPA
