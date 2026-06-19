@@ -7,6 +7,7 @@ import com.mindvault.content.AutoProcessService;
 import com.mindvault.knowledge.dto.ImportPreview;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.operationlog.OperationLogService;
+import com.mindvault.relation.KnowledgeRelationMapper;
 import com.mindvault.review.ReviewService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,7 @@ class KnowledgeServiceTest {
     @Mock private AutoProcessService autoProcessService;
     @Mock private ReviewService reviewService;
     @Mock private MetricsService metricsService;
+    @Mock private KnowledgeRelationMapper relationMapper;
 
     private KnowledgeService service;
     private ObjectMapper objectMapper;
@@ -42,7 +44,7 @@ class KnowledgeServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new KnowledgeService(mapper, operationLogService, autoProcessService, reviewService, null, metricsService);
+        service = new KnowledgeService(mapper, operationLogService, autoProcessService, reviewService, null, metricsService, relationMapper);
         objectMapper = new ObjectMapper();
     }
 
@@ -53,6 +55,8 @@ class KnowledgeServiceTest {
         k.setContent(content);
         k.setContentType("TEXT");
         k.setTags(tags);
+        k.setUserTags("[]");
+        k.setAutoProcessStatus("PENDING");
         k.setCreatedAt(LocalDateTime.now());
         k.setUpdatedAt(LocalDateTime.now());
         return k;
@@ -67,6 +71,7 @@ class KnowledgeServiceTest {
 
         verify(mapper).insert(knowledgeCaptor.capture());
         assertEquals("Test Title", knowledgeCaptor.getValue().getTitle());
+        assertEquals("PENDING", knowledgeCaptor.getValue().getAutoProcessStatus());
         assertNotNull(knowledgeCaptor.getValue().getCreatedAt());
         verify(operationLogService).log(eq("KNOWLEDGE"), eq("ADD"), any(), contains("Test Title"));
         verify(reviewService).scheduleReview(any());
@@ -103,35 +108,50 @@ class KnowledgeServiceTest {
     }
 
     @Test
-    void updateKnowledge_shouldUpdateFields() {
-        Knowledge existing = createSampleKnowledge(1L, "Old Title", "Old Content", "[]");
-        existing.setTags("[\"old\"]");
+    void updateKnowledge_shouldOnlyUpdateUserFields() {
+        Knowledge existing = createSampleKnowledge(1L, "Old Title", "Old Content", "[\"old\"]");
+        existing.setAiTitle("AI Title");
         when(mapper.selectById(1L)).thenReturn(existing);
 
         Knowledge updated = new Knowledge();
         updated.setTitle("New Title");
         updated.setContent("New Content");
         updated.setContentType("MARKDOWN");
-        updated.setTags("[\"new\"]");
+        updated.setUserTags("[\"new\"]");
 
         Knowledge result = service.updateKnowledge(1L, updated);
 
         assertEquals("New Title", result.getTitle());
         assertEquals("New Content", result.getContent());
         assertEquals("MARKDOWN", result.getContentType());
-        assertEquals("[\"new\"]", result.getTags());
+        assertEquals("[\"new\"]", result.getUserTags());
+        assertEquals("AI Title", result.getAiTitle());
         verify(mapper).updateById(existing);
         verify(operationLogService).log(eq("KNOWLEDGE"), eq("UPDATE"), eq(1L), anyString());
     }
 
     @Test
-    void deleteKnowledge_shouldDeleteAndLog() {
+    void updateAiFields_shouldOnlyUpdateAiFields() {
+        Knowledge existing = createSampleKnowledge(1L, "User Title", "Content", "[]");
+        when(mapper.selectById(1L)).thenReturn(existing);
+
+        Knowledge result = service.updateAiFields(1L, "AI Generated Title", "[\"ai-tag\"]");
+
+        assertEquals("AI Generated Title", result.getAiTitle());
+        assertEquals("[\"ai-tag\"]", result.getTags());
+        assertEquals("User Title", result.getTitle());
+        verify(mapper).updateById(existing);
+    }
+
+    @Test
+    void deleteKnowledge_shouldDeleteAndRemoveRelations() {
         Knowledge existing = createSampleKnowledge(1L, "Title", "Content", "[]");
         when(mapper.selectById(1L)).thenReturn(existing);
 
         service.deleteKnowledge(1L);
 
         verify(mapper).deleteById(1L);
+        verify(relationMapper).deleteByKnowledgeId(1L);
         verify(operationLogService).log(eq("KNOWLEDGE"), eq("DELETE"), eq(1L), anyString());
     }
 
@@ -146,13 +166,14 @@ class KnowledgeServiceTest {
 
         verify(mapper).deleteById(1L);
         verify(mapper).deleteById(2L);
+        verify(relationMapper, times(2)).deleteByKnowledgeId(any());
         verify(operationLogService, times(2)).log(eq("KNOWLEDGE"), eq("DELETE"), any(), anyString());
     }
 
     @Test
-    void batchTag_shouldAddTagToAll() {
+    void batchTag_shouldAddTagToUserTags() {
         Knowledge k1 = createSampleKnowledge(1L, "A", "a", "[]");
-        k1.setTags("[\"existing\"]");
+        k1.setUserTags("[\"existing\"]");
         Knowledge k2 = createSampleKnowledge(2L, "B", "b", "[]");
         when(mapper.selectById(1L)).thenReturn(k1);
         when(mapper.selectById(2L)).thenReturn(k2);
@@ -160,14 +181,15 @@ class KnowledgeServiceTest {
         service.batchTag(List.of(1L, 2L), "new-tag");
 
         verify(mapper, times(2)).updateById(any(Knowledge.class));
-        assertTrue(k1.getTags().contains("new-tag"));
-        assertTrue(k1.getTags().contains("existing"));
-        assertTrue(k2.getTags().contains("new-tag"));
+        assertTrue(k1.getUserTags().contains("new-tag"));
+        assertTrue(k1.getUserTags().contains("existing"));
+        assertTrue(k2.getUserTags().contains("new-tag"));
     }
 
     @Test
     void batchTag_shouldSkipDuplicateTags() {
         Knowledge k1 = createSampleKnowledge(1L, "A", "a", "[\"tag1\"]");
+        k1.setUserTags("[\"tag1\"]");
         when(mapper.selectById(1L)).thenReturn(k1);
 
         service.batchTag(List.of(1L), "tag1");
@@ -185,7 +207,7 @@ class KnowledgeServiceTest {
 
         Map<String, Object> data = objectMapper.readValue(json, Map.class);
         assertEquals(2, data.get("count"));
-        assertEquals("0.2.0", data.get("version"));
+        assertEquals("0.4.0", data.get("version"));
     }
 
     @Test
@@ -198,17 +220,30 @@ class KnowledgeServiceTest {
     }
 
     @Test
-    void updateTags_shouldUpdate() {
+    void updateTags_shouldUpdateUserTags() {
         Knowledge existing = createSampleKnowledge(1L, "Title", "Content", "[]");
         when(mapper.selectById(1L)).thenReturn(existing);
 
         service.updateTags(1L, List.of("tag1", "tag2"));
 
         verify(mapper).updateById(knowledgeCaptor.capture());
-        String tags = knowledgeCaptor.getValue().getTags();
+        String tags = knowledgeCaptor.getValue().getUserTags();
         assertTrue(tags.contains("tag1"));
         assertTrue(tags.contains("tag2"));
         verify(operationLogService).log(eq("KNOWLEDGE"), eq("TAG"), eq(1L), anyString());
+    }
+
+    @Test
+    void displayTitle_shouldUseAiTitleWhenAvailable() {
+        Knowledge k = createSampleKnowledge(1L, "User Title", "Content", "[]");
+        k.setAiTitle("AI Title");
+        assertEquals("AI Title", service.displayTitle(k));
+    }
+
+    @Test
+    void displayTitle_shouldFallbackToUserTitle() {
+        Knowledge k = createSampleKnowledge(1L, "User Title", "Content", "[]");
+        assertEquals("User Title", service.displayTitle(k));
     }
 
     @Test
@@ -252,10 +287,29 @@ class KnowledgeServiceTest {
     }
 
     @Test
+    void reprocessKnowledge_shouldResetAndTrigger() {
+        Knowledge existing = createSampleKnowledge(1L, "Title", "Content", "[\"old\"]");
+        existing.setAiTitle("Old AI Title");
+        existing.setAutoProcessStatus("COMPLETED");
+        when(mapper.selectById(1L)).thenReturn(existing);
+
+        service.reprocessKnowledge(1L);
+
+        ArgumentCaptor<Knowledge> captor = ArgumentCaptor.forClass(Knowledge.class);
+        verify(mapper, times(1)).updateById(captor.capture());
+        Knowledge updated = captor.getValue();
+        assertEquals("PENDING", updated.getAutoProcessStatus());
+        assertNull(updated.getAiTitle());
+        assertEquals("[]", updated.getTags());
+        verify(autoProcessService).autoProcessAsync(eq(1L), eq("Title"), eq("Content"));
+        verify(operationLogService).log(eq("KNOWLEDGE"), eq("REPROCESS"), eq(1L), anyString());
+    }
+
+    @Test
     void previewImport_shouldDetectConflicts() throws Exception {
         String json = """
                 {
-                    "version": "0.2.0",
+                    "version": "0.4.0",
                     "items": [
                         {"title": "Existing Article", "content": "hello"},
                         {"title": "New Article", "content": "world"}
@@ -354,26 +408,6 @@ class KnowledgeServiceTest {
     }
 
     @Test
-    void getAllTags_shouldAggregate() {
-        when(mapper.aggregateTags()).thenReturn(List.of(
-                Map.of("name", "java", "count", 5L),
-                Map.of("name", "spring", "count", 3L)
-        ));
-
-        List<Map<String, Object>> tags = service.getAllTags();
-
-        assertEquals(2, tags.size());
-        assertEquals("java", tags.get(0).get("name"));
-        assertEquals(5L, tags.get(0).get("count"));
-    }
-
-    @Test
-    void searchByKeyword_shouldDelegate() {
-        service.searchByKeyword("test", 5);
-        verify(mapper).keywordSearch("test", 5);
-    }
-
-    @Test
     void updateEmbedding_shouldUpdateWhenExists() {
         Knowledge k = createSampleKnowledge(1L, "T", "C", "[]");
         when(mapper.selectById(1L)).thenReturn(k);
@@ -391,6 +425,20 @@ class KnowledgeServiceTest {
         service.updateEmbedding(99L, "[0.1,0.2]");
 
         verify(mapper, never()).updateById(any(Knowledge.class));
+    }
+
+    @Test
+    void getAllTags_shouldAggregate() {
+        when(mapper.aggregateTags()).thenReturn(List.of(
+                Map.of("name", "java", "count", 5L),
+                Map.of("name", "spring", "count", 3L)
+        ));
+
+        List<Map<String, Object>> tags = service.getAllTags();
+
+        assertEquals(2, tags.size());
+        assertEquals("java", tags.get(0).get("name"));
+        assertEquals(5L, tags.get(0).get("count"));
     }
 
     @Test

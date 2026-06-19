@@ -2,23 +2,25 @@ package com.mindvault.content;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mindvault.auto.AutoProcessLogMapper;
+import com.mindvault.auto.entity.AutoProcessLog;
 import com.mindvault.common.service.LlmFailoverService;
 import com.mindvault.knowledge.KnowledgeService;
-import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class AutoProcessService {
@@ -28,46 +30,78 @@ public class AutoProcessService {
     private final ModelConfigService modelConfigService;
     private final LlmFailoverService llmFailoverService;
     private final KnowledgeService knowledgeService;
+    private final AutoProcessLogMapper logMapper;
     private final ObjectMapper objectMapper;
 
     public AutoProcessService(ModelConfigService modelConfigService,
                               LlmFailoverService llmFailoverService,
-                              @Lazy KnowledgeService knowledgeService) {
+                              KnowledgeService knowledgeService,
+                              AutoProcessLogMapper logMapper) {
         this.modelConfigService = modelConfigService;
         this.llmFailoverService = llmFailoverService;
         this.knowledgeService = knowledgeService;
+        this.logMapper = logMapper;
         this.objectMapper = new ObjectMapper();
     }
 
-    public void autoProcess(Long knowledgeId, String title, String content) {
+    @Async
+    public void autoProcessAsync(Long knowledgeId, String userTitle, String content) {
+        autoProcess(knowledgeId, userTitle, content);
+    }
+
+    public void autoProcess(Long knowledgeId, String userTitle, String content) {
         List<ModelConfig> models = modelConfigService.getAvailableChatModels();
         if (models.isEmpty()) {
             log.warn("未配置主模型，跳过自动处理: knowledgeId={}", knowledgeId);
             return;
         }
 
-        String summary = generateSummary(title, content, models);
-        String tagsJson = generateTags(title, content, models);
+        LocalDateTime startedAt = LocalDateTime.now();
+        String aiTitle = generateAiTitle(userTitle, content, models);
+        String tagsJson = generateTags(userTitle, content, models);
+        String summary = generateSummary(userTitle, content, models);
 
-        if (summary != null || tagsJson != null) {
+        if (aiTitle != null || tagsJson != null || summary != null) {
             try {
-                Knowledge k = knowledgeService.getById(knowledgeId);
-                if (summary != null) k.setSummary(summary);
-                if (tagsJson != null) k.setTags(tagsJson);
-                knowledgeService.updateKnowledge(knowledgeId, k);
-                log.info("自动处理完成: knowledgeId={}", knowledgeId);
+                if (aiTitle != null) {
+                    knowledgeService.updateAiFields(knowledgeId, aiTitle, tagsJson);
+                } else if (tagsJson != null) {
+                    knowledgeService.updateAiFields(knowledgeId, null, tagsJson);
+                }
+                if (summary != null) {
+                    var k = knowledgeService.getById(knowledgeId);
+                    k.setSummary(summary);
+                    knowledgeService.updateKnowledge(knowledgeId, k);
+                }
+                knowledgeService.updateAutoProcessStatus(knowledgeId, "TITLE_TAG_DONE");
+                log.info("R1 自动处理完成: knowledgeId={}, aiTitle={}", knowledgeId, aiTitle);
+                saveLog(knowledgeId, "R1_TITLE_TAG", "SUCCESS", startedAt,
+                        "aiTitle=" + aiTitle + ", tags=" + tagsJson + ", summary=" + (summary != null ? "ok" : "skip"),
+                        0, 0, null);
             } catch (Exception e) {
-                log.error("自动处理保存失败: {}", e.getMessage());
+                log.error("R1 自动处理保存失败: {}", e.getMessage());
+                saveLog(knowledgeId, "R1_TITLE_TAG", "FAILED", startedAt, null, 0, 0, e.getMessage());
             }
         }
 
-        generateEmbedding(knowledgeId, title, content);
+        generateEmbedding(knowledgeId, userTitle, content);
     }
 
-    private String generateSummary(String title, String content, List<ModelConfig> models) {
+    private String generateAiTitle(String userTitle, String content, List<ModelConfig> models) {
+        try {
+            String prompt = "请根据以下内容生成一个简洁准确的中文标题（10-20字），只返回标题内容，不要额外说明。\n\n"
+                    + "原始标题: " + userTitle + "\n\n内容: " + LlmFailoverService.truncate(content, 2000);
+            return llmFailoverService.call(models, new LlmFailoverService.LlmCallOptions(prompt, 0.3, 100, false, null));
+        } catch (Exception e) {
+            log.warn("生成 AI 标题失败: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    private String generateSummary(String userTitle, String content, List<ModelConfig> models) {
         try {
             String prompt = "请为以下内容生成一段简洁的中文摘要（50-100字），只返回摘要内容，不要额外说明。\n\n"
-                    + "标题: " + title + "\n\n内容: " + LlmFailoverService.truncate(content, 2000);
+                    + "标题: " + userTitle + "\n\n内容: " + LlmFailoverService.truncate(content, 2000);
             return llmFailoverService.call(models, new LlmFailoverService.LlmCallOptions(prompt, 0.3, 300, false, null));
         } catch (Exception e) {
             log.warn("生成摘要失败: {}", e.getMessage());
@@ -75,10 +109,10 @@ public class AutoProcessService {
         return null;
     }
 
-    private String generateTags(String title, String content, List<ModelConfig> models) {
+    private String generateTags(String userTitle, String content, List<ModelConfig> models) {
         try {
             String prompt = "请为以下内容生成3-5个中文标签，以JSON数组格式返回，例如 [\"标签1\", \"标签2\", \"标签3\"]。\n"
-                    + "只返回JSON数组，不要额外说明。\n\n标题: " + title + "\n\n内容: " + LlmFailoverService.truncate(content, 2000);
+                    + "只返回JSON数组，不要额外说明。\n\n标题: " + userTitle + "\n\n内容: " + LlmFailoverService.truncate(content, 2000);
             String result = llmFailoverService.call(models, new LlmFailoverService.LlmCallOptions(prompt, 0.3, 300, false, null));
             if (result != null) {
                 String cleaned = result.trim();
@@ -92,12 +126,12 @@ public class AutoProcessService {
         return null;
     }
 
-    private void generateEmbedding(Long knowledgeId, String title, String content) {
+    private void generateEmbedding(Long knowledgeId, String userTitle, String content) {
         List<ModelConfig> embeddingModels = modelConfigService.getAvailableEmbeddingModels();
         if (embeddingModels.isEmpty()) return;
 
         ModelConfig embModel = embeddingModels.get(0);
-        String text = (title + "\n" + content);
+        String text = (userTitle + "\n" + content);
         if (text.length() > 8000) text = text.substring(0, 8000);
 
         try {
@@ -125,7 +159,7 @@ public class AutoProcessService {
 
             List<Double> vector = parseEmbeddingResponse(embModel.getProvider(), responseJson);
             if (vector != null && !vector.isEmpty()) {
-                String vectorStr = "[" + vector.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(",")) + "]";
+                String vectorStr = "[" + vector.stream().map(String::valueOf).collect(Collectors.joining(",")) + "]";
                 knowledgeService.updateEmbedding(knowledgeId, vectorStr);
                 log.info("嵌入向量生成完成: knowledgeId={}, dim={}", knowledgeId, vector.size());
             }
@@ -162,5 +196,25 @@ public class AutoProcessService {
             log.warn("解析嵌入向量响应失败: {}", e.getMessage());
         }
         return null;
+    }
+
+    private void saveLog(Long knowledgeId, String round, String status, LocalDateTime startedAt,
+                         String resultSummary, int tokens, int durationMs, String errorMessage) {
+        try {
+            AutoProcessLog l = new AutoProcessLog();
+            l.setKnowledgeId(knowledgeId);
+            l.setRound(round);
+            l.setStatus(status);
+            l.setResultSummary(resultSummary);
+            l.setLlmTokens(tokens);
+            l.setLlmDurationMs(durationMs);
+            l.setErrorMessage(errorMessage);
+            l.setStartedAt(startedAt);
+            l.setCompletedAt(LocalDateTime.now());
+            l.setCreatedAt(LocalDateTime.now());
+            logMapper.insert(l);
+        } catch (Exception e) {
+            log.warn("保存自动处理日志失败: {}", e.getMessage());
+        }
     }
 }

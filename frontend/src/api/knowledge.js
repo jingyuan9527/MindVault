@@ -28,5 +28,7 @@ export const knowledgeApi = {
   getTags: () => client.get('/knowledge/tags'),
   batchDelete: (ids) => client.post('/knowledge/batch/delete', ids),
   batchTag: (ids, tag) => client.post('/knowledge/batch/tag', { ids, tag }),
-  batchExport: (ids) => client.post('/knowledge/batch/export', ids, { responseType: 'blob' })
+  batchExport: (ids) => client.post('/knowledge/batch/export', ids, { responseType: 'blob' }),
+  reprocess: (id) => client.post(`/knowledge/${id}/reprocess`),
+  getProcessLogs: (id) => client.get(`/knowledge/${id}/process-logs`)
 }

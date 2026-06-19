@@ -15,6 +15,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.mindvault.auto.AutoProcessLogMapper;
+import com.mindvault.auto.entity.AutoProcessLog;
 import com.mindvault.knowledge.dto.ImportPreview;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -29,15 +31,18 @@ public class KnowledgeController {
     private final ContentParserService contentParserService;
     private final KnowledgeAssociationService associationService;
     private final SearchEnhanceService searchEnhanceService;
+    private final AutoProcessLogMapper autoProcessLogMapper;
 
     public KnowledgeController(KnowledgeService knowledgeService,
                                 ContentParserService contentParserService,
                                 KnowledgeAssociationService associationService,
-                                SearchEnhanceService searchEnhanceService) {
+                                SearchEnhanceService searchEnhanceService,
+                                AutoProcessLogMapper autoProcessLogMapper) {
         this.knowledgeService = knowledgeService;
         this.contentParserService = contentParserService;
         this.associationService = associationService;
         this.searchEnhanceService = searchEnhanceService;
+        this.autoProcessLogMapper = autoProcessLogMapper;
     }
 
     @OperationLog(module = "knowledge", action = "create", description = "新增知识")
@@ -116,6 +121,20 @@ public class KnowledgeController {
     public ApiResponse<Void> deleteKnowledge(@Parameter(description = "知识 ID") @PathVariable Long id) {
         knowledgeService.deleteKnowledge(id);
         return ApiResponse.success(null);
+    }
+
+    @OperationLog(module = "knowledge", action = "reprocess", description = "重新 AI 处理")
+    @Operation(summary = "重新 AI 处理", description = "重置 AI 字段并重新执行自动处理流水线")
+    @PostMapping("/{id}/reprocess")
+    public ApiResponse<Void> reprocessKnowledge(@Parameter(description = "知识 ID") @PathVariable Long id) {
+        knowledgeService.reprocessKnowledge(id);
+        return ApiResponse.success(null);
+    }
+
+    @Operation(summary = "处理日志", description = "获取知识的 AI 自动处理日志")
+    @GetMapping("/{id}/process-logs")
+    public ApiResponse<List<AutoProcessLog>> getProcessLogs(@Parameter(description = "知识 ID") @PathVariable Long id) {
+        return ApiResponse.success(autoProcessLogMapper.findByKnowledgeId(id));
     }
 
     @Operation(summary = "解析 URL", description = "从网页 URL 提取内容并创建知识")

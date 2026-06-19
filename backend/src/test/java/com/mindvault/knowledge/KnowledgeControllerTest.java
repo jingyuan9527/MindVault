@@ -1,7 +1,7 @@
 package com.mindvault.knowledge;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mindvault.common.dto.ApiResponse;
+import com.mindvault.auto.AutoProcessLogMapper;
 import com.mindvault.content.ContentParserService;
 import com.mindvault.knowledge.dto.ImportPreview;
 import com.mindvault.knowledge.dto.ImportPreview.ConflictItem;
@@ -33,6 +33,7 @@ class KnowledgeControllerTest {
     @MockBean private ContentParserService contentParserService;
     @MockBean private KnowledgeAssociationService associationService;
     @MockBean private SearchEnhanceService searchEnhanceService;
+    @MockBean private AutoProcessLogMapper autoProcessLogMapper;
 
     private Knowledge createSampleKnowledge(Long id) {
         Knowledge k = new Knowledge();
@@ -41,6 +42,8 @@ class KnowledgeControllerTest {
         k.setContent("Content " + id);
         k.setContentType("TEXT");
         k.setTags("[]");
+        k.setUserTags("[]");
+        k.setAutoProcessStatus("PENDING");
         k.setCreatedAt(LocalDateTime.now());
         k.setUpdatedAt(LocalDateTime.now());
         return k;
@@ -103,6 +106,22 @@ class KnowledgeControllerTest {
         doNothing().when(knowledgeService).deleteKnowledge(1L);
 
         mockMvc.perform(delete("/api/v1/knowledge/1"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void reprocessKnowledge_shouldSucceed() throws Exception {
+        doNothing().when(knowledgeService).reprocessKnowledge(1L);
+
+        mockMvc.perform(post("/api/v1/knowledge/1/reprocess"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getProcessLogs_shouldReturn() throws Exception {
+        when(autoProcessLogMapper.findByKnowledgeId(1L)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/knowledge/1/process-logs"))
                 .andExpect(status().isOk());
     }
 

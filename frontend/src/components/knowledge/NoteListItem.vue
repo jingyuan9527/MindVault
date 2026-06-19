@@ -8,14 +8,15 @@
         :style="{ accentColor: 'var(--color-sage)' }" />
     </div>
     <div class="flex-1 min-w-0">
-      <p class="text-sm font-medium truncate" style="color: var(--color-text)">{{ note.title }}</p>
+      <p class="text-sm font-medium truncate" style="color: var(--color-text)">{{ note.aiTitle || note.title }}</p>
+      <p v-if="note.aiTitle && note.title" class="text-xs truncate" style="color: var(--color-text-secondary)">原标题: {{ note.title }}</p>
       <div class="text-xs mt-0.5 truncate" style="color: var(--color-warm-gray)">
         <ContentRenderer :content="note.summary || note.content" preview />
       </div>
     </div>
-    <div class="flex flex-wrap gap-1 mx-3 max-w-[200px]" v-if="parsedTags.length">
-      <router-link v-for="tag in parsedTags.slice(0, 3)" :key="tag" :to="{ path: '/', query: { tag } }" @click.stop class="tag-pill text-xs">#{{ tag }}</router-link>
-      <span v-if="parsedTags.length > 3" class="text-xs" style="color: var(--color-text-secondary)">+{{ parsedTags.length - 3 }}</span>
+    <div class="flex flex-wrap gap-1 mx-3 max-w-[200px]" v-if="mergedTags.length">
+      <router-link v-for="tag in mergedTags.slice(0, 3)" :key="tag" :to="{ path: '/', query: { tag } }" @click.stop class="tag-pill text-xs">#{{ tag }}</router-link>
+      <span v-if="mergedTags.length > 3" class="text-xs" style="color: var(--color-text-secondary)">+{{ mergedTags.length - 3 }}</span>
     </div>
     <span class="text-xs shrink-0" style="color: var(--color-text-secondary)">{{ formatTime(note.createdAt) }}</span>
   </div>
@@ -34,6 +35,16 @@ defineEmits(['click', 'toggle-select'])
 const parsedTags = computed(() => {
   if (!props.note.tags) return []
   try { return JSON.parse(props.note.tags) } catch { return [] }
+})
+
+const mergedTags = computed(() => {
+  const ai = parsedTags.value
+  let user = []
+  if (props.note.userTags) {
+    try { user = JSON.parse(props.note.userTags) } catch {}
+  }
+  const merged = new Set([...ai, ...user])
+  return [...merged]
 })
 
 function formatTime(dateStr) {

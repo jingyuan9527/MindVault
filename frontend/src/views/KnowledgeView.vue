@@ -137,14 +137,14 @@
               class="w-3.5 h-3.5 rounded cursor-pointer opacity-60 hover:opacity-100 transition-opacity"
               :style="{ accentColor: 'var(--color-sage)' }" />
           </div>
-          <div class="card p-3 cursor-pointer" @click="openDetail(note)">
-            <p class="text-sm font-medium truncate" style="color: var(--color-text)">{{ note.title }}</p>
-            <div class="text-xs mt-1" style="color: var(--color-warm-gray)">
-              <ContentRenderer :content="note.summary || note.content" preview class="line-clamp-2" />
-            </div>
-            <div class="flex flex-wrap gap-1 mt-2" v-if="gridTags(note).length">
-              <span v-for="tag in gridTags(note).slice(0, 2)" :key="tag" class="tag-pill text-xs">{{ tag }}</span>
-            </div>
+            <div class="card p-3 cursor-pointer" @click="openDetail(note)">
+              <p class="text-sm font-medium truncate" style="color: var(--color-text)">{{ note.aiTitle || note.title }}</p>
+              <div class="text-xs mt-1" style="color: var(--color-warm-gray)">
+                <ContentRenderer :content="note.summary || note.content" preview class="line-clamp-2" />
+              </div>
+              <div class="flex flex-wrap gap-1 mt-2" v-if="gridTags(note).length">
+                <span v-for="tag in gridTags(note).slice(0, 2)" :key="tag" class="tag-pill text-xs">{{ tag }}</span>
+              </div>
             <p class="text-xs mt-2" style="color: var(--color-text-secondary)">{{ formatDate(note.createdAt) }}</p>
           </div>
         </div>
@@ -157,17 +157,21 @@
         <div class="modal-panel w-[calc(100%-2rem)] sm:w-[600px] max-h-[80vh] overflow-y-auto">
           <template v-if="!isEditing">
             <div class="p-6">
-              <div class="flex items-start justify-between mb-4">
-                <h3 class="font-display text-xl font-bold" style="color: var(--color-text)">{{ detailNote.title }}</h3>
+              <div class="flex items-start justify-between mb-1">
+                <h3 class="font-display text-xl font-bold" style="color: var(--color-text)">{{ detailNote.aiTitle || detailNote.title }}</h3>
                 <div class="flex items-center gap-2 shrink-0 ml-4">
                   <button @click="startEditing" class="text-sm transition-colors duration-150 hover-accent-hover"
                     style="color: var(--color-accent)">编辑</button>
+                  <button @click="reprocessNote" v-if="detailNote.autoProcessStatus === 'COMPLETED' || detailNote.autoProcessStatus === 'RELATION_DONE'"
+                    class="text-sm transition-colors duration-150 ml-2"
+                    style="color: var(--color-text-secondary)">重新AI处理</button>
                   <button @click="closeDetail" class="text-lg leading-none transition-colors duration-150 hover-text"
                     style="color: var(--color-text-secondary)">&times;</button>
                 </div>
               </div>
-              <div class="flex flex-wrap gap-1.5 mb-4" v-if="detailTags.length">
-                <span v-for="tag in detailTags" :key="tag" class="tag-pill">#{{ tag }}</span>
+              <p v-if="detailNote.aiTitle && detailNote.title" class="text-xs mb-2" style="color: var(--color-text-secondary)">原标题: {{ detailNote.title }}</p>
+              <div class="flex flex-wrap gap-1.5 mb-4" v-if="mergedDetailTags.length">
+                <span v-for="tag in mergedDetailTags" :key="tag" class="tag-pill">#{{ tag }}</span>
               </div>
               <div class="text-sm leading-relaxed" style="color: var(--color-warm-gray)">
                 <ContentRenderer :content="detailNote.content" />
@@ -373,14 +377,17 @@ const filteredItems = computed(() => {
   let items = store.items
   if (activeTags.value.length) {
     items = items.filter(n => {
-      const noteTags = parseTags(n.tags)
-      return activeTags.value.every(t => noteTags.includes(t))
+      const ai = parseTags(n.tags)
+      const user = parseTags(n.userTags)
+      const allTags = new Set([...ai, ...user])
+      return activeTags.value.every(t => allTags.has(t))
     })
   }
   const kw = keywordText.value.toLowerCase().trim()
   if (kw) {
     items = items.filter(n =>
       (n.title && n.title.toLowerCase().includes(kw)) ||
+      (n.aiTitle && n.aiTitle.toLowerCase().includes(kw)) ||
       (n.content && n.content.toLowerCase().includes(kw))
     )
   }
@@ -390,6 +397,14 @@ const filteredItems = computed(() => {
 const detailTags = computed(() => {
   if (!detailNote.value?.tags) return []
   return parseTags(detailNote.value.tags)
+})
+
+const mergedDetailTags = computed(() => {
+  if (!detailNote.value) return []
+  const ai = parseTags(detailNote.value.tags)
+  const user = parseTags(detailNote.value.userTags)
+  const merged = new Set([...ai, ...user])
+  return [...merged]
 })
 
 function parseTags(tags) {
@@ -408,7 +423,10 @@ function tagsToText(tagsJson) {
 }
 
 function gridTags(note) {
-  return parseTags(note.tags)
+  const ai = parseTags(note.tags)
+  const user = parseTags(note.userTags)
+  const merged = new Set([...ai, ...user])
+  return [...merged]
 }
 
 function removeTag(tag) {
@@ -490,11 +508,24 @@ async function submitAdd() {
   }
 }
 
+async function reprocessNote() {
+  if (!confirm('确定重新 AI 处理此笔记？AI 标题和标签将被重新生成。')) return
+  try {
+    await knowledgeApi.reprocess(detailNote.value.id)
+    const res = await knowledgeApi.getById(detailNote.value.id)
+    Object.assign(detailNote.value, res.data.data)
+    const idx = store.items.findIndex(i => i.id === detailNote.value.id)
+    if (idx !== -1) Object.assign(store.items[idx], res.data.data)
+  } catch (err) {
+    console.error('重新处理失败:', err)
+  }
+}
+
 function startEditing() {
   editForm.value = {
     title: detailNote.value.title,
     content: detailNote.value.content,
-    tags: detailNote.value.tags || '[]',
+    tags: detailNote.value.userTags || detailNote.value.tags || '[]',
     sourceUrl: detailNote.value.sourceUrl || ''
   }
   isEditing.value = true
@@ -508,7 +539,7 @@ async function saveEdit() {
   const updated = await knowledgeApi.update(detailNote.value.id, {
     title: editForm.value.title,
     content: editForm.value.content,
-    tags: editForm.value.tags,
+    userTags: editForm.value.tags,
     sourceUrl: editForm.value.sourceUrl || null
   })
   const saved = updated.data.data
@@ -523,7 +554,7 @@ async function addNote() {
   await store.add({
     title: addForm.value.title,
     content: addForm.value.content,
-    tags: addForm.value.tags,
+    userTags: addForm.value.tags,
     sourceUrl: addForm.value.sourceUrl || null
   })
   showAddForm.value = false
@@ -580,10 +611,10 @@ async function doBatchTag() {
   await knowledgeApi.batchTag(selectedIds.value, tag)
   for (const item of store.items) {
     if (selectedIds.value.includes(item.id)) {
-      const tags = parseTags(item.tags)
+      const tags = parseTags(item.userTags)
       if (!tags.includes(tag)) {
         tags.push(tag)
-        item.tags = JSON.stringify(tags)
+        item.userTags = JSON.stringify(tags)
       }
     }
   }

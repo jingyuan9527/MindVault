@@ -15,7 +15,7 @@ cd docker && docker compose up -d --build
 ## Commands
 | Task | Command |
 |------|---------|
-| Backend tests (229 total) | `cd backend && mvn test` |
+| Backend tests (238 total) | `cd backend && mvn test` |
 | Single test class | `cd backend && mvn test -Dtest=KnowledgeControllerTest` |
 | Frontend tests (59 total) | `cd frontend && npx vitest run` |
 | Build backend jar | `cd backend && mvn clean package -DskipTests` |
@@ -36,18 +36,21 @@ cd docker && docker compose up -d --build
 ## Package Map (backend)
 | Package | Responsibility |
 |---------|---------------|
-| `knowledge` | CRUD + tags + search + export/import |
+| `knowledge` | CRUD + tags + search + export/import + separate user/AI fields, `updateAiFields()`, `reprocessKnowledge()`, `displayTitle()` |
 | `chat` | Chat sessions, messages, SSE streaming |
 | `agent` | LLM calling with failover, tool execution |
 | `auth` | User auth, login, API tokens, session manager, auth filter, admin initializer, user management (admin) |
+| `auto` | Auto-processing pipeline (R1: aiTitle/aiTags/summary/embedding via @Async; R3: AggregationService for tag cloud + stats) |
 | `model` | Model config CRUD (OpenAI/DeepSeek/Alibaba/Ollama) |
 | `content` | URL (Jsoup) and PDF (PDFBox) parsing → markdown |
 | `review` | SM-2 spaced repetition scheduling |
+| `relation` | Round 2 association discovery (semantic + tag + LLM) |
 | `flashcard` | Flashcard management |
 | `dailyreview` | Daily review report generation (uses LLM) |
 | `backup` | DB backup/restore via pg_dump |
 | `tokenusage` | Token usage tracking |
 | `operationlog` | Audit log |
+| `scheduler` | Scheduled tasks: AutoProcessScheduler (R2 @5min, R3 @30min) |
 | `common` | Global exception handler, filters, health endpoint, metrics, actuator, AOP operation log, custom type handlers |
 | `annotation` | @OperationLog custom annotation |
 | `aspect` | OperationLogAspect — auto-logging around @OperationLog methods |
@@ -60,6 +63,18 @@ cd docker && docker compose up -d --build
 - **JSONB columns**: Stored as String in Java, use `@TableField(typeHandler = JsonbStringTypeHandler.class)` on the field. Custom handler at `common.handler.JsonbStringTypeHandler` — wraps value in PGobject with type `jsonb` for write, reads as raw String from ResultSet.
 - **TIMESTAMPTZ** → `TIMESTAMP`: All timestamp columns use `TIMESTAMP` (no timezone) to match Java `LocalDateTime`.
 - **Lombok**: Version pinned to 1.18.38 via `<lombok.version>` property. Spring Boot 3.2.5's default 1.18.32 is incompatible with JDK 21.0.11+.
+- **AI Auto-Processing fields**: Knowledge entity uses `title` (user title), `aiTitle` (AI-generated title), `tags` (AI tags), `userTags` (user tags), `autoProcessStatus` (PENDING/TITLE_TAG_DONE/RELATION_DONE/COMPLETED). Use `displayTitle()` to resolve `aiTitle || title`. Frontend shows AI title as primary, user title as secondary, merged tags from `ai_tags` + `user_tags`.
+- **Knowledge relations**: Stored in `knowledge_relation` table (knowledge_id, related_id, relation_type, score, source), managed by `RelationService`.
+- **Auto-process logs**: Stored in `auto_process_log` table (knowledge_id, round, status, result_summary, llm_tokens, ...), written by `AutoProcessService` and `RelationService`.
+
+## AI Auto-Processing Pipeline (R1/R2/R3)
+The pipeline processes each knowledge entry in three automated rounds:
+
+| Round | Stage | Service | What it does | Trigger |
+|-------|-------|---------|--------------|---------|
+| R1 | Title & Tags | `AutoProcessService` | Generates `aiTitle`, `aiTags`, summary, embedding vector via LLM; sets status → `TITLE_TAG_DONE` | `@Async` on create / `reprocessKnowledge()` |
+| R2 | Relation Discovery | `RelationService` | Discovers associations using semantic similarity + tag overlap + LLM analysis; writes to `knowledge_relation`; sets status → `RELATION_DONE` | `AutoProcessScheduler` every 5 minutes |
+| R3 | Aggregation | `AggregationService` | Rebuilds tag cloud, refreshes stats, completes processing; sets status → `COMPLETED` | `AutoProcessScheduler` every 30 minutes |
 
 ## Testing Notes
 - `ModelApiIntegrationTest` runs real API calls against `agnes-2.0-flash` (~29s for 5 tests). Skipped when env var absent.
@@ -69,10 +84,10 @@ cd docker && docker compose up -d --build
 
 ## Feature Progress
 
-### Backend (API — 54 endpoints)
+### Backend (API — 56 endpoints)
 | Module | Backend | Controller Test | Service Test | Coverage |
 |--------|---------|:-:|:-:|:-:|
-| 知识库 Knowledge | CRUD + 搜索 + 导入导出 + 标签 + URL/PDF 解析 | ✅ | ✅ | 54% |
+| 知识库 Knowledge | CRUD + 搜索 + 导入导出 + 标签 + URL/PDF 解析 + AI自动处理(R1) | ✅ | ✅ | 54% |
 | 聊天 Chat | 会话 + 消息 + SSE 流式 | ✅ | ✅ | 49% |
 | 模型配置 Model Config | CRUD + 主模型 + 测试连接 + 拉取列表 | ✅ | ✅ | 36% |
 | 复习 Review | SM-2 调度 + 到期查询 | ✅ | ✅ | 99% |
@@ -82,10 +97,12 @@ cd docker && docker compose up -d --build
 | 操作日志 OperationLog | 审计日志查询 | ✅ | ✅ | 31% |
 | Token 用量 TokenUsage | 用量记录 + 日结汇总 | ✅ | ✅ | 89% |
 | 数据备份 Backup | 备份 + 列表 + 下载 + 清理 | ✅ | ✅ | 85% |
+| 关联发现 Relation | R2 关联发现（语义 + 标签 + LLM） | ❌ | ❌ | 0% |
+| 自动处理 AutoProcess | R1 自动标注 + R3 聚合统计 + 定时调度 | ❌ | ❌ | 0% |
 | Agent | LLM failover + 熔断 + 工具调用 | ❌ | ✅ | 3% |
 | 内容解析 Content | Jsoup 网页 + PDFBox PDF | ❌ | ✅ | 13% |
 | 认证 Auth | 登录 + Token 管理 + 密码修改 | ✅ | ✅ | — |
-| **Total** | **13 模块 / 54 接口** | **11/13** | **13/13** | **43%** |
+| **Total** | **15 模块 / 56 接口** | **11/15** | **13/15** | **43%** |
 
 | 用户管理 User | 列表 + 启用/禁用 | ✅ | ✅ | 36% |
 
@@ -93,7 +110,7 @@ cd docker && docker compose up -d --build
 | Route | View | Responsive | Tests |
 |-------|------|:-:|:-:|
 | `/login` | 登录页面 | ✅ | ❌ |
-| `/` | 知识库列表 + 搜索 + 导入导出 | ✅ | ✅ |
+| `/` | 知识库列表 + 搜索 + 导入导出 + AI标题展示(主) + 用户标题(副) + 合并标签 | ✅ | ✅ |
 | `/chat` | AI 对话 | ✅ | ❌ |
 | `/review` | 复习计划 + 执行 SM-2 | ✅ | ❌ |
 | `/flashcards` | 闪卡展示 | ✅ | ❌ |
@@ -127,11 +144,15 @@ cd docker && docker compose up -d --build
 - [ ] `search` 搜索日志/热词（可选）
 - [ ] SettingsView Token 管理交互测试
 - [ ] Web Clipper 浏览器商店发布说明
+- [ ] Relation 单元测试 + 集成测试 — relation 0% → ~70%
+- [ ] AutoProcess 单元测试 + 集成测试 — auto 0% → ~60%
+- [ ] Scheduler 集成测试
 
 ## Docker Deployment
 - Three containers: `db` (pgvector), `backend` (JDK 21), `frontend` (Nginx)
 - Docker Compose file: `docker/docker-compose.yml`
 - Dockerfiles: `Dockerfile.backend` (multi-stage Maven build), `Dockerfile.frontend` (node build → nginx)
+- v0.4 migration: `docker/migration-v0.4.sql` (creates knowledge_relation, auto_process_log tables; adds new columns to knowledge)
 - Networks: `mindvault` bridge
 - Health checks: DB (`pg_isready`), Backend (`GET /api/v1/system/health`)
 - Admin user auto-created on first boot via env vars: `MINDVAULT_ADMIN_USERNAME` / `MINDVAULT_ADMIN_PASSWORD`

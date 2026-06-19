@@ -9,6 +9,8 @@ import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.operationlog.OperationLogService;
+import com.mindvault.relation.KnowledgeRelationMapper;
+import com.mindvault.relation.entity.KnowledgeRelation;
 import com.mindvault.review.ReviewService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,17 +31,6 @@ import java.util.zip.ZipOutputStream;
 import com.mindvault.knowledge.dto.ImportPreview;
 import com.mindvault.knowledge.dto.ImportPreview.ConflictItem;
 
-/**
- * 知识库服务
- *
- * 核心业务逻辑：
- * 1. 知识入库时调用嵌入模型生成向量
- * 2. 提供向量相似度搜索
- * 3. CRUD 操作
- *
- * v0.1 简化：嵌入模型调用直接通过主模型 API 实现
- * v0.3 支持独立的嵌入模型配置
- */
 @Service
 public class KnowledgeService {
 
@@ -51,6 +42,7 @@ public class KnowledgeService {
     private final ReviewService reviewService;
     private final ModelConfigService modelConfigService;
     private final MetricsService metricsService;
+    private final KnowledgeRelationMapper relationMapper;
     private final ObjectMapper objectMapper;
 
     public KnowledgeService(KnowledgeMapper mapper,
@@ -58,30 +50,26 @@ public class KnowledgeService {
                             AutoProcessService autoProcessService,
                             ReviewService reviewService,
                             ModelConfigService modelConfigService,
-                            MetricsService metricsService) {
+                            MetricsService metricsService,
+                            KnowledgeRelationMapper relationMapper) {
         this.mapper = mapper;
         this.operationLogService = operationLogService;
         this.autoProcessService = autoProcessService;
         this.reviewService = reviewService;
         this.modelConfigService = modelConfigService;
         this.metricsService = metricsService;
+        this.relationMapper = relationMapper;
         this.objectMapper = new ObjectMapper();
     }
 
-    /**
-     * 添加知识条目
-     *
-     * v0.1 简化版：先入库，嵌入生成由 Agent 的 @Tool 完成
-     * v0.2 新增：入库后自动触发摘要+标签生成
-     * v0.3 改为异步：入库 → 队列 → 后台生成嵌入
-     */
     @Transactional
     public Knowledge addKnowledge(Knowledge knowledge) {
         LocalDateTime now = LocalDateTime.now();
         knowledge.setCreatedAt(now);
         knowledge.setUpdatedAt(now);
+        knowledge.setAutoProcessStatus("PENDING");
         mapper.insert(knowledge);
-        log.info("添加知识: id={}, title={}, type={}", knowledge.getId(), knowledge.getTitle(), knowledge.getContentType());
+        log.info("添加知识: id={}, userTitle={}, type={}", knowledge.getId(), knowledge.getTitle(), knowledge.getContentType());
         operationLogService.log("KNOWLEDGE", "ADD", knowledge.getId(),
                 "添加知识「" + knowledge.getTitle() + "」");
 
@@ -95,39 +83,25 @@ public class KnowledgeService {
         return knowledge;
     }
 
-    /** 获取知识列表（分页） */
     public List<Knowledge> listAll(int page, int size) {
         Page<Knowledge> mpPage = mapper.selectPage(new Page<>(page + 1, size), null);
         return mpPage.getRecords();
     }
 
-    /** 获取单条知识 */
     public Knowledge getById(Long id) {
         Knowledge k = mapper.selectById(id);
         if (k == null) throw new IllegalArgumentException("知识不存在: " + id);
         return k;
     }
 
-    /**
-     * 语义相似度搜索
-     *
-     * 两步查询：先查相似 ID 列表，再批量获取实体。
-     * 避免原生查询返回 Object[] 时的类型转换问题。
-     *
-     * @param embedding 查询文本的向量嵌入（字符串格式）
-     * @param topN      返回结果数
-     * @return 知识条目列表，每个包含 similarity 分数
-     */
     public List<Map<String, Object>> searchSimilar(String embedding, int topN) {
         List<Object[]> results = mapper.findSimilarIds(embedding, topN);
-
         Map<Long, Double> similarityMap = new LinkedHashMap<>();
         for (Object[] row : results) {
             Long id = ((Number) row[0]).longValue();
             Double similarity = ((Number) row[1]).doubleValue();
             similarityMap.put(id, similarity);
         }
-
         List<Knowledge> knowledgeList = mapper.selectBatchIds(similarityMap.keySet());
         Map<Long, Knowledge> knowledgeMap = knowledgeList.stream()
                 .collect(Collectors.toMap(Knowledge::getId, k -> k));
@@ -139,26 +113,17 @@ public class KnowledgeService {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("id", k.getId());
             item.put("title", k.getTitle());
+            item.put("aiTitle", k.getAiTitle());
             item.put("content", k.getContent());
             item.put("similarity", entry.getValue());
             list.add(item);
         }
-
         log.info("语义搜索: topN={}, 返回 {} 条结果", topN, list.size());
         return list;
     }
 
-    /**
-     * 智能混合搜索（关键字 + 向量 + RRF 重排序）
-     *
-     * 三级策略：
-     * 1. 有嵌入模型 → 混合检索 + RRF 重排序
-     * 2. 纯向量检索
-     * 3. 纯关键字检索（降级）
-     */
     public List<Map<String, Object>> hybridSearch(String query, int limit) {
         boolean hasVector = hasEmbedding();
-
         if (hasVector) {
             return hybridSearchWithRerank(query, limit);
         }
@@ -179,37 +144,30 @@ public class KnowledgeService {
         if (embedding == null) {
             return keywordSearchWithRank(query, limit);
         }
-
         int fetchLimit = Math.max(limit * 3, 20);
         List<Object[]> keywordResults = mapper.keywordSearchWithRank(query, fetchLimit);
         List<Object[]> vectorResults = mapper.findSimilarIds(embedding, fetchLimit);
-
         double k = 60.0;
         Map<Long, Double> rrfScores = new LinkedHashMap<>();
-
         int rank = 1;
         for (Object[] row : keywordResults) {
             Long id = ((Number) row[0]).longValue();
             rrfScores.merge(id, 1.0 / (k + rank), Double::sum);
             rank++;
         }
-
         rank = 1;
         for (Object[] row : vectorResults) {
             Long id = ((Number) row[0]).longValue();
             rrfScores.merge(id, 1.0 / (k + rank), Double::sum);
             rank++;
         }
-
         List<Map.Entry<Long, Double>> sorted = rrfScores.entrySet().stream()
                 .sorted(Map.Entry.<Long, Double>comparingByValue().reversed())
                 .limit(limit)
                 .toList();
-
         List<Long> ids = sorted.stream().map(Map.Entry::getKey).toList();
         Map<Long, Knowledge> knowledgeMap = mapper.selectBatchIds(ids).stream()
                 .collect(Collectors.toMap(Knowledge::getId, entry -> entry));
-
         List<Map<String, Object>> list = new ArrayList<>();
         for (Map.Entry<Long, Double> entry : sorted) {
             Knowledge kn = knowledgeMap.get(entry.getKey());
@@ -217,16 +175,17 @@ public class KnowledgeService {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("id", kn.getId());
             item.put("title", kn.getTitle());
+            item.put("aiTitle", kn.getAiTitle());
             item.put("content", kn.getContent());
             item.put("summary", kn.getSummary());
             item.put("tags", kn.getTags());
+            item.put("userTags", kn.getUserTags());
             item.put("contentType", kn.getContentType());
             item.put("sourceUrl", kn.getSourceUrl());
             item.put("similarity", entry.getValue());
             item.put("createdAt", kn.getCreatedAt() != null ? kn.getCreatedAt().toString() : null);
             list.add(item);
         }
-
         log.info("混合搜索: query={}, 返回 {} 条结果 (RRF)", query, list.size());
         return list;
     }
@@ -238,9 +197,11 @@ public class KnowledgeService {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("id", k.getId());
             item.put("title", k.getTitle());
+            item.put("aiTitle", k.getAiTitle());
             item.put("content", k.getContent());
             item.put("summary", k.getSummary());
             item.put("tags", k.getTags());
+            item.put("userTags", k.getUserTags());
             item.put("contentType", k.getContentType());
             item.put("sourceUrl", k.getSourceUrl());
             item.put("createdAt", k.getCreatedAt());
@@ -249,21 +210,22 @@ public class KnowledgeService {
         return list;
     }
 
+    public String displayTitle(Knowledge k) {
+        return k.getAiTitle() != null && !k.getAiTitle().isBlank() ? k.getAiTitle() : k.getTitle();
+    }
+
     private String generateEmbedding(String text) {
         List<ModelConfig> embeddingModels = modelConfigService.getAvailableEmbeddingModels();
         if (embeddingModels.isEmpty()) return null;
-
         ModelConfig embModel = embeddingModels.get(0);
         if (text.length() > 8000) text = text.substring(0, 8000);
         try {
             String embedUrl = buildEmbeddingUrl(embModel);
             if (embedUrl == null) return null;
-
             RestClient.Builder builder = RestClient.builder()
                     .baseUrl(embedUrl)
                     .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                     .defaultHeader("Authorization", "Bearer " + embModel.getApiKey());
-
             Map<String, Object> requestBody = new LinkedHashMap<>();
             requestBody.put("model", embModel.getModelName());
             if ("OLLAMA".equalsIgnoreCase(embModel.getProvider())) {
@@ -271,12 +233,10 @@ public class KnowledgeService {
             } else {
                 requestBody.put("input", text);
             }
-
             String responseJson = builder.build().post()
                     .body(objectMapper.writeValueAsString(requestBody))
                     .retrieve()
                     .body(String.class);
-
             List<Double> vector = parseEmbeddingResponse(embModel.getProvider(), responseJson);
             if (vector != null && !vector.isEmpty()) {
                 return "[" + vector.stream().map(String::valueOf).collect(Collectors.joining(",")) + "]";
@@ -315,17 +275,14 @@ public class KnowledgeService {
         return null;
     }
 
-    /** 关键字搜索（降级方案，返回实体列表） */
     public List<Knowledge> searchByKeyword(String query, int limit) {
         return mapper.keywordSearch(query, limit);
     }
 
-    /** 关键字 + 标签联合搜索 */
     public List<Knowledge> searchByKeywordWithTag(String query, int limit, String tag) {
         return mapper.searchByTag("[\"" + tag + "\"]", limit);
     }
 
-    /** 更新知识条目 */
     @Transactional
     public Knowledge updateKnowledge(Long id, Knowledge updated) {
         Knowledge existing = getById(id);
@@ -334,17 +291,27 @@ public class KnowledgeService {
         existing.setContentType(updated.getContentType());
         existing.setSourceUrl(updated.getSourceUrl());
         existing.setSummary(updated.getSummary());
-        existing.setTags(updated.getTags());
+        existing.setUserTags(updated.getUserTags());
         existing.setMetadata(updated.getMetadata());
         existing.setUpdatedAt(LocalDateTime.now());
         mapper.updateById(existing);
-        log.info("更新知识: id={}, title={}", id, existing.getTitle());
+        log.info("更新知识: id={}, userTitle={}", id, existing.getTitle());
         operationLogService.log("KNOWLEDGE", "UPDATE", id,
                 "更新知识「" + existing.getTitle() + "」");
         return existing;
     }
 
-    /** 更新嵌入向量 */
+    @Transactional
+    public Knowledge updateAiFields(Long id, String aiTitle, String aiTags) {
+        Knowledge k = getById(id);
+        if (aiTitle != null) k.setAiTitle(aiTitle);
+        if (aiTags != null) k.setTags(aiTags);
+        k.setUpdatedAt(LocalDateTime.now());
+        mapper.updateById(k);
+        log.info("更新 AI 字段: id={}, aiTitle={}", id, k.getAiTitle());
+        return k;
+    }
+
     @Transactional
     public void updateEmbedding(Long id, String embedding) {
         Knowledge k = mapper.selectById(id);
@@ -354,27 +321,43 @@ public class KnowledgeService {
         }
     }
 
-    /** 删除知识 */
     @Transactional
     public void deleteKnowledge(Long id) {
         Knowledge k = getById(id);
         mapper.deleteById(id);
+        relationMapper.deleteByKnowledgeId(id);
         log.info("删除知识: id={}, title={}", id, k.getTitle());
         operationLogService.log("KNOWLEDGE", "DELETE", id,
                 "删除知识「" + k.getTitle() + "」");
     }
 
-    public List<Map<String, Object>> getAllTags() {
-        return mapper.aggregateTags();
-    }
-
     private void triggerAutoProcess(Knowledge knowledge) {
         if (knowledge.getContent() == null || knowledge.getContent().isBlank()) return;
-        try {
-            autoProcessService.autoProcess(knowledge.getId(), knowledge.getTitle(), knowledge.getContent());
-        } catch (Exception e) {
-            log.warn("自动处理失败: {}", e.getMessage());
+        autoProcessService.autoProcessAsync(knowledge.getId(), knowledge.getTitle(), knowledge.getContent());
+    }
+
+    @Transactional
+    public void updateAutoProcessStatus(Long id, String status) {
+        Knowledge k = mapper.selectById(id);
+        if (k != null) {
+            k.setAutoProcessStatus(status);
+            k.setUpdatedAt(LocalDateTime.now());
+            mapper.updateById(k);
         }
+    }
+
+    @Transactional
+    public void reprocessKnowledge(Long id) {
+        Knowledge k = getById(id);
+        k.setAutoProcessStatus("PENDING");
+        k.setAiTitle(null);
+        k.setTags("[]");
+        k.setSummary(null);
+        mapper.updateById(k);
+        autoProcessService.autoProcessAsync(k.getId(), k.getTitle(), k.getContent());
+        log.info("重新处理知识: id={}", id);
+        operationLogService.log("KNOWLEDGE", "REPROCESS", id,
+                "重新处理知识「" + k.getTitle() + "」");
     }
 
     @Transactional
@@ -383,6 +366,7 @@ public class KnowledgeService {
             Knowledge k = mapper.selectById(id);
             if (k != null) {
                 mapper.deleteById(id);
+                relationMapper.deleteByKnowledgeId(id);
                 log.info("批量删除知识: id={}, title={}", id, k.getTitle());
                 operationLogService.log("KNOWLEDGE", "DELETE", id,
                         "批量删除知识「" + k.getTitle() + "」");
@@ -396,19 +380,19 @@ public class KnowledgeService {
             Knowledge k = mapper.selectById(id);
             if (k == null) continue;
             List<String> existingTags = new ArrayList<>();
-            if (k.getTags() != null && !k.getTags().equals("[]")) {
+            if (k.getUserTags() != null && !k.getUserTags().equals("[]")) {
                 try {
-                    existingTags = objectMapper.readValue(k.getTags(), new TypeReference<List<String>>() {});
+                    existingTags = objectMapper.readValue(k.getUserTags(), new TypeReference<List<String>>() {});
                 } catch (Exception e) {
-                    log.warn("反序列化标签失败: id={}, tags={}", id, k.getTags(), e);
+                    log.warn("反序列化用户标签失败: id={}, userTags={}", id, k.getUserTags(), e);
                 }
             }
             if (!existingTags.contains(tag)) {
                 existingTags.add(tag);
                 try {
-                    k.setTags(objectMapper.writeValueAsString(existingTags));
+                    k.setUserTags(objectMapper.writeValueAsString(existingTags));
                 } catch (Exception e) {
-                    log.warn("序列化标签失败: id={}", id);
+                    log.warn("序列化用户标签失败: id={}", id);
                     continue;
                 }
                 k.setUpdatedAt(LocalDateTime.now());
@@ -427,17 +411,19 @@ public class KnowledgeService {
             for (Knowledge k : selected) {
                 Map<String, Object> item = new LinkedHashMap<>();
                 item.put("title", k.getTitle());
+                item.put("aiTitle", k.getAiTitle());
                 item.put("content", k.getContent());
                 item.put("contentType", k.getContentType());
                 item.put("sourceUrl", k.getSourceUrl());
                 item.put("summary", k.getSummary());
                 item.put("tags", k.getTags());
+                item.put("userTags", k.getUserTags());
                 item.put("createdAt", k.getCreatedAt() != null ? k.getCreatedAt().toString() : null);
                 item.put("updatedAt", k.getUpdatedAt() != null ? k.getUpdatedAt().toString() : null);
                 exportList.add(item);
             }
             Map<String, Object> exportData = new LinkedHashMap<>();
-            exportData.put("version", "0.2.0");
+            exportData.put("version", "0.4.0");
             exportData.put("exportedAt", LocalDateTime.now().toString());
             exportData.put("count", exportList.size());
             exportData.put("items", exportList);
@@ -452,13 +438,13 @@ public class KnowledgeService {
     public void updateTags(Long id, List<String> tags) {
         Knowledge k = getById(id);
         try {
-            k.setTags(objectMapper.writeValueAsString(tags));
+            k.setUserTags(objectMapper.writeValueAsString(tags));
         } catch (Exception e) {
             throw new RuntimeException("序列化标签失败", e);
         }
         k.setUpdatedAt(LocalDateTime.now());
         mapper.updateById(k);
-        log.info("更新标签: id={}, tags={}", id, tags);
+        log.info("更新用户标签: id={}, tags={}", id, tags);
         operationLogService.log("KNOWLEDGE", "TAG", id,
                 "更新标签「" + String.join(", ", tags) + "」");
     }
@@ -470,17 +456,19 @@ public class KnowledgeService {
             for (Knowledge k : all) {
                 Map<String, Object> item = new LinkedHashMap<>();
                 item.put("title", k.getTitle());
+                item.put("aiTitle", k.getAiTitle());
                 item.put("content", k.getContent());
                 item.put("contentType", k.getContentType());
                 item.put("sourceUrl", k.getSourceUrl());
                 item.put("summary", k.getSummary());
                 item.put("tags", k.getTags());
+                item.put("userTags", k.getUserTags());
                 item.put("createdAt", k.getCreatedAt() != null ? k.getCreatedAt().toString() : null);
                 item.put("updatedAt", k.getUpdatedAt() != null ? k.getUpdatedAt().toString() : null);
                 exportList.add(item);
             }
             Map<String, Object> exportData = new LinkedHashMap<>();
-            exportData.put("version", "0.2.0");
+            exportData.put("version", "0.4.0");
             exportData.put("exportedAt", LocalDateTime.now().toString());
             exportData.put("count", exportList.size());
             exportData.put("items", exportList);
@@ -500,16 +488,18 @@ public class KnowledgeService {
             DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
             for (Knowledge k : all) {
-                String safeName = k.getTitle()
+                String displayName = displayTitle(k);
+                String safeName = displayName
                         .replaceAll("[/\\\\:*?\"<>|]", "_")
                         .replaceAll("\\s+", "_");
                 if (safeName.length() > 80) safeName = safeName.substring(0, 80);
 
                 String tags = "";
                 List<String> tagList = new ArrayList<>();
-                if (k.getTags() != null && !k.getTags().equals("[]")) {
+                String mergedTags = mergeTags(k.getTags(), k.getUserTags());
+                if (mergedTags != null && !mergedTags.equals("[]")) {
                     try {
-                        tagList = objectMapper.readValue(k.getTags(), new TypeReference<List<String>>() {});
+                        tagList = objectMapper.readValue(mergedTags, new TypeReference<List<String>>() {});
                     } catch (Exception e) { /* ignore */ }
                 }
 
@@ -521,14 +511,14 @@ public class KnowledgeService {
                 String dateSection = "\n\n---\n创建于 " + (k.getCreatedAt() != null ? k.getCreatedAt().format(dtf) : "未知");
 
                 String md = "---\n"
-                        + "title: " + k.getTitle() + "\n"
+                        + "title: " + displayName + "\n"
                         + "type: " + k.getContentType() + "\n"
                         + "created: " + (k.getCreatedAt() != null ? k.getCreatedAt().format(dtf) : "") + "\n"
                         + (k.getUpdatedAt() != null ? "updated: " + k.getUpdatedAt().format(dtf) + "\n" : "")
                         + (k.getSourceUrl() != null ? "source: " + k.getSourceUrl() + "\n" : "")
                         + (k.getSummary() != null ? "summary: " + k.getSummary() + "\n" : "")
                         + "---\n\n"
-                        + "# " + k.getTitle() + "\n"
+                        + "# " + displayName + "\n"
                         + summarySection
                         + tagsSection
                         + sourceSection
@@ -555,6 +545,21 @@ public class KnowledgeService {
         return name.replaceAll("[/\\\\:*?\"<>|]", "_").trim();
     }
 
+    private String mergeTags(String aiTags, String userTags) {
+        try {
+            Set<String> merged = new LinkedHashSet<>();
+            if (aiTags != null && !aiTags.equals("[]")) {
+                merged.addAll(objectMapper.readValue(aiTags, new TypeReference<List<String>>() {}));
+            }
+            if (userTags != null && !userTags.equals("[]")) {
+                merged.addAll(objectMapper.readValue(userTags, new TypeReference<List<String>>() {}));
+            }
+            return objectMapper.writeValueAsString(new ArrayList<>(merged));
+        } catch (Exception e) {
+            return "[]";
+        }
+    }
+
     public String exportAllAsCsv() {
         try {
             List<Knowledge> all = mapper.selectList(null);
@@ -563,15 +568,16 @@ public class KnowledgeService {
             DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
             for (Knowledge k : all) {
                 String tags = "";
-                if (k.getTags() != null && !k.getTags().equals("[]")) {
+                String merged = mergeTags(k.getTags(), k.getUserTags());
+                if (merged != null && !merged.equals("[]")) {
                     try {
-                        List<String> tagList = objectMapper.readValue(k.getTags(), new TypeReference<List<String>>() {});
+                        List<String> tagList = objectMapper.readValue(merged, new TypeReference<List<String>>() {});
                         tags = String.join("; ", tagList);
                     } catch (Exception e) {
                         log.warn("CSV 导出标签解析失败: id={}", k.getId(), e);
                     }
                 }
-                sb.append(escapeCsv(k.getTitle())).append(",");
+                sb.append(escapeCsv(displayTitle(k))).append(",");
                 sb.append(escapeCsv(k.getContent())).append(",");
                 sb.append(escapeCsv(k.getContentType())).append(",");
                 sb.append(escapeCsv(k.getSummary())).append(",");
@@ -593,6 +599,10 @@ public class KnowledgeService {
             return "\"" + value.replace("\"", "\"\"") + "\"";
         }
         return value;
+    }
+
+    public List<Map<String, Object>> getAllTags() {
+        return mapper.aggregateTags();
     }
 
     public ImportPreview previewImport(String json) {
@@ -672,6 +682,7 @@ public class KnowledgeService {
                         existingK.setSourceUrl((String) item.getOrDefault("sourceUrl", null));
                         existingK.setSummary((String) item.getOrDefault("summary", null));
                         existingK.setTags((String) item.getOrDefault("tags", "[]"));
+                        existingK.setUserTags((String) item.getOrDefault("userTags", "[]"));
                         existingK.setUpdatedAt(LocalDateTime.now());
                         mapper.updateById(existingK);
                         imported++;
@@ -686,11 +697,14 @@ public class KnowledgeService {
                 k.setSourceUrl((String) item.getOrDefault("sourceUrl", null));
                 k.setSummary((String) item.getOrDefault("summary", null));
                 k.setTags((String) item.getOrDefault("tags", "[]"));
+                k.setUserTags((String) item.getOrDefault("userTags", "[]"));
                 k.setMetadata("{}");
+                k.setAutoProcessStatus("PENDING");
                 LocalDateTime now = LocalDateTime.now();
                 k.setCreatedAt(now);
                 k.setUpdatedAt(now);
                 mapper.insert(k);
+                autoProcessService.autoProcessAsync(k.getId(), k.getTitle(), k.getContent());
                 imported++;
             }
 
