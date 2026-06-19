@@ -9,6 +9,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -152,5 +154,51 @@ class UserServiceTest {
         User result = userService.getById(99L);
 
         assertNull(result);
+    }
+
+    @Test
+    void listAll_shouldReturnAllUsers() {
+        List<User> users = List.of(
+                createUser(1L, "user1", "pass", true),
+                createUser(2L, "user2", "pass", true)
+        );
+        when(userMapper.selectList(null)).thenReturn(users);
+
+        List<User> result = userService.listAll();
+
+        assertEquals(2, result.size());
+        assertEquals("user1", result.get(0).getUsername());
+        assertEquals("user2", result.get(1).getUsername());
+    }
+
+    @Test
+    void listAll_shouldReturnEmptyWhenNoUsers() {
+        when(userMapper.selectList(null)).thenReturn(List.of());
+
+        List<User> result = userService.listAll();
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void setEnabled_shouldUpdateWhenUserExists() {
+        User user = createUser(1L, "testuser", "pass", true);
+        when(userMapper.selectById(1L)).thenReturn(user);
+
+        boolean result = userService.setEnabled(1L, false);
+
+        assertTrue(result);
+        assertFalse(user.getEnabled());
+        verify(userMapper).updateById(any(User.class));
+    }
+
+    @Test
+    void setEnabled_shouldReturnFalseWhenUserNotFound() {
+        when(userMapper.selectById(99L)).thenReturn(null);
+
+        boolean result = userService.setEnabled(99L, false);
+
+        assertFalse(result);
+        verify(userMapper, never()).updateById(any(User.class));
     }
 }

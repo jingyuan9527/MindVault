@@ -8,6 +8,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class UserService {
@@ -59,5 +60,19 @@ public class UserService {
 
     public User getById(Long id) {
         return userMapper.selectById(id);
+    }
+
+    public List<User> listAll() {
+        return userMapper.selectList(null);
+    }
+
+    public boolean setEnabled(Long userId, boolean enabled) {
+        User user = userMapper.selectById(userId);
+        if (user == null) return false;
+        user.setEnabled(enabled);
+        user.setUpdatedAt(LocalDateTime.now());
+        userMapper.updateById(user);
+        log.info("{}用户: userId={}", enabled ? "启用" : "禁用", userId);
+        return true;
     }
 }

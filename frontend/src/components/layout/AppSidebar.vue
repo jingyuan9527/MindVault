@@ -111,6 +111,39 @@
         </svg>
         用量统计
       </router-link>
+      <router-link to="/backups"
+        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150"
+        :class="$route.path === '/backups' ? 'font-medium' : ''"
+        :style="$route.path === '/backups' ? { backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' } : { color: 'var(--color-text-secondary)' }"
+        @mouseenter="hoverNav($event, '/backups')"
+        @mouseleave="unhoverNav($event, '/backups')">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        数据备份
+      </router-link>
+      <router-link to="/system"
+        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150"
+        :class="$route.path === '/system' ? 'font-medium' : ''"
+        :style="$route.path === '/system' ? { backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' } : { color: 'var(--color-text-secondary)' }"
+        @mouseenter="hoverNav($event, '/system')"
+        @mouseleave="unhoverNav($event, '/system')">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/>
+        </svg>
+        系统监控
+      </router-link>
+      <router-link to="/users"
+        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150"
+        :class="$route.path === '/users' ? 'font-medium' : ''"
+        :style="$route.path === '/users' ? { backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' } : { color: 'var(--color-text-secondary)' }"
+        @mouseenter="hoverNav($event, '/users')"
+        @mouseleave="unhoverNav($event, '/users')">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
+        </svg>
+        用户管理
+      </router-link>
       <router-link to="/settings"
         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150"
         :class="$route.path === '/settings' ? 'font-medium' : ''"
@@ -142,19 +175,34 @@
       </div>
     </div>
 
-    <div class="p-4 pt-2" style="border-top: 1px solid var(--color-border)">
+    <div class="p-4 pt-2 flex items-center justify-between" style="border-top: 1px solid var(--color-border)">
       <p class="text-xs" style="color: var(--color-text-secondary)">v0.3.0 · 智能增强版</p>
+      <button @click="themeStore.toggle()"
+        class="p-1.5 rounded-lg transition-colors duration-150"
+        style="color: var(--color-text-secondary)"
+        @mouseenter="$event.target.style.color = 'var(--color-text)'"
+        @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'"
+        :title="themeStore.isDark ? '切换亮色模式' : '切换暗色模式'">
+        <svg v-if="themeStore.isDark" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+        </svg>
+        <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+        </svg>
+      </button>
     </div>
   </aside>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useThemeStore } from '@/stores/theme'
 import { reviewApi } from '@/api/review'
 import { knowledgeApi } from '@/api/knowledge'
 
 defineEmits(['close'])
 
+const themeStore = useThemeStore()
 const dueCount = ref(0)
 const tags = ref([])
 let pollTimer = null

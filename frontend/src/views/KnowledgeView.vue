@@ -219,7 +219,7 @@
                 </div>
                 <div>
                   <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">标签</label>
-                  <input v-model="editForm.tagsText" placeholder="#java #并发 空格分隔" class="input-field" />
+                  <TagInput v-model="editForm.tags" placeholder="输入标签，回车添加" />
                 </div>
                 <div>
                   <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">来源 URL</label>
@@ -260,7 +260,7 @@
               </div>
               <div>
                 <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">标签</label>
-                <input v-model="addForm.tagsText" placeholder="#java #并发 空格分隔" class="input-field" />
+                <TagInput v-model="addForm.tags" placeholder="输入标签，回车添加" />
               </div>
             </div>
             <div v-if="addTab === 'url'" class="space-y-3">
@@ -319,15 +319,16 @@ import { knowledgeApi } from '@/api/knowledge'
 import NoteCard from '@/components/knowledge/NoteCard.vue'
 import NoteListItem from '@/components/knowledge/NoteListItem.vue'
 import ContentRenderer from '@/components/common/ContentRenderer.vue'
+import TagInput from '@/components/common/TagInput.vue'
 
 const store = useKnowledgeStore()
 const route = useRoute()
 const searchText = ref('')
 const detailNote = ref(null)
 const isEditing = ref(false)
-const editForm = ref({ title: '', content: '', tagsText: '', sourceUrl: '' })
+const editForm = ref({ title: '', content: '', tags: '[]', sourceUrl: '' })
 const showAddForm = ref(false)
-const addForm = ref({ title: '', content: '', tagsText: '', sourceUrl: '' })
+const addForm = ref({ title: '', content: '', tags: '[]', sourceUrl: '' })
 const addTab = ref('text')
 const addUrl = ref('')
 const urlError = ref('')
@@ -443,7 +444,7 @@ function closeDetail() {
 }
 
 function openAddForm(tab) {
-  addForm.value = { title: '', content: '', tagsText: '', sourceUrl: '' }
+  addForm.value = { title: '', content: '', tags: '[]', sourceUrl: '' }
   addTab.value = tab || 'text'
   addUrl.value = ''
   urlError.value = ''
@@ -499,7 +500,7 @@ function startEditing() {
   editForm.value = {
     title: detailNote.value.title,
     content: detailNote.value.content,
-    tagsText: tagsToText(detailNote.value.tags),
+    tags: detailNote.value.tags || '[]',
     sourceUrl: detailNote.value.sourceUrl || ''
   }
   isEditing.value = true
@@ -510,11 +511,10 @@ function cancelEditing() {
 }
 
 async function saveEdit() {
-  const tags = tagsToArray(editForm.value.tagsText)
   const updated = await knowledgeApi.update(detailNote.value.id, {
     title: editForm.value.title,
     content: editForm.value.content,
-    tags: JSON.stringify(tags),
+    tags: editForm.value.tags,
     sourceUrl: editForm.value.sourceUrl || null
   })
   const saved = updated.data.data
@@ -526,11 +526,10 @@ async function saveEdit() {
 
 async function addNote() {
   if (!addForm.value.title || !addForm.value.content) return
-  const tags = tagsToArray(addForm.value.tagsText)
   await store.add({
     title: addForm.value.title,
     content: addForm.value.content,
-    tags: JSON.stringify(tags),
+    tags: addForm.value.tags,
     sourceUrl: addForm.value.sourceUrl || null
   })
   showAddForm.value = false

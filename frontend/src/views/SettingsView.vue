@@ -208,30 +208,93 @@
     </section>
 
     <section class="card p-4 md:p-6 mt-4 md:mt-6">
+      <router-link to="/backups"
+        class="flex items-center justify-between group">
+        <h3 class="font-display text-base md:text-lg" style="color: var(--color-text)">数据备份</h3>
+        <span class="text-sm transition-colors duration-150"
+          style="color: var(--color-text-secondary)"
+          @mouseenter="$event.target.style.color = 'var(--color-accent)'"
+          @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">
+          管理备份 →
+        </span>
+      </router-link>
+    </section>
+
+    <section class="card p-4 md:p-6 mt-4 md:mt-6">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="font-display text-base md:text-lg" style="color: var(--color-text)">自动备份</h3>
-        <button @click="createBackup" :disabled="backingUp" class="btn-primary text-sm">
-          {{ backingUp ? '备份中...' : '立即备份' }}
-        </button>
+        <h3 class="font-display text-base md:text-lg" style="color: var(--color-text)">API Token</h3>
+        <button @click="showTokenForm = true" class="btn-primary text-sm">+ 创建 Token</button>
       </div>
-      <div v-if="backups.length" class="space-y-2">
-        <div v-for="bak in backups" :key="bak"
+      <div v-if="tokens.length" class="space-y-2">
+        <div v-for="t in tokens" :key="t.id"
           class="flex items-center justify-between px-4 py-2.5 rounded-lg transition-colors duration-150"
           style="background-color: var(--color-bg)"
           @mouseenter="$event.currentTarget.style.backgroundColor = 'var(--color-sage-light)'"
           @mouseleave="$event.currentTarget.style.backgroundColor = 'var(--color-bg)'">
-          <span class="text-sm" style="color: var(--color-text)">{{ bak }}</span>
-          <button @click="downloadBackup(bak)"
-            class="text-xs px-3 py-1 rounded transition-colors duration-150"
-            style="color: var(--color-accent)"
-            @mouseenter="$event.target.style.backgroundColor = 'rgba(207,112,88,0.1)'"
-            @mouseleave="$event.target.style.backgroundColor = 'transparent'">
-            下载
-          </button>
+          <div class="flex-1 min-w-0">
+            <span class="text-sm font-medium" style="color: var(--color-text)">{{ t.name }}</span>
+            <span class="text-xs ml-2" style="color: var(--color-warm-gray)">创建于 {{ t.createdAt?.slice(0, 10) }}</span>
+            <span v-if="t.lastUsedAt" class="text-xs ml-2" style="color: var(--color-warm-gray)">最后使用 {{ t.lastUsedAt?.slice(0, 10) }}</span>
+            <span v-if="t.expiresAt" class="text-xs ml-2"
+              :style="{ color: new Date(t.expiresAt) < new Date() ? 'var(--color-accent)' : 'var(--color-sage)' }">
+              {{ new Date(t.expiresAt) < new Date() ? '已过期' : '有效期至 ' + t.expiresAt?.slice(0, 10) }}
+            </span>
+          </div>
+          <button @click="deleteToken(t.id)"
+            class="text-xs px-3 py-1 rounded transition-colors duration-150 shrink-0 ml-2"
+            style="color: var(--color-text-secondary)"
+            @mouseenter="$event.target.style.color = 'var(--color-accent)'"
+            @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">删除</button>
         </div>
       </div>
-      <p v-else class="text-sm py-4" style="color: var(--color-text-secondary)">暂无备份，将在每天 3:00 自动备份</p>
+      <p v-else class="text-sm py-4" style="color: var(--color-text-secondary)">暂无 API Token</p>
     </section>
+
+    <transition name="fade">
+      <div v-if="showTokenForm" class="modal-overlay" @click.self="showTokenForm = false">
+        <div class="modal-panel w-[calc(100%-2rem)] sm:w-[420px]">
+          <div class="p-6">
+            <h3 class="font-display text-base mb-4" style="color: var(--color-text)">创建 API Token</h3>
+            <div class="space-y-3">
+              <div>
+                <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">名称</label>
+                <input v-model="tokenForm.name" placeholder="如 web-clipper" class="input-field" />
+              </div>
+              <div>
+                <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">有效期（天）</label>
+                <input v-model.number="tokenForm.expireDays" type="number" min="1" max="365" class="input-field" />
+              </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-6">
+              <button @click="showTokenForm = false" class="btn-secondary">取消</button>
+              <button @click="createToken" class="btn-primary" :disabled="creatingToken">{{ creatingToken ? '创建中...' : '创建' }}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <transition name="fade">
+      <div v-if="newTokenValue" class="modal-overlay" @click.self="newTokenValue = ''">
+        <div class="modal-panel w-[calc(100%-2rem)] sm:w-[480px]">
+          <div class="p-6">
+            <h3 class="font-display text-base mb-2" style="color: var(--color-text)">Token 已创建</h3>
+            <p class="text-sm mb-4" style="color: var(--color-accent)">请立即复制保存，关闭后将无法再次查看</p>
+            <div class="flex items-center gap-2 p-3 rounded-lg" style="background-color: var(--color-bg)">
+              <code class="text-sm flex-1 break-all select-all" style="color: var(--color-text)">{{ newTokenValue }}</code>
+              <button @click="copyTokenValue"
+                class="text-xs px-3 py-1 rounded transition-colors duration-150 shrink-0"
+                style="color: var(--color-text-secondary)"
+                @mouseenter="$event.target.style.color = 'var(--color-sage)'"
+                @mouseleave="$event.target.style.color = 'var(--color-text-secondary)'">复制</button>
+            </div>
+            <div class="flex justify-end mt-4">
+              <button @click="newTokenValue = ''" class="btn-primary">关闭</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </transition>
 
     <transition name="fade">
       <div v-if="showAddForm" class="modal-overlay" @click.self="showAddForm = false">
@@ -293,7 +356,7 @@
 import { ref, onMounted } from 'vue'
 import { modelApi } from '@/api/models'
 import { knowledgeApi } from '@/api/knowledge'
-import { backupApi } from '@/api/backup'
+import { authApi } from '@/api/auth'
 
 const models = ref([])
 const showAddForm = ref(false)
@@ -312,8 +375,43 @@ const dragOver = ref(false)
 const fileInputRef = ref(null)
 let selectedFile = null
 
-const backups = ref([])
-const backingUp = ref(false)
+const tokens = ref([])
+const showTokenForm = ref(false)
+const tokenForm = ref({ name: '', expireDays: 30 })
+const creatingToken = ref(false)
+const newTokenValue = ref('')
+
+async function loadTokens() {
+  try {
+    const res = await authApi.listTokens()
+    tokens.value = res.data.data || []
+  } catch {}
+}
+
+async function createToken() {
+  if (!tokenForm.value.name.trim()) return
+  creatingToken.value = true
+  try {
+    const res = await authApi.createToken(tokenForm.value)
+    newTokenValue.value = res.data.data.token
+    showTokenForm.value = false
+    await loadTokens()
+  } finally {
+    creatingToken.value = false
+  }
+}
+
+async function deleteToken(id) {
+  try {
+    await authApi.deleteToken(id)
+    await loadTokens()
+  } catch {}
+}
+
+function copyTokenValue() {
+  navigator.clipboard?.writeText(newTokenValue.value)
+  newTokenValue.value = ''
+}
 
 async function loadModels() {
   const res = await modelApi.list()
@@ -481,40 +579,8 @@ function cancelImport() {
   importProgress.value = 0
 }
 
-async function loadBackups() {
-  try {
-    const res = await backupApi.list()
-    backups.value = res.data.data || []
-  } catch {}
-}
-
-async function createBackup() {
-  backingUp.value = true
-  try {
-    await backupApi.create()
-    await loadBackups()
-  } finally {
-    backingUp.value = false
-  }
-}
-
-async function downloadBackup(filename) {
-  try {
-    const res = await backupApi.download(filename)
-    const blob = new Blob([res.data], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    a.click()
-    URL.revokeObjectURL(url)
-  } catch (err) {
-    console.error('下载备份失败:', err)
-  }
-}
-
 onMounted(() => {
   loadModels()
-  loadBackups()
+  loadTokens()
 })
 </script>

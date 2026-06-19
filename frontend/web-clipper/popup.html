@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>MindVault Clipper</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 380px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      background: #f8f6f3;
+      color: #2d2a24;
+      padding: 16px;
+    }
+    h1 { font-size: 18px; margin-bottom: 12px; color: #c65f39; }
+    label { display: block; font-size: 12px; color: #8a857f; margin-bottom: 4px; }
+    input, textarea, select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #e8e4de;
+      border-radius: 6px;
+      font-size: 13px;
+      background: #fff;
+      color: #2d2a24;
+      margin-bottom: 10px;
+    }
+    textarea { resize: vertical; min-height: 60px; }
+    .btn {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn-primary { background: #c65f39; color: #fff; }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .status {
+      margin-top: 10px;
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 13px;
+      text-align: center;
+    }
+    .success { background: #e8f0e6; color: #5d7a5a; }
+    .error { background: #fce8e4; color: #c65f39; }
+    .tag-input { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 8px; background: #fff; border: 1px solid #e8e4de; border-radius: 6px; margin-bottom: 10px; min-height: 36px; cursor: text; }
+    .tag { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; background: #e8f0e6; color: #5d7a5a; border-radius: 4px; font-size: 12px; }
+    .tag button { background: none; border: none; color: #5d7a5a; cursor: pointer; font-size: 14px; padding: 0; line-height: 1; }
+    .tag-input input { border: none; outline: none; flex: 1; min-width: 60px; padding: 2px; margin-bottom: 0; font-size: 13px; }
+    .footer { margin-top: 12px; font-size: 11px; color: #8a857f; text-align: center; }
+    .footer a { color: #c65f39; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <h1>MindVault Clipper</h1>
+  <label>标题</label>
+  <input id="title" placeholder="页面标题" />
+  <label>标签</label>
+  <div id="tagContainer" class="tag-input" @click="document.querySelector('#tagInput').focus()">
+    <div id="tagList" style="display:flex;flex-wrap:wrap;gap:4px"></div>
+    <input id="tagInput" placeholder="输入标签，回车添加" />
+  </div>
+  <label>内容</label>
+  <textarea id="content" rows="6" placeholder="页面内容"></textarea>
+  <label>来源 URL</label>
+  <input id="url" placeholder="https://" readonly />
+  <label>服务器地址</label>
+  <input id="serverUrl" placeholder="http://localhost:8080" />
+  <label>API Token</label>
+  <input id="apiToken" type="password" placeholder="你的 MindVault API Token" />
+  <button id="saveBtn" class="btn btn-primary">保存到 MindVault</button>
+  <div id="status" class="status" style="display:none"></div>
+  <div class="footer">
+    需要在 MindVault 设置页创建 API Token · <a href="#" id="optionsLink">设置</a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

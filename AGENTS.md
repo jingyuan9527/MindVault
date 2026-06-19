@@ -15,9 +15,9 @@ cd docker && docker compose up -d --build
 ## Commands
 | Task | Command |
 |------|---------|
-| Backend tests (220 total) | `cd backend && mvn test` |
+| Backend tests (229 total) | `cd backend && mvn test` |
 | Single test class | `cd backend && mvn test -Dtest=KnowledgeControllerTest` |
-| Frontend tests (53 total) | `cd frontend && npx vitest run` |
+| Frontend tests (59 total) | `cd frontend && npx vitest run` |
 | Build backend jar | `cd backend && mvn clean package -DskipTests` |
 | Build frontend | `cd frontend && npm run build` |
 | Docker rebuild+deploy | `cd docker && docker compose up -d --build` |
@@ -39,7 +39,7 @@ cd docker && docker compose up -d --build
 | `knowledge` | CRUD + tags + search + export/import |
 | `chat` | Chat sessions, messages, SSE streaming |
 | `agent` | LLM calling with failover, tool execution |
-| `auth` | User auth, login, API tokens, session manager, auth filter, admin initializer |
+| `auth` | User auth, login, API tokens, session manager, auth filter, admin initializer, user management (admin) |
 | `model` | Model config CRUD (OpenAI/DeepSeek/Alibaba/Ollama) |
 | `content` | URL (Jsoup) and PDF (PDFBox) parsing → markdown |
 | `review` | SM-2 spaced repetition scheduling |
@@ -87,7 +87,9 @@ cd docker && docker compose up -d --build
 | 认证 Auth | 登录 + Token 管理 + 密码修改 | ✅ | ✅ | — |
 | **Total** | **13 模块 / 54 接口** | **11/13** | **13/13** | **43%** |
 
-### Frontend (10 routes)
+| 用户管理 User | 列表 + 启用/禁用 | ✅ | ✅ | 36% |
+
+### Frontend (14 routes)
 | Route | View | Responsive | Tests |
 |-------|------|:-:|:-:|
 | `/login` | 登录页面 | ✅ | ❌ |
@@ -99,7 +101,10 @@ cd docker && docker compose up -d --build
 | `/daily-review` | 每日回顾报告 | ✅ | ❌ |
 | `/token-usage` | Token 用量统计 | ✅ | ❌ |
 | `/operation-logs` | 操作日志 | ✅ | ❌ |
-| `/settings` | 模型配置 + 导出 | ✅ | ❌ |
+| `/backups` | 数据备份 | ✅ | ✅ |
+| `/system` | 系统监控 | ✅ | ✅ |
+| `/users` | 用户管理 | ✅ | ✅ |
+| `/settings` | 模型配置 + Token 管理 | ✅ | ❌ |
 
 ### API 文档
 - Knife4j UI: `http://localhost:3000/api/doc.html`
@@ -117,9 +122,11 @@ cd docker && docker compose up -d --build
 ### To Do
 - [ ] Agent 集成测试（WireMock）— agent 3% → ~60%
 - [ ] Content 集成测试（WireMock）— content 13% → ~70%
-- [ ] Frontend 9 个 View 的 Vitest 测试（当前只有 3 个组件/View 有测试）
+- [ ] Frontend 9 个 View 的 Vitest 测试（当前只有 6 个 View/组件有测试）
 - [ ] `image` 图床模块（可选）
 - [ ] `search` 搜索日志/热词（可选）
+- [ ] SettingsView Token 管理交互测试
+- [ ] Web Clipper 浏览器商店发布说明
 
 ## Docker Deployment
 - Three containers: `db` (pgvector), `backend` (JDK 21), `frontend` (Nginx)

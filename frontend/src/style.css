@@ -16,6 +16,23 @@
     --color-warm-gray: #6b6560;
   }
 
+  .dark {
+    --color-bg: #1a1a1a;
+    --color-surface: #252525;
+    --color-border: #333333;
+    --color-text: #e0ddd8;
+    --color-text-secondary: #8a857f;
+    --color-accent: #d4826a;
+    --color-accent-hover: #c56a4f;
+    --color-sage: #7a9a77;
+    --color-sage-light: #2a3a28;
+    --color-warm-gray: #9a958f;
+  }
+
+  .dark body {
+    background-image: none;
+  }
+
   body {
     font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
     background-color: var(--color-bg);

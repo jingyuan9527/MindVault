@@ -9,6 +9,9 @@ import DailyReviewView from '@/views/DailyReviewView.vue'
 import TokenUsageView from '@/views/TokenUsageView.vue'
 import OperationLogView from '@/views/OperationLogView.vue'
 import SettingsView from '@/views/SettingsView.vue'
+import BackupView from '@/views/BackupView.vue'
+import SystemMonitorView from '@/views/SystemMonitorView.vue'
+import UserManagementView from '@/views/UserManagementView.vue'
 import LoginView from '@/views/LoginView.vue'
 
 const routes = [
@@ -21,6 +24,9 @@ const routes = [
   { path: '/daily-review', name: 'dailyReview', component: DailyReviewView, meta: { requiresAuth: true } },
   { path: '/token-usage', name: 'tokenUsage', component: TokenUsageView, meta: { requiresAuth: true } },
   { path: '/operation-logs', name: 'operationLogs', component: OperationLogView, meta: { requiresAuth: true } },
+  { path: '/backups', name: 'backups', component: BackupView, meta: { requiresAuth: true } },
+  { path: '/system', name: 'system', component: SystemMonitorView, meta: { requiresAuth: true } },
+  { path: '/users', name: 'users', component: UserManagementView, meta: { requiresAuth: true } },
   { path: '/settings', name: 'settings', component: SettingsView, meta: { requiresAuth: true } }
 ]
 

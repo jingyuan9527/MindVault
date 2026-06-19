@@ -1,4 +1,5 @@
 <template>
+  <ToastContainer />
   <router-view v-slot="{ Component, route }">
     <template v-if="route.path === '/login'">
       <component :is="Component" />
@@ -85,7 +86,10 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import ChatPanel from '@/components/chat/ChatPanel.vue'
+import ToastContainer from '@/components/common/ToastContainer.vue'
+import { useThemeStore } from '@/stores/theme'
 
+const themeStore = useThemeStore()
 const chatOpen = ref(true)
 const sidebarOpen = ref(false)
 const isDesktop = ref(true)
@@ -97,6 +101,7 @@ function checkScreen() {
 }
 
 onMounted(() => {
+  themeStore.init()
   checkScreen()
   window.addEventListener('resize', checkScreen)
 })
