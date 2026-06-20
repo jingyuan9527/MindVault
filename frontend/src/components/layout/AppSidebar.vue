@@ -222,6 +222,7 @@ async function loadTags() {
 }
 
 onMounted(() => {
+  if (!authStore.isLoggedIn()) return
   loadDueCount()
   loadTags()
   pollTimer = setInterval(loadDueCount, 60000)
