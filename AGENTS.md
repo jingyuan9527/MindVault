@@ -7,9 +7,11 @@ This project follows an iterative delivery pattern:
 2. **Ship fast, then polish**: First working version ASAP → user tests → iterate on feedback.
 3. **Batch similar fixes**: When one issue is found, proactively fix all sibling occurrences.
 4. **Verify tests**: Run full test suite (backend + frontend) after every change batch. Don't break green.
-5. **Sync docs**: Update AGENTS.md to reflect current state; verify todo list accuracy.
-6. **Commit once**: One atomic commit per feature/batch, with a clear summary of changes, only after tests pass and docs are accurate.
-7. **Check leftovers**: After commit, review pending todos so both sides know what's next.
+5. **Deploy on Docker**: After building, redeploy via `docker compose up -d --build` so changes can be verified in the real environment.
+6. **User acceptance**: Ask the user to verify changes in the browser. Don't mark work done without confirmation.
+7. **Sync docs**: Update AGENTS.md to reflect current state; verify todo list accuracy.
+8. **Commit once**: One atomic commit per feature/batch, with a clear summary of changes, only after user confirms and docs are accurate.
+9. **Check leftovers**: After commit, review pending todos so both sides know what's next.
 
 ## Quick Start
 ```bash
@@ -31,6 +33,7 @@ cd docker && docker compose up -d --build
 | Frontend tests (59 total) | `cd frontend && npx vitest run` |
 | Build backend jar | `cd backend && mvn clean package -DskipTests` |
 | Build frontend | `cd frontend && npm run build` |
+| Docker rebuild+deploy | `cd docker && docker compose up -d --build` |
 | Docker rebuild+deploy | `cd docker && docker compose up -d --build` |
 | Login as admin (Docker) | `curl -X POST localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' -d '{"username":"admin","password":"mindvault123"}'` |
 | Create API token | `curl -X POST localhost:8080/api/v1/auth/tokens -H 'Authorization: Bearer <session>' -H 'Content-Type: application/json' -d '{"name":"ext","expireDays":365}'` |
