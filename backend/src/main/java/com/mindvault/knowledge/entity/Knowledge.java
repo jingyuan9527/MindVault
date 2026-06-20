@@ -9,6 +9,7 @@ import com.mindvault.common.handler.JsonbStringTypeHandler;
 import java.time.LocalDateTime;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
 
 @TableName("knowledge")
 @Schema(description = "知识实体")
@@ -18,6 +19,7 @@ public class Knowledge {
     @Schema(description = "主键 ID")
     private Long id;
 
+    @NotBlank(message = "标题不能为空")
     @Schema(description = "用户标题（AI 永不修改）")
     private String title;
 
@@ -25,6 +27,7 @@ public class Knowledge {
     @Schema(description = "AI 生成标题")
     private String aiTitle;
 
+    @NotBlank(message = "内容不能为空")
     @Schema(description = "内容")
     private String content;
 

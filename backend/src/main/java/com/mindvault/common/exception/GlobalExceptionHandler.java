@@ -2,11 +2,13 @@ package com.mindvault.common.exception;
 
 import com.mindvault.common.dto.ApiResponse;
 import com.mindvault.common.service.MetricsService;
+import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -22,6 +24,23 @@ public class GlobalExceptionHandler {
 
     public GlobalExceptionHandler(ObjectProvider<MetricsService> metricsServiceProvider) {
         this.metricsService = metricsServiceProvider.getIfAvailable();
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<Void> handleValidation(MethodArgumentNotValidException e) {
+        String errors = e.getBindingResult().getFieldErrors().stream()
+                .map(f -> f.getField() + ": " + f.getDefaultMessage())
+                .collect(java.util.stream.Collectors.joining("; "));
+        log.warn("参数校验失败 [traceId: {}]: {}", MDC.get("traceId"), errors);
+        return ApiResponse.error(400, "参数校验失败: " + errors);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<Void> handleConstraintViolation(ConstraintViolationException e) {
+        log.warn("约束校验失败 [traceId: {}]: {}", MDC.get("traceId"), e.getMessage());
+        return ApiResponse.error(400, "参数校验失败: " + e.getMessage());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
