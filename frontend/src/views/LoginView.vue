@@ -28,3 +28,32 @@
     </div>
   </div>
 </template>
+
+<script setup>
+import { ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+
+const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
+
+const username = ref('')
+const password = ref('')
+const loading = ref(false)
+const error = ref('')
+
+async function handleLogin() {
+  loading.value = true
+  error.value = ''
+  try {
+    await auth.login(username.value, password.value)
+    const redirect = route.query.redirect || '/'
+    router.push(redirect)
+  } catch (e) {
+    error.value = e.response?.data?.message || '登录失败，请检查用户名和密码'
+  } finally {
+    loading.value = false
+  }
+}
+</script>
