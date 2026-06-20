@@ -3,6 +3,11 @@
     <div class="p-4 md:p-5 shrink-0" style="border-bottom: 1px solid var(--color-border)">
       <div class="flex items-center justify-between mb-3">
         <div class="flex items-center gap-3">
+          <div class="knowledge-header-icon">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+            </svg>
+          </div>
           <h2 class="font-display text-xl">知识库</h2>
           <div class="flex items-center gap-1 p-0.5 rounded-lg" style="background-color: var(--color-bg)">
             <n-button v-for="v in viewModes" :key="v.key" text size="tiny"
@@ -654,3 +659,12 @@ watch(() => route.query, (query) => {
   }
 })
 </script>
+
+<style scoped>
+.knowledge-header-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: white; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--color-sage) 0%, #4a6a47 100%);
+}
+</style>

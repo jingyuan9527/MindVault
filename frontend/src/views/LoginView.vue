@@ -1,28 +1,54 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center p-4" style="background-color: var(--color-bg)">
-    <n-card class="w-full max-w-sm" :bordered="true" size="large">
-      <div class="text-center mb-6">
-        <h1 class="font-display text-3xl font-bold" style="color: #4D6A4A">MindVault</h1>
-        <p class="text-sm mt-2" style="color: var(--color-text-secondary)">知忆 · 你的AI增强第二大脑</p>
+  <div class="login-container">
+    <div class="login-bg">
+      <div class="bg-ornament top-right"></div>
+      <div class="bg-ornament bottom-left"></div>
+      <div class="bg-grid"></div>
+    </div>
+    <div class="login-content">
+      <div class="login-brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 48 48" fill="none" class="w-10 h-10">
+            <rect x="4" y="4" width="40" height="40" rx="10" stroke="currentColor" stroke-width="2"/>
+            <path d="M16 32V20l8-6 8 6v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M20 28h8v4h-8z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h1 class="brand-title">MindVault</h1>
+        <p class="brand-subtitle">知忆 · 你的AI增强第二大脑</p>
+        <p class="brand-desc">智能管理知识，自动发现关联，让学习与思考事半功倍</p>
       </div>
+      <div class="login-card">
+        <n-form @submit.prevent="handleLogin" label-placement="top" :model="formData">
+          <n-form-item label="用户名" path="username">
+            <n-input v-model:value="formData.username" placeholder="请输入用户名" size="large">
+              <template #prefix>
+                <svg class="w-4 h-4" style="color: var(--color-text-secondary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                </svg>
+              </template>
+            </n-input>
+          </n-form-item>
+          <n-form-item label="密码" path="password">
+            <n-input v-model:value="formData.password" type="password" placeholder="请输入密码" size="large" @keyup.enter="handleLogin">
+              <template #prefix>
+                <svg class="w-4 h-4" style="color: var(--color-text-secondary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+              </template>
+            </n-input>
+          </n-form-item>
 
-      <n-form @submit.prevent="handleLogin" label-placement="top" :model="formData">
-        <n-form-item label="用户名" path="username">
-          <n-input v-model:value="formData.username" placeholder="请输入用户名" />
-        </n-form-item>
-        <n-form-item label="密码" path="password">
-          <n-input v-model:value="formData.password" type="password" placeholder="请输入密码" @keyup.enter="handleLogin" />
-        </n-form-item>
+          <n-alert v-if="error" type="error" :show-icon="true" class="mb-4">
+            {{ error }}
+          </n-alert>
 
-        <n-alert v-if="error" type="error" :show-icon="true" class="mb-4">
-          {{ error }}
-        </n-alert>
-
-        <n-button type="primary" attr-type="submit" :loading="loading" block size="large">
-          登录
-        </n-button>
-      </n-form>
-    </n-card>
+          <n-button type="primary" attr-type="submit" :loading="loading" block size="large" class="login-btn">
+            登录
+          </n-button>
+        </n-form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -53,3 +79,136 @@ async function handleLogin() {
   }
 }
 </script>
+
+<style scoped>
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--color-bg);
+}
+
+.login-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.bg-ornament {
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.12;
+}
+.bg-ornament.top-right {
+  top: -100px;
+  right: -100px;
+  background: radial-gradient(circle, var(--color-accent) 0%, transparent 70%);
+}
+.bg-ornament.bottom-left {
+  bottom: -100px;
+  left: -100px;
+  background: radial-gradient(circle, var(--color-sage) 0%, transparent 70%);
+}
+
+.bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--color-border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-border) 1px, transparent 1px);
+  background-size: 60px 60px;
+  opacity: 0.15;
+}
+
+.login-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 48px;
+  padding: 24px;
+}
+
+.login-brand {
+  max-width: 320px;
+}
+
+.brand-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  color: white;
+  background: linear-gradient(135deg, var(--color-sage) 0%, #4a6a47 100%);
+  box-shadow: 0 4px 16px rgba(93, 122, 90, 0.3);
+}
+
+.brand-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--color-text);
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+
+.brand-subtitle {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 12px;
+}
+
+.brand-desc {
+  font-size: 0.85rem;
+  color: var(--color-warm-gray);
+  line-height: 1.6;
+}
+
+.login-card {
+  width: 360px;
+  padding: 32px;
+  border-radius: 16px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 8px 32px rgba(45, 42, 36, 0.08);
+}
+
+@media (max-width: 768px) {
+  .login-content {
+    flex-direction: column;
+    gap: 32px;
+    padding: 24px 16px;
+    width: 100%;
+  }
+  .login-brand {
+    max-width: 100%;
+    text-align: center;
+  }
+  .brand-icon {
+    margin: 0 auto 16px;
+  }
+  .login-card {
+    width: 100%;
+    max-width: 400px;
+    padding: 24px;
+  }
+}
+
+.login-btn {
+  --n-color: var(--color-sage);
+  --n-color-hover: #4a6a47;
+  --n-color-pressed: #3d5a3a;
+  --n-color-active: #4a6a47;
+  --n-ripple-color: var(--color-sage);
+}
+</style>

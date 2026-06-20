@@ -123,22 +123,22 @@ The pipeline processes each knowledge entry in three automated rounds:
 | 用户管理 User | 列表 + 启用/禁用 | ✅ | ✅ | 36% |
 
 ### Frontend (14 routes)
-| Route | View | Responsive | Tests |
-|-------|------|:-:|:-:|
-| `/login` | 登录页面 | ✅ | ❌ |
-| `/` | 知识库列表 + 搜索 + 导入导出 + AI标题展示(主) + 用户标题(副) + 合并标签 | ✅ | ✅ |
-| `/chat` | AI 对话 | ✅ | ❌ |
-| `/review` | 复习计划 + 执行 SM-2 | ✅ | ❌ |
-| `/flashcards` | 闪卡展示 | ✅ | ❌ |
-| `/writing` | AI 写作 | ✅ | ❌ |
-| `/daily-review` | 每日回顾报告 | ✅ | ❌ |
-| `/token-usage` | Token 用量统计 | ✅ | ❌ |
-| `/operation-logs` | 操作日志 | ✅ | ❌ |
-| `/backups` | 数据备份 | ✅ | ✅ |
-| `/system` | 系统监控 | ✅ | ✅ |
-| `/users` | 用户管理 | ✅ | ✅ |
-| `/settings` | 模型配置 + Token 管理 | ✅ | ❌ |
-| `/system-config` | 系统配置 + 定时任务管理 | ✅ | ❌ |
+| Route | View | Responsive | Tests | Design Polish |
+|-------|------|:-:|:-:|:-:|
+| `/login` | 登录页面 — 品牌英雄式布局 + 渐变图标 + 背景光晕 | ✅ | ❌ | ✅ v0.6 |
+| `/` | 知识库列表 + 搜索 + 导入导出 + AI标题 + 合并标签 | ✅ | ✅ | ✅ v0.6 |
+| `/chat` | AI 对话 — 头部渐变 + 快捷建议 + 清空按钮 | ✅ | ❌ | ✅ v0.6 |
+| `/review` | 间隔复习 — 进度条 + 圆点指示器 + 分色质量按钮 | ✅ | ❌ | ✅ v0.6 |
+| `/flashcards` | 闪卡展示 — CSS 3D 翻转动画 + 难度色标 | ✅ | ❌ | ✅ v0.6 |
+| `/writing` | AI 写作 — 纸质感文章卡片 + 琥珀色主题 | ✅ | ❌ | ✅ v0.6 |
+| `/daily-review` | 每日复盘 — 分区报告卡片 + 左边框色标 | ✅ | ❌ | ✅ v0.6 |
+| `/token-usage` | Token 用量 — 柱状图可视化 + 统计卡片 | ✅ | ❌ | ✅ v0.6 |
+| `/operation-logs` | 操作日志 | ✅ | ❌ | ✅ v0.6 |
+| `/backups` | 数据备份 — 时间线布局 | ✅ | ✅ | ✅ v0.6 |
+| `/system` | 系统监控 — 图标统计卡 + 内存/磁盘进度条 | ✅ | ✅ | ✅ v0.6 |
+| `/users` | 用户管理 — 首字母头像 + 角色/状态标签 | ✅ | ✅ | ✅ v0.6 |
+| `/settings` | 模型配置 + Token 管理 | ✅ | ❌ | ❌ |
+| `/system-config` | 系统配置 + 定时任务管理 | ✅ | ❌ | ❌ |
 
 ### API 文档
 - Knife4j UI: `http://localhost:3000/api/doc.html`
@@ -166,6 +166,7 @@ The pipeline processes each knowledge entry in three automated rounds:
 - [ ] Scheduler 集成测试
 - [ ] AgentService + ReviewService + SearchEnhanceService 剩余硬编码配置接入 SystemConfig
 - [ ] SystemConfigView 前端 Vitest 测试
+- [ ] SettingsView + SystemConfigView 设计优化
 
 ## Docker Deployment
 - Three containers: `db` (pgvector), `backend` (JDK 21), `frontend` (Nginx)
