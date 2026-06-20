@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { authApi } from '@/api/auth'
+import { markAuthSession } from '@/api/client'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('mindvault_token') || '')
@@ -14,6 +15,7 @@ export const useAuthStore = defineStore('auth', () => {
       token.value = res.data.data.token
       user.value = res.data.data
       localStorage.setItem('mindvault_token', token.value)
+      markAuthSession()
     } finally {
       loading.value = false
     }
@@ -23,6 +25,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const res = await authApi.me()
       user.value = res.data.data
+      markAuthSession()
     } catch {
       user.value = null
       token.value = ''

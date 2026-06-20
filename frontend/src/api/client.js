@@ -12,6 +12,7 @@ client.interceptors.request.use(config => {
 
 let toastStore = null
 let retryCount = 0
+let hasAuthSession = false
 
 client.interceptors.response.use(
   response => {
@@ -34,8 +35,10 @@ client.interceptors.response.use(
       const auth = (await import('@/stores/auth')).useAuthStore()
       auth.user = null
       if (window.location.pathname !== '/login') {
-        toastStore?.error('登录已过期，请重新登录')
-        setTimeout(() => { window.location.href = '/login' }, 1000)
+        if (hasAuthSession) {
+          toastStore?.error('登录已过期，请重新登录')
+        }
+        setTimeout(() => { window.location.href = '/login' }, 100)
       }
     } else if (status >= 500) {
       toastStore?.error(data?.message || '服务器内部错误，请稍后重试')
@@ -57,5 +60,9 @@ client.interceptors.response.use(
     return Promise.reject(error)
   }
 )
+
+export function markAuthSession() {
+  hasAuthSession = true
+}
 
 export default client
