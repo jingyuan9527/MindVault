@@ -1,5 +1,16 @@
 # MindVault — Agent Guide
 
+## Workflow Preferences
+This project follows an iterative delivery pattern:
+
+1. **Goal-first**: Start with a clear target, no upfront planning docs.
+2. **Ship fast, then polish**: First working version ASAP → user tests → iterate on feedback.
+3. **Batch similar fixes**: When one issue is found, proactively fix all sibling occurrences.
+4. **Verify tests**: Run full test suite (backend + frontend) after every change batch. Don't break green.
+5. **Sync docs**: Update AGENTS.md to reflect current state; verify todo list accuracy.
+6. **Commit once**: One atomic commit per feature/batch, with a clear summary of changes, only after tests pass and docs are accurate.
+7. **Check leftovers**: After commit, review pending todos so both sides know what's next.
+
 ## Quick Start
 ```bash
 # Backend (JDK 21, Maven)
