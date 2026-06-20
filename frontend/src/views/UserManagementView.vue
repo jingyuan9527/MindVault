@@ -1,5 +1,5 @@
 <template>
-  <div class="p-4 md:p-6 max-w-4xl">
+  <div class="flex-1 overflow-y-auto p-4 md:p-6 max-w-4xl">
     <h2 class="font-display text-xl md:text-2xl mb-4 md:mb-6" style="color: var(--color-text)">用户管理</h2>
 
     <div class="card p-4 md:p-6">

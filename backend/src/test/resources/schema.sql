@@ -53,3 +53,12 @@ CREATE TABLE IF NOT EXISTS auto_process_log (
     completed_at    TIMESTAMP NOT NULL,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS system_config (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    config_key VARCHAR(255) NOT NULL UNIQUE,
+    config_value TEXT NOT NULL DEFAULT '',
+    description VARCHAR(500) DEFAULT '',
+    value_type VARCHAR(50) NOT NULL DEFAULT 'string',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

@@ -12,6 +12,7 @@ import SettingsView from '@/views/SettingsView.vue'
 import BackupView from '@/views/BackupView.vue'
 import SystemMonitorView from '@/views/SystemMonitorView.vue'
 import UserManagementView from '@/views/UserManagementView.vue'
+import SystemConfigView from '@/views/SystemConfigView.vue'
 import LoginView from '@/views/LoginView.vue'
 
 const routes = [
@@ -27,7 +28,8 @@ const routes = [
   { path: '/backups', name: 'backups', component: BackupView, meta: { requiresAuth: true } },
   { path: '/system', name: 'system', component: SystemMonitorView, meta: { requiresAuth: true } },
   { path: '/users', name: 'users', component: UserManagementView, meta: { requiresAuth: true } },
-  { path: '/settings', name: 'settings', component: SettingsView, meta: { requiresAuth: true } }
+  { path: '/settings', name: 'settings', component: SettingsView, meta: { requiresAuth: true } },
+  { path: '/system-config', name: 'systemConfig', component: SystemConfigView, meta: { requiresAuth: true } }
 ]
 
 const router = createRouter({

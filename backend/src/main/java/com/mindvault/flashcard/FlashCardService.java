@@ -8,6 +8,7 @@ import com.mindvault.knowledge.KnowledgeService;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
+import com.mindvault.systemconfig.SystemConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -25,16 +26,19 @@ public class FlashCardService {
     private final LlmFailoverService llmFailoverService;
     private final KnowledgeService knowledgeService;
     private final FlashCardMapper mapper;
+    private final SystemConfigService config;
     private final ObjectMapper objectMapper;
 
     public FlashCardService(ModelConfigService modelConfigService,
                             LlmFailoverService llmFailoverService,
                             KnowledgeService knowledgeService,
-                            FlashCardMapper mapper) {
+                            FlashCardMapper mapper,
+                            SystemConfigService config) {
         this.modelConfigService = modelConfigService;
         this.llmFailoverService = llmFailoverService;
         this.knowledgeService = knowledgeService;
         this.mapper = mapper;
+        this.config = config;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -67,12 +71,17 @@ public class FlashCardService {
         List<ModelConfig> models = modelConfigService.getAvailableChatModels();
         if (models.isEmpty()) return List.of();
 
-        String prompt = "你是一个知识卡片生成助手。请根据以下内容生成3-5个问答式知识卡片。" +
+        int truncateLen = config.getInt("threshold.flashcard.truncate-length", 3000);
+        double temperature = config.getDouble("threshold.flashcard.temperature", 0.3);
+        int maxTokens = config.getInt("threshold.flashcard.max-tokens", 1000);
+        String promptTmpl = config.getPrompt("prompt.flashcard.generation",
+                "你是一个知识卡片生成助手。请根据以下内容生成3-5个问答式知识卡片。" +
                 "返回JSON数组格式，每个元素包含 question、answer、difficulty 字段。" +
                 "difficulty 取值为 EASY / MEDIUM / HARD。" +
-                "只返回JSON数组，不要额外说明。\n\n标题: " + title + "\n\n内容: " + LlmFailoverService.truncate(content, 3000);
+                "只返回JSON数组，不要额外说明。\n\n标题: %s\n\n内容: %s");
+        String prompt = String.format(promptTmpl, title, LlmFailoverService.truncate(content, truncateLen));
 
-        String result = llmFailoverService.call(models, new LlmFailoverService.LlmCallOptions(prompt, 0.3, 1000, false, null));
+        String result = llmFailoverService.call(models, new LlmFailoverService.LlmCallOptions(prompt, temperature, maxTokens, false, null));
         if (result == null) return List.of();
 
         try {

@@ -7,6 +7,7 @@ import com.mindvault.auto.entity.AutoProcessLog;
 import com.mindvault.knowledge.KnowledgeMapper;
 import com.mindvault.knowledge.KnowledgeService;
 import com.mindvault.knowledge.entity.Knowledge;
+import com.mindvault.systemconfig.SystemConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -23,19 +24,23 @@ public class AggregationService {
     private final KnowledgeMapper knowledgeMapper;
     private final KnowledgeService knowledgeService;
     private final AutoProcessLogMapper logMapper;
+    private final SystemConfigService config;
     private final ObjectMapper objectMapper;
 
     public AggregationService(KnowledgeMapper knowledgeMapper,
                               KnowledgeService knowledgeService,
-                              AutoProcessLogMapper logMapper) {
+                              AutoProcessLogMapper logMapper,
+                              SystemConfigService config) {
         this.knowledgeMapper = knowledgeMapper;
         this.knowledgeService = knowledgeService;
         this.logMapper = logMapper;
+        this.config = config;
         this.objectMapper = new ObjectMapper();
     }
 
     public void processRound3() {
-        List<Knowledge> pending = knowledgeMapper.findByAutoProcessStatus("RELATION_DONE", 50);
+        int batchSize = config.getInt("threshold.aggregation.batch-size", 50);
+        List<Knowledge> pending = knowledgeMapper.findByAutoProcessStatus("RELATION_DONE", batchSize);
         if (pending.isEmpty()) return;
         log.info("R3 聚合分析: 待处理 {} 条", pending.size());
 
@@ -63,9 +68,10 @@ public class AggregationService {
                 countTags(k.getUserTags(), tagCount);
             }
 
+            int topN = config.getInt("threshold.aggregation.tag-cloud-top-n", 50);
             List<Map.Entry<String, Long>> sorted = tagCount.entrySet().stream()
                     .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
-                    .limit(50)
+                    .limit(topN)
                     .toList();
 
             log.info("标签云更新完成: 共 {} 个标签", sorted.size());

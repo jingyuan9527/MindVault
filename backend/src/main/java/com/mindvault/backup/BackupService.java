@@ -3,6 +3,7 @@ package com.mindvault.backup;
 import com.mindvault.common.service.MetricsService;
 import com.mindvault.knowledge.KnowledgeService;
 import com.mindvault.operationlog.OperationLogService;
+import com.mindvault.systemconfig.SystemConfigService;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,6 +33,7 @@ public class BackupService {
     private final KnowledgeService knowledgeService;
     private final OperationLogService operationLogService;
     private final MetricsService metricsService;
+    private final SystemConfigService config;
 
     @Value("${mindvault.backup.dir:backups}")
     private String backupDir;
@@ -41,10 +43,12 @@ public class BackupService {
 
     public BackupService(KnowledgeService knowledgeService,
                          OperationLogService operationLogService,
-                         MetricsService metricsService) {
+                         MetricsService metricsService,
+                         SystemConfigService config) {
         this.knowledgeService = knowledgeService;
         this.operationLogService = operationLogService;
         this.metricsService = metricsService;
+        this.config = config;
     }
 
     @PostConstruct
@@ -59,6 +63,7 @@ public class BackupService {
 
     @Scheduled(cron = "0 0 3 * * ?")
     public void scheduledBackup() {
+        if (!config.getBool("task.backup.enabled", true)) return;
         log.info("开始定时自动备份...");
         try {
             String filename = createBackup();

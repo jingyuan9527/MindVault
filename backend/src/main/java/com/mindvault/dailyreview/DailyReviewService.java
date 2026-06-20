@@ -7,6 +7,7 @@ import com.mindvault.knowledge.KnowledgeMapper;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
+import com.mindvault.systemconfig.SystemConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -27,22 +28,26 @@ public class DailyReviewService {
     private final LlmFailoverService llmFailoverService;
     private final KnowledgeMapper knowledgeMapper;
     private final DailyReviewMapper mapper;
+    private final SystemConfigService config;
     private final ObjectMapper objectMapper;
 
     public DailyReviewService(ModelConfigService modelConfigService,
                               LlmFailoverService llmFailoverService,
                               KnowledgeMapper knowledgeMapper,
-                              DailyReviewMapper mapper) {
+                              DailyReviewMapper mapper,
+                              SystemConfigService config) {
         this.modelConfigService = modelConfigService;
         this.llmFailoverService = llmFailoverService;
         this.knowledgeMapper = knowledgeMapper;
         this.mapper = mapper;
+        this.config = config;
         this.objectMapper = new ObjectMapper();
     }
 
     @Scheduled(cron = "0 30 2 * * ?")
     @Transactional
     public void scheduledDailyReview() {
+        if (!config.getBool("task.daily-review.enabled", true)) return;
         log.info("开始执行定时每日复盘...");
         LocalDate yesterday = LocalDate.now().minusDays(1);
         generateReport(yesterday);
@@ -64,7 +69,7 @@ public class DailyReviewService {
         report.setTotalCount(dayKnowledge.size());
 
         if (dayKnowledge.isEmpty()) {
-            report.setSummary("当日无新增知识。");
+            report.setSummary(config.getString("default.daily-review.empty-summary", "当日无新增知识。"));
             report.setKeyInsights("[]");
             report.setRecommendations("[]");
             report.setCategoryBreakdown("{}");
@@ -102,7 +107,7 @@ public class DailyReviewService {
                 report.setCategoryBreakdown("{}");
             }
         } else {
-            report.setSummary("当日知识较多，自动摘要生成失败。");
+            report.setSummary(config.getString("default.daily-review.fallback-summary", "当日知识较多，自动摘要生成失败。"));
             report.setKeyInsights("[]");
             report.setRecommendations("[]");
             report.setCategoryBreakdown("{}");
@@ -117,15 +122,18 @@ public class DailyReviewService {
         List<ModelConfig> models = modelConfigService.getAvailableChatModels();
         if (models.isEmpty()) return null;
 
-        String prompt = "你是一个每日知识复盘助手。请根据以下今日新增知识，生成一份复盘报告。" +
+        double temperature = config.getDouble("threshold.daily-review.temperature", 0.3);
+        int maxTokens = config.getInt("threshold.daily-review.max-tokens", 1500);
+        String promptTmpl = config.getPrompt("prompt.daily-review.report",
+                "你是一个每日知识复盘助手。请根据以下今日新增知识，生成一份复盘报告。" +
                 "返回JSON格式，包含以下字段：\n" +
                 "1. summary: 一段概括性总结（50-100字）\n" +
                 "2. keyInsights: 关键洞见数组（3-5条）\n" +
                 "3. recommendations: 后续建议数组（2-3条）\n" +
                 "4. categoryBreakdown: 知识分类统计对象\n\n" +
-                "只返回JSON，不要额外说明。\n\n" + knowledgeSummary;
-
-        return llmFailoverService.call(models, new LlmFailoverService.LlmCallOptions(prompt, 0.3, 1500, true, "DAILY_REVIEW"));
+                "只返回JSON，不要额外说明。\n\n%s");
+        String prompt = String.format(promptTmpl, knowledgeSummary);
+        return llmFailoverService.call(models, new LlmFailoverService.LlmCallOptions(prompt, temperature, maxTokens, true, "DAILY_REVIEW"));
     }
 
     private Map<String, Object> parseReportJson(String json) {

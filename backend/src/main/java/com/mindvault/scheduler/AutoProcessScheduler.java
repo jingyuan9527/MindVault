@@ -2,6 +2,7 @@ package com.mindvault.scheduler;
 
 import com.mindvault.relation.AggregationService;
 import com.mindvault.relation.RelationService;
+import com.mindvault.systemconfig.SystemConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -14,22 +15,25 @@ public class AutoProcessScheduler {
 
     private final RelationService relationService;
     private final AggregationService aggregationService;
+    private final SystemConfigService config;
 
     public AutoProcessScheduler(RelationService relationService,
-                                AggregationService aggregationService) {
+                                AggregationService aggregationService,
+                                SystemConfigService config) {
         this.relationService = relationService;
         this.aggregationService = aggregationService;
+        this.config = config;
     }
 
-    @Scheduled(fixedDelay = 300000)
+    @Scheduled(fixedDelay = 60000)
     public void runRound2() {
-        log.debug("R2 定时任务触发");
+        if (!config.getBool("task.auto-process.round2.enabled", true)) return;
         relationService.processRound2();
     }
 
-    @Scheduled(fixedDelay = 1800000)
+    @Scheduled(fixedDelay = 60000)
     public void runRound3() {
-        log.debug("R3 定时任务触发");
+        if (!config.getBool("task.auto-process.round3.enabled", true)) return;
         aggregationService.processRound3();
     }
 }

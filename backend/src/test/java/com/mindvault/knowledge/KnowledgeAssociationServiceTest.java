@@ -1,6 +1,7 @@
 package com.mindvault.knowledge;
 
 import com.mindvault.knowledge.entity.Knowledge;
+import com.mindvault.systemconfig.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,11 +26,20 @@ class KnowledgeAssociationServiceTest {
     @Mock
     private KnowledgeService knowledgeService;
 
+    @Mock
+    private SystemConfigService config;
+
     private KnowledgeAssociationService service;
 
     @BeforeEach
     void setUp() {
-        service = new KnowledgeAssociationService(mapper, knowledgeService);
+        service = new KnowledgeAssociationService(mapper, knowledgeService, config);
+        lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getString(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getBool(anyString(), anyBoolean())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getPrompt(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
     }
 
     private Knowledge createKnowledge(Long id, String title, String embedding) {

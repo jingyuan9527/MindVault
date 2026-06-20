@@ -45,6 +45,14 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
               </svg>
             </button>
+            <button @click="handleLogout"
+              class="p-1.5 rounded-lg transition-colors duration-150 hover-accent"
+              style="color: var(--color-text-secondary)"
+              title="退出登录">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -80,15 +88,24 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import ChatPanel from '@/components/chat/ChatPanel.vue'
 import ToastContainer from '@/components/common/ToastContainer.vue'
 import { useThemeStore } from '@/stores/theme'
+import { useAuthStore } from '@/stores/auth'
 
+const router = useRouter()
+const authStore = useAuthStore()
 const themeStore = useThemeStore()
 const chatOpen = ref(true)
 const sidebarOpen = ref(false)
 const isDesktop = ref(true)
+
+function handleLogout() {
+  authStore.logout()
+  router.push('/login')
+}
 
 function checkScreen() {
   isDesktop.value = window.innerWidth >= 1024

@@ -1,6 +1,7 @@
 package com.mindvault.tokenusage;
 
 import com.mindvault.common.config.MindVaultProperties;
+import com.mindvault.systemconfig.SystemConfigService;
 import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.tokenusage.entity.TokenUsage;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +28,8 @@ class TokenUsageServiceTest {
     @Mock
     private TokenUsageMapper mapper;
 
+    @Mock private SystemConfigService config;
+
     private TokenUsageService service;
 
     @Captor
@@ -51,7 +54,13 @@ class TokenUsageServiceTest {
         openai.put("gpt-4o", new BigDecimal[]{BigDecimal.valueOf(0.005), BigDecimal.valueOf(0.015)});
         pricing.put("OPENAI", openai);
         props.getPricing().setModels(pricing);
-        service = new TokenUsageService(mapper, props);
+        service = new TokenUsageService(mapper, props, config);
+        lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getString(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getBool(anyString(), anyBoolean())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getPrompt(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
     }
 
     private ModelConfig createModelConfig(Long id, String provider, String modelName, String modelType) {

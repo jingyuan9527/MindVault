@@ -6,6 +6,7 @@ import com.mindvault.knowledge.KnowledgeService;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
+import com.mindvault.systemconfig.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.util.List;
@@ -24,12 +26,19 @@ class AutoProcessServiceTest {
     @Mock private LlmFailoverService llmFailoverService;
     @Mock private KnowledgeService knowledgeService;
     @Mock private AutoProcessLogMapper logMapper;
+    @Mock private SystemConfigService config;
 
     private AutoProcessService service;
 
     @BeforeEach
     void setUp() {
-        service = new AutoProcessService(modelConfigService, llmFailoverService, knowledgeService, logMapper);
+        service = new AutoProcessService(modelConfigService, llmFailoverService, knowledgeService, logMapper, config);
+        lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getString(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getBool(anyString(), anyBoolean())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getPrompt(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
     }
 
     @Test

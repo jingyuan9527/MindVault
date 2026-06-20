@@ -12,6 +12,7 @@ import com.mindvault.operationlog.OperationLogService;
 import com.mindvault.relation.KnowledgeRelationMapper;
 import com.mindvault.relation.entity.KnowledgeRelation;
 import com.mindvault.review.ReviewService;
+import com.mindvault.systemconfig.SystemConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -43,6 +44,7 @@ public class KnowledgeService {
     private final ModelConfigService modelConfigService;
     private final MetricsService metricsService;
     private final KnowledgeRelationMapper relationMapper;
+    private final SystemConfigService config;
     private final ObjectMapper objectMapper;
 
     public KnowledgeService(KnowledgeMapper mapper,
@@ -51,7 +53,8 @@ public class KnowledgeService {
                             ReviewService reviewService,
                             ModelConfigService modelConfigService,
                             MetricsService metricsService,
-                            KnowledgeRelationMapper relationMapper) {
+                            KnowledgeRelationMapper relationMapper,
+                            SystemConfigService config) {
         this.mapper = mapper;
         this.operationLogService = operationLogService;
         this.autoProcessService = autoProcessService;
@@ -59,6 +62,7 @@ public class KnowledgeService {
         this.modelConfigService = modelConfigService;
         this.metricsService = metricsService;
         this.relationMapper = relationMapper;
+        this.config = config;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -67,7 +71,7 @@ public class KnowledgeService {
         LocalDateTime now = LocalDateTime.now();
         knowledge.setCreatedAt(now);
         knowledge.setUpdatedAt(now);
-        knowledge.setAutoProcessStatus("PENDING");
+        knowledge.setAutoProcessStatus(config.getString("default.knowledge.auto-process-status", "PENDING"));
         mapper.insert(knowledge);
         log.info("添加知识: id={}, userTitle={}, type={}", knowledge.getId(), knowledge.getTitle(), knowledge.getContentType());
         operationLogService.log("KNOWLEDGE", "ADD", knowledge.getId(),
@@ -144,10 +148,12 @@ public class KnowledgeService {
         if (embedding == null) {
             return keywordSearchWithRank(query, limit);
         }
-        int fetchLimit = Math.max(limit * 3, 20);
+        int multiplier = config.getInt("threshold.search.fetch-limit-multiplier", 3);
+        int minFetch = config.getInt("threshold.search.min-fetch-limit", 20);
+        int fetchLimit = Math.max(limit * multiplier, minFetch);
         List<Object[]> keywordResults = mapper.keywordSearchWithRank(query, fetchLimit);
         List<Object[]> vectorResults = mapper.findSimilarIds(embedding, fetchLimit);
-        double k = 60.0;
+        double k = config.getDouble("threshold.search.rrf-k", 60.0);
         Map<Long, Double> rrfScores = new LinkedHashMap<>();
         int rank = 1;
         for (Object[] row : keywordResults) {
@@ -349,9 +355,9 @@ public class KnowledgeService {
     @Transactional
     public void reprocessKnowledge(Long id) {
         Knowledge k = getById(id);
-        k.setAutoProcessStatus("PENDING");
+        k.setAutoProcessStatus(config.getString("default.knowledge.auto-process-status", "PENDING"));
         k.setAiTitle(null);
-        k.setTags("[]");
+        k.setTags(config.getString("default.knowledge.tags-empty-json", "[]"));
         k.setSummary(null);
         mapper.updateById(k);
         autoProcessService.autoProcessAsync(k.getId(), k.getTitle(), k.getContent());
@@ -423,7 +429,7 @@ public class KnowledgeService {
                 exportList.add(item);
             }
             Map<String, Object> exportData = new LinkedHashMap<>();
-            exportData.put("version", "0.4.0");
+            exportData.put("version", config.getString("default.export.version", "0.4.0"));
             exportData.put("exportedAt", LocalDateTime.now().toString());
             exportData.put("count", exportList.size());
             exportData.put("items", exportList);
@@ -468,7 +474,7 @@ public class KnowledgeService {
                 exportList.add(item);
             }
             Map<String, Object> exportData = new LinkedHashMap<>();
-            exportData.put("version", "0.4.0");
+            exportData.put("version", config.getString("default.export.version", "0.4.0"));
             exportData.put("exportedAt", LocalDateTime.now().toString());
             exportData.put("count", exportList.size());
             exportData.put("items", exportList);
@@ -492,7 +498,8 @@ public class KnowledgeService {
                 String safeName = displayName
                         .replaceAll("[/\\\\:*?\"<>|]", "_")
                         .replaceAll("\\s+", "_");
-                if (safeName.length() > 80) safeName = safeName.substring(0, 80);
+                int maxFilenameLen = config.getInt("threshold.export.max-filename-length", 80);
+                if (safeName.length() > maxFilenameLen) safeName = safeName.substring(0, maxFilenameLen);
 
                 String tags = "";
                 List<String> tagList = new ArrayList<>();
@@ -525,7 +532,8 @@ public class KnowledgeService {
                         + "\n\n" + k.getContent()
                         + dateSection + "\n";
 
-                String folder = tagList.isEmpty() ? "未分类" : sanitizeFolderName(tagList.get(0));
+                String untaggedFolder = config.getString("default.export.markdown-untagged-folder", "未分类");
+                String folder = tagList.isEmpty() ? untaggedFolder : sanitizeFolderName(tagList.get(0));
                 String entryName = folder + "/" + safeName + ".md";
                 zos.putNextEntry(new ZipEntry(entryName));
                 zos.write(md.getBytes(java.nio.charset.StandardCharsets.UTF_8));
@@ -564,7 +572,7 @@ public class KnowledgeService {
         try {
             List<Knowledge> all = mapper.selectList(null);
             StringBuilder sb = new StringBuilder();
-            sb.append("标题,内容,类型,摘要,标签,来源,创建时间\n");
+            sb.append(config.getString("default.export.csv-header", "标题,内容,类型,摘要,标签,来源,创建时间")).append("\n");
             DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
             for (Knowledge k : all) {
                 String tags = "";
@@ -617,7 +625,8 @@ public class KnowledgeService {
             int conflictCount = 0;
 
             for (int i = 0; i < items.size(); i++) {
-                String title = (String) items.get(i).getOrDefault("title", "未命名");
+                String defaultTitle = config.getString("default.knowledge.import-default-title", "未命名");
+                String title = (String) items.get(i).getOrDefault("title", defaultTitle);
                 List<Knowledge> existing = mapper.findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(title, "");
                 if (!existing.isEmpty()) {
                     conflicts.add(new ConflictItem(i, title, existing.get(0).getTitle()));
@@ -662,8 +671,9 @@ public class KnowledgeService {
             List<Map<String, Object>> items = extractItems(itemsObj);
 
             int imported = 0;
+            String defaultTitle = config.getString("default.knowledge.import-default-title", "未命名");
             for (Map<String, Object> item : items) {
-                String title = (String) item.getOrDefault("title", "未命名");
+                String title = (String) item.getOrDefault("title", defaultTitle);
 
                 if ("skip".equals(conflictMode)) {
                     List<Knowledge> existing = mapper.findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(title, "");

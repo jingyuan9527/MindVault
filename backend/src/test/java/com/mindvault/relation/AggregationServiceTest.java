@@ -3,6 +3,7 @@ package com.mindvault.relation;
 import com.mindvault.auto.AutoProcessLogMapper;
 import com.mindvault.knowledge.KnowledgeMapper;
 import com.mindvault.knowledge.KnowledgeService;
+import com.mindvault.systemconfig.SystemConfigService;
 import com.mindvault.knowledge.entity.Knowledge;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -21,12 +23,19 @@ class AggregationServiceTest {
     @Mock private KnowledgeMapper knowledgeMapper;
     @Mock private KnowledgeService knowledgeService;
     @Mock private AutoProcessLogMapper logMapper;
+    @Mock private SystemConfigService config;
 
     private AggregationService service;
 
     @BeforeEach
     void setUp() {
-        service = new AggregationService(knowledgeMapper, knowledgeService, logMapper);
+        service = new AggregationService(knowledgeMapper, knowledgeService, logMapper, config);
+        lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getString(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getBool(anyString(), anyBoolean())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getPrompt(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
     }
 
     @Test

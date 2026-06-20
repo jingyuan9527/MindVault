@@ -11,6 +11,7 @@ import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.relation.entity.KnowledgeRelation;
+import com.mindvault.systemconfig.SystemConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,7 @@ public class RelationService {
     private final ModelConfigService modelConfigService;
     private final LlmFailoverService llmFailoverService;
     private final AutoProcessLogMapper logMapper;
+    private final SystemConfigService config;
     private final ObjectMapper objectMapper;
 
     public RelationService(KnowledgeMapper knowledgeMapper,
@@ -39,18 +41,21 @@ public class RelationService {
                            KnowledgeService knowledgeService,
                            ModelConfigService modelConfigService,
                            LlmFailoverService llmFailoverService,
-                           AutoProcessLogMapper logMapper) {
+                           AutoProcessLogMapper logMapper,
+                           SystemConfigService config) {
         this.knowledgeMapper = knowledgeMapper;
         this.relationMapper = relationMapper;
         this.knowledgeService = knowledgeService;
         this.modelConfigService = modelConfigService;
         this.llmFailoverService = llmFailoverService;
         this.logMapper = logMapper;
+        this.config = config;
         this.objectMapper = new ObjectMapper();
     }
 
     public void processRound2() {
-        List<Knowledge> pending = knowledgeMapper.findByAutoProcessStatus("TITLE_TAG_DONE", 20);
+        int batchSize = config.getInt("threshold.relation.batch-size", 20);
+        List<Knowledge> pending = knowledgeMapper.findByAutoProcessStatus("TITLE_TAG_DONE", batchSize);
         if (pending.isEmpty()) return;
         log.info("R2 关联发现: 待处理 {} 条", pending.size());
 
@@ -71,19 +76,22 @@ public class RelationService {
         String userTitle = k.getTitle();
         String content = k.getContent();
 
-        List<Knowledge> candidates = knowledgeMapper.findByAutoProcessStatus("COMPLETED", 50);
+        int candidateLimit = config.getInt("threshold.relation.candidate-limit", 50);
+        List<Knowledge> candidates = knowledgeMapper.findByAutoProcessStatus("COMPLETED", candidateLimit);
         if (candidates.isEmpty()) return;
 
         List<Knowledge> all = new ArrayList<>(candidates);
 
         // 1. Semantic similarity (VECTOR)
         if (k.getEmbedding() != null && !k.getEmbedding().isBlank()) {
-            List<Object[]> similar = knowledgeMapper.findSimilarIds(k.getEmbedding(), 10);
+            int vectorTopN = config.getInt("threshold.relation.vector-top-n", 10);
+            double simMin = config.getDouble("threshold.relation.similarity-min", 0.5);
+            List<Object[]> similar = knowledgeMapper.findSimilarIds(k.getEmbedding(), vectorTopN);
             for (Object[] row : similar) {
                 Long relatedId = ((Number) row[0]).longValue();
                 if (relatedId.equals(k.getId())) continue;
                 double similarity = ((Number) row[1]).doubleValue();
-                if (similarity < 0.5) continue;
+                if (similarity < simMin) continue;
                 saveRelation(k.getId(), relatedId, "COMPLEMENT",
                         BigDecimal.valueOf(similarity), "VECTOR", now);
             }
@@ -96,6 +104,8 @@ public class RelationService {
         allTags.addAll(userTagSet);
 
         if (!allTags.isEmpty()) {
+            double scorePerTag = config.getDouble("threshold.relation.score-per-tag", 0.25);
+            double tagScoreMax = config.getDouble("threshold.relation.tag-score-max", 1.0);
             for (Knowledge candidate : all) {
                 if (candidate.getId().equals(k.getId())) continue;
                 Set<String> candidateAiTags = parseTags(candidate.getTags());
@@ -106,7 +116,7 @@ public class RelationService {
                 Set<String> overlap = new HashSet<>(allTags);
                 overlap.retainAll(candidateTags);
                 if (!overlap.isEmpty()) {
-                    double score = Math.min(1.0, overlap.size() * 0.25);
+                    double score = Math.min(tagScoreMax, overlap.size() * scorePerTag);
                     saveRelation(k.getId(), candidate.getId(), "REFERENCE",
                             BigDecimal.valueOf(score), "TAG", now);
                 }
@@ -118,9 +128,10 @@ public class RelationService {
         if (models.isEmpty()) return;
 
         try {
+            int llmCandidateLimit = config.getInt("threshold.relation.llm-candidate-limit", 10);
             List<Map<String, Object>> candidateSummaries = all.stream()
                     .filter(c -> !c.getId().equals(k.getId()))
-                    .limit(10)
+                    .limit(llmCandidateLimit)
                     .map(c -> {
                         Map<String, Object> m = new LinkedHashMap<>();
                         m.put("id", c.getId());
@@ -132,16 +143,23 @@ public class RelationService {
 
             if (candidateSummaries.isEmpty()) return;
 
-            String prompt = "你是一个知识关联分析助手。新笔记内容如下：\n\n"
-                    + "标题: " + userTitle + "\n内容: " + LlmFailoverService.truncate(content, 1500)
-                    + "\n\n以下是已有笔记列表（id + 标题 + 摘要）：\n"
-                    + objectMapper.writeValueAsString(candidateSummaries)
-                    + "\n\n请分析新笔记与哪些已有笔记相关，返回JSON数组，每一项包含："
+            int contentTruncate = config.getInt("threshold.relation.content-truncate-length", 1500);
+            double llmTemp = config.getDouble("threshold.relation.llm-temperature", 0.3);
+            int llmMaxTokens = config.getInt("threshold.relation.llm-max-tokens", 500);
+            double llmDefaultScore = config.getDouble("threshold.relation.llm-default-score", 0.75);
+
+            String promptTmpl = config.getPrompt("prompt.relation.llm-analysis",
+                    "你是一个知识关联分析助手。新笔记内容如下：\n\n"
+                    + "标题: %s\n内容: %s\n\n以下是已有笔记列表（id + 标题 + 摘要）：\n"
+                    + "%s\n\n请分析新笔记与哪些已有笔记相关，返回JSON数组，每一项包含："
                     + "{\"id\": 已有笔记ID, \"type\": \"COMPLEMENT|CONTRAST|EXTENSION|REFERENCE\", \"reason\": \"简短原因\"}。"
-                    + "如果都不相关则返回 []. 只返回JSON数组。";
+                    + "如果都不相关则返回 []. 只返回JSON数组。");
+            String prompt = String.format(promptTmpl, userTitle,
+                    LlmFailoverService.truncate(content, contentTruncate),
+                    objectMapper.writeValueAsString(candidateSummaries));
 
             String result = llmFailoverService.call(models,
-                    new LlmFailoverService.LlmCallOptions(prompt, 0.3, 500, false, null));
+                    new LlmFailoverService.LlmCallOptions(prompt, llmTemp, llmMaxTokens, false, null));
 
             if (result != null) {
                 String cleaned = result.trim();
@@ -151,7 +169,7 @@ public class RelationService {
                     for (Map<String, Object> rel : relations) {
                         Long relatedId = ((Number) rel.get("id")).longValue();
                         String type = (String) rel.getOrDefault("type", "REFERENCE");
-                        saveRelation(k.getId(), relatedId, type, BigDecimal.valueOf(0.75), "LLM", now);
+                        saveRelation(k.getId(), relatedId, type, BigDecimal.valueOf(llmDefaultScore), "LLM", now);
                     }
                 }
             }

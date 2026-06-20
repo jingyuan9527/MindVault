@@ -102,7 +102,8 @@ The pipeline processes each knowledge entry in three automated rounds:
 | Agent | LLM failover + 熔断 + 工具调用 | ❌ | ✅ | 3% |
 | 内容解析 Content | Jsoup 网页 + PDFBox PDF | ❌ | ✅ | 13% |
 | 认证 Auth | 登录 + Token 管理 + 密码修改 | ✅ | ✅ | — |
-| **Total** | **15 模块 / 56 接口** | **11/15** | **13/15** | **43%** |
+| 系统配置 SystemConfig | 动态 KV 配置 + 定时任务管理 | ✅ | ❌ | 0% |
+| **Total** | **16 模块 / 60 接口** | **12/16** | **13/16** | **43%** |
 
 | 用户管理 User | 列表 + 启用/禁用 | ✅ | ✅ | 36% |
 
@@ -122,6 +123,7 @@ The pipeline processes each knowledge entry in three automated rounds:
 | `/system` | 系统监控 | ✅ | ✅ |
 | `/users` | 用户管理 | ✅ | ✅ |
 | `/settings` | 模型配置 + Token 管理 | ✅ | ❌ |
+| `/system-config` | 系统配置 + 定时任务管理 | ✅ | ❌ |
 
 ### API 文档
 - Knife4j UI: `http://localhost:3000/api/doc.html`
@@ -147,12 +149,15 @@ The pipeline processes each knowledge entry in three automated rounds:
 - [ ] Relation 单元测试 + 集成测试 — relation 0% → ~70%
 - [ ] AutoProcess 单元测试 + 集成测试 — auto 0% → ~60%
 - [ ] Scheduler 集成测试
+- [ ] AgentService + ReviewService + SearchEnhanceService 剩余硬编码配置接入 SystemConfig
+- [ ] SystemConfigView 前端 Vitest 测试
 
 ## Docker Deployment
 - Three containers: `db` (pgvector), `backend` (JDK 21), `frontend` (Nginx)
 - Docker Compose file: `docker/docker-compose.yml`
 - Dockerfiles: `Dockerfile.backend` (multi-stage Maven build), `Dockerfile.frontend` (node build → nginx)
 - v0.4 migration: `docker/migration-v0.4.sql` (creates knowledge_relation, auto_process_log tables; adds new columns to knowledge)
+- v0.5 migration: `docker/migration-v0.5.sql` (creates system_config table with ~120 default config items for prompts/crons/thresholds/defaults)
 - Networks: `mindvault` bridge
 - Health checks: DB (`pg_isready`), Backend (`GET /api/v1/system/health`)
 - Admin user auto-created on first boot via env vars: `MINDVAULT_ADMIN_USERNAME` / `MINDVAULT_ADMIN_PASSWORD`

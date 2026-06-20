@@ -1,6 +1,7 @@
 package com.mindvault.knowledge;
 
 import com.mindvault.knowledge.entity.Knowledge;
+import com.mindvault.systemconfig.SystemConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -16,11 +17,14 @@ public class KnowledgeAssociationService {
 
     private final KnowledgeMapper mapper;
     private final KnowledgeService knowledgeService;
+    private final SystemConfigService config;
 
     public KnowledgeAssociationService(KnowledgeMapper mapper,
-                                        KnowledgeService knowledgeService) {
+                                        KnowledgeService knowledgeService,
+                                        SystemConfigService config) {
         this.mapper = mapper;
         this.knowledgeService = knowledgeService;
+        this.config = config;
     }
 
     public List<Map<String, Object>> getRelatedKnowledge(Long knowledgeId, int limit) {
@@ -63,15 +67,17 @@ public class KnowledgeAssociationService {
 
     @Scheduled(cron = "0 0 2 * * ?")
     public void scheduledAssociationDiscovery() {
+        if (!config.getBool("task.association.enabled", true)) return;
         log.info("开始执行定时知识关联发现...");
         List<Knowledge> all = mapper.selectList(null);
         int totalWithEmbedding = 0;
         int totalAssociations = 0;
 
+        int topN = config.getInt("threshold.association.top-n", 6);
         for (Knowledge k : all) {
             if (k.getEmbedding() == null || k.getEmbedding().isBlank()) continue;
             totalWithEmbedding++;
-            List<Object[]> similar = mapper.findSimilarIds(k.getEmbedding(), 6);
+            List<Object[]> similar = mapper.findSimilarIds(k.getEmbedding(), topN);
             int count = 0;
             for (Object[] row : similar) {
                 Long id = ((Number) row[0]).longValue();

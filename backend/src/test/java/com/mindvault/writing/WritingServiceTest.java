@@ -5,6 +5,7 @@ import com.mindvault.knowledge.KnowledgeMapper;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
+import com.mindvault.systemconfig.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,12 +25,19 @@ class WritingServiceTest {
     @Mock private ModelConfigService modelConfigService;
     @Mock private LlmFailoverService llmFailoverService;
     @Mock private KnowledgeMapper knowledgeMapper;
+    @Mock private SystemConfigService config;
 
     private WritingService service;
 
     @BeforeEach
     void setUp() {
-        service = new WritingService(modelConfigService, llmFailoverService, knowledgeMapper);
+        service = new WritingService(modelConfigService, llmFailoverService, knowledgeMapper, config);
+        lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getString(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getBool(anyString(), anyBoolean())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getPrompt(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
     }
 
     private Knowledge createKnowledge(Long id, String title, String content, String summary) {

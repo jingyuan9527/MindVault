@@ -3,6 +3,7 @@ package com.mindvault.backup;
 import com.mindvault.common.service.MetricsService;
 import com.mindvault.knowledge.KnowledgeService;
 import com.mindvault.operationlog.OperationLogService;
+import com.mindvault.systemconfig.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +16,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -23,6 +25,7 @@ class BackupServiceTest {
     @Mock private KnowledgeService knowledgeService;
     @Mock private OperationLogService operationLogService;
     @Mock private MetricsService metricsService;
+    @Mock private SystemConfigService config;
 
     private BackupService service;
 
@@ -31,9 +34,15 @@ class BackupServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new BackupService(knowledgeService, operationLogService, metricsService);
+        service = new BackupService(knowledgeService, operationLogService, metricsService, config);
         ReflectionTestUtils.setField(service, "backupDir", tempDir.toString());
         ReflectionTestUtils.setField(service, "retentionDays", 7);
+        lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getString(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getBool(anyString(), anyBoolean())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getPrompt(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
     }
 
     @Test

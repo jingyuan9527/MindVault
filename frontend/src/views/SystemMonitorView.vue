@@ -1,5 +1,5 @@
 <template>
-  <div class="p-4 md:p-6 max-w-4xl">
+  <div class="flex-1 overflow-y-auto p-4 md:p-6 max-w-4xl">
     <h2 class="font-display text-xl md:text-2xl mb-4 md:mb-6" style="color: var(--color-text)">系统监控</h2>
 
     <div v-if="loading" class="text-sm py-8 text-center" style="color: var(--color-text-secondary)">加载中...</div>

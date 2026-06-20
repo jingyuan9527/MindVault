@@ -5,6 +5,7 @@ import com.mindvault.dailyreview.entity.DailyReview;
 import com.mindvault.knowledge.KnowledgeMapper;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
+import com.mindvault.systemconfig.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +30,7 @@ class DailyReviewServiceTest {
     @Mock private LlmFailoverService llmFailoverService;
     @Mock private KnowledgeMapper knowledgeMapper;
     @Mock private DailyReviewMapper mapper;
+    @Mock private SystemConfigService config;
 
     private DailyReviewService service;
 
@@ -36,7 +38,13 @@ class DailyReviewServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new DailyReviewService(modelConfigService, llmFailoverService, knowledgeMapper, mapper);
+        service = new DailyReviewService(modelConfigService, llmFailoverService, knowledgeMapper, mapper, config);
+        lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getString(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getBool(anyString(), anyBoolean())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getPrompt(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
     }
 
     private DailyReview createReport(Long id, LocalDate date, int count, String summary) {

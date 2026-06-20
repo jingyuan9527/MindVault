@@ -120,6 +120,15 @@
         </svg>
         用户管理
       </router-link>
+      <router-link to="/system-config"
+        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 hover-sage-bg"
+        :class="$route.path === '/system-config' ? 'font-medium' : ''"
+        :style="$route.path === '/system-config' ? { backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' } : { color: 'var(--color-text-secondary)' }">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+        </svg>
+        系统配置
+      </router-link>
       <router-link to="/settings"
         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 hover-sage-bg"
         :class="$route.path === '/settings' ? 'font-medium' : ''"
@@ -150,34 +159,53 @@
     </div>
 
     <div class="p-4 pt-2 flex items-center justify-between" style="border-top: 1px solid var(--color-border)">
-      <p class="text-xs" style="color: var(--color-text-secondary)">v0.3.0 · 智能增强版</p>
-      <button @click="themeStore.toggle()"
-        class="p-1.5 rounded-lg transition-colors duration-150 hover-text"
-        style="color: var(--color-text-secondary)"
-        :title="themeStore.isDark ? '切换亮色模式' : '切换暗色模式'">
-        <svg v-if="themeStore.isDark" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
-        </svg>
-        <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
-        </svg>
-      </button>
+      <p class="text-xs" style="color: var(--color-text-secondary)">v0.5.0 · 智能增强版</p>
+      <div class="flex items-center gap-1">
+        <button @click="handleLogout"
+          class="p-1.5 rounded-lg transition-colors duration-150 hover-text"
+          style="color: var(--color-text-secondary)"
+          title="退出登录">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+          </svg>
+        </button>
+        <button @click="themeStore.toggle()"
+          class="p-1.5 rounded-lg transition-colors duration-150 hover-text"
+          style="color: var(--color-text-secondary)"
+          :title="themeStore.isDark ? '切换亮色模式' : '切换暗色模式'">
+          <svg v-if="themeStore.isDark" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+          </svg>
+          <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+          </svg>
+        </button>
+      </div>
     </div>
   </aside>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useThemeStore } from '@/stores/theme'
+import { useAuthStore } from '@/stores/auth'
 import { reviewApi } from '@/api/review'
 import { knowledgeApi } from '@/api/knowledge'
 
 defineEmits(['close'])
 
+const router = useRouter()
+const authStore = useAuthStore()
 const themeStore = useThemeStore()
 const dueCount = ref(0)
 const tags = ref([])
 let pollTimer = null
+
+function handleLogout() {
+  authStore.logout()
+  router.push('/login')
+}
 
 async function loadDueCount() {
   try {

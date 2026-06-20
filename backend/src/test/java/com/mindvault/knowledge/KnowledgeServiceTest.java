@@ -9,6 +9,7 @@ import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.operationlog.OperationLogService;
 import com.mindvault.relation.KnowledgeRelationMapper;
 import com.mindvault.review.ReviewService;
+import com.mindvault.systemconfig.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,6 +36,7 @@ class KnowledgeServiceTest {
     @Mock private ReviewService reviewService;
     @Mock private MetricsService metricsService;
     @Mock private KnowledgeRelationMapper relationMapper;
+    @Mock private SystemConfigService config;
 
     private KnowledgeService service;
     private ObjectMapper objectMapper;
@@ -44,8 +46,14 @@ class KnowledgeServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new KnowledgeService(mapper, operationLogService, autoProcessService, reviewService, null, metricsService, relationMapper);
+        service = new KnowledgeService(mapper, operationLogService, autoProcessService, reviewService, null, metricsService, relationMapper, config);
         objectMapper = new ObjectMapper();
+        lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getString(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getBool(anyString(), anyBoolean())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getPrompt(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
     }
 
     private Knowledge createSampleKnowledge(Long id, String title, String content, String tags) {

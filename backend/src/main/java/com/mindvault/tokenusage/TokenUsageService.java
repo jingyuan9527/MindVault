@@ -2,6 +2,7 @@ package com.mindvault.tokenusage;
 
 import com.mindvault.common.config.MindVaultProperties;
 import com.mindvault.model.entity.ModelConfig;
+import com.mindvault.systemconfig.SystemConfigService;
 import com.mindvault.tokenusage.entity.TokenUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,10 +22,12 @@ public class TokenUsageService {
 
     private final TokenUsageMapper mapper;
     private final MindVaultProperties properties;
+    private final SystemConfigService config;
 
-    public TokenUsageService(TokenUsageMapper mapper, MindVaultProperties properties) {
+    public TokenUsageService(TokenUsageMapper mapper, MindVaultProperties properties, SystemConfigService config) {
         this.mapper = mapper;
         this.properties = properties;
+        this.config = config;
     }
 
     public TokenUsage recordUsage(ModelConfig model, int promptTokens, int completionTokens,
@@ -83,6 +86,7 @@ public class TokenUsageService {
 
     @Scheduled(cron = "0 30 3 * * ?")
     public void scheduledTokenAggregation() {
+        if (!config.getBool("task.token-usage.enabled", true)) return;
         log.info("开始执行定时 Token 用量统计...");
         try {
             LocalDate yesterday = LocalDate.now().minusDays(1);
@@ -110,8 +114,9 @@ public class TokenUsageService {
         }
         if (prices == null) return BigDecimal.ZERO;
 
-        BigDecimal promptCost = BigDecimal.valueOf(promptTokens / 1000.0).multiply(prices[0]);
-        BigDecimal completionCost = BigDecimal.valueOf(completionTokens / 1000.0).multiply(prices[1]);
+        double divisor = config.getDouble("threshold.tokenusage.calc-divisor", 1000.0);
+        BigDecimal promptCost = BigDecimal.valueOf(promptTokens / divisor).multiply(prices[0]);
+        BigDecimal completionCost = BigDecimal.valueOf(completionTokens / divisor).multiply(prices[1]);
         return promptCost.add(completionCost).setScale(6, RoundingMode.HALF_UP);
     }
 }

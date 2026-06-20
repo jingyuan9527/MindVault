@@ -8,6 +8,7 @@ import com.mindvault.common.service.LlmFailoverService;
 import com.mindvault.knowledge.KnowledgeService;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
+import com.mindvault.systemconfig.SystemConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
@@ -32,16 +33,19 @@ public class AutoProcessService {
     private final LlmFailoverService llmFailoverService;
     private final KnowledgeService knowledgeService;
     private final AutoProcessLogMapper logMapper;
+    private final SystemConfigService config;
     private final ObjectMapper objectMapper;
 
     public AutoProcessService(ModelConfigService modelConfigService,
                               LlmFailoverService llmFailoverService,
                               @Lazy KnowledgeService knowledgeService,
-                              AutoProcessLogMapper logMapper) {
+                              AutoProcessLogMapper logMapper,
+                              SystemConfigService config) {
         this.modelConfigService = modelConfigService;
         this.llmFailoverService = llmFailoverService;
         this.knowledgeService = knowledgeService;
         this.logMapper = logMapper;
+        this.config = config;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -90,9 +94,13 @@ public class AutoProcessService {
 
     private String generateAiTitle(String userTitle, String content, List<ModelConfig> models) {
         try {
-            String prompt = "请根据以下内容生成一个简洁准确的中文标题（10-20字），只返回标题内容，不要额外说明。\n\n"
-                    + "原始标题: " + userTitle + "\n\n内容: " + LlmFailoverService.truncate(content, 2000);
-            return llmFailoverService.call(models, new LlmFailoverService.LlmCallOptions(prompt, 0.3, 100, false, null));
+            int truncateLen = config.getInt("threshold.auto.truncate-length", 2000);
+            double temperature = config.getDouble("threshold.auto.llm-temperature", 0.3);
+            int maxTokens = config.getInt("threshold.auto.title-max-tokens", 100);
+            String promptTmpl = config.getPrompt("prompt.auto.title-generation",
+                    "请根据以下内容生成一个简洁准确的中文标题（10-20字），只返回标题内容，不要额外说明。\n\n原始标题: %s\n\n内容: %s");
+            String prompt = String.format(promptTmpl, userTitle, LlmFailoverService.truncate(content, truncateLen));
+            return llmFailoverService.call(models, new LlmFailoverService.LlmCallOptions(prompt, temperature, maxTokens, false, null));
         } catch (Exception e) {
             log.warn("生成 AI 标题失败: {}", e.getMessage());
         }
@@ -101,9 +109,13 @@ public class AutoProcessService {
 
     private String generateSummary(String userTitle, String content, List<ModelConfig> models) {
         try {
-            String prompt = "请为以下内容生成一段简洁的中文摘要（50-100字），只返回摘要内容，不要额外说明。\n\n"
-                    + "标题: " + userTitle + "\n\n内容: " + LlmFailoverService.truncate(content, 2000);
-            return llmFailoverService.call(models, new LlmFailoverService.LlmCallOptions(prompt, 0.3, 300, false, null));
+            int truncateLen = config.getInt("threshold.auto.truncate-length", 2000);
+            double temperature = config.getDouble("threshold.auto.llm-temperature", 0.3);
+            int maxTokens = config.getInt("threshold.auto.summary-max-tokens", 300);
+            String promptTmpl = config.getPrompt("prompt.auto.summary-generation",
+                    "请为以下内容生成一段简洁的中文摘要（50-100字），只返回摘要内容，不要额外说明。\n\n标题: %s\n\n内容: %s");
+            String prompt = String.format(promptTmpl, userTitle, LlmFailoverService.truncate(content, truncateLen));
+            return llmFailoverService.call(models, new LlmFailoverService.LlmCallOptions(prompt, temperature, maxTokens, false, null));
         } catch (Exception e) {
             log.warn("生成摘要失败: {}", e.getMessage());
         }
@@ -112,9 +124,13 @@ public class AutoProcessService {
 
     private String generateTags(String userTitle, String content, List<ModelConfig> models) {
         try {
-            String prompt = "请为以下内容生成3-5个中文标签，以JSON数组格式返回，例如 [\"标签1\", \"标签2\", \"标签3\"]。\n"
-                    + "只返回JSON数组，不要额外说明。\n\n标题: " + userTitle + "\n\n内容: " + LlmFailoverService.truncate(content, 2000);
-            String result = llmFailoverService.call(models, new LlmFailoverService.LlmCallOptions(prompt, 0.3, 300, false, null));
+            int truncateLen = config.getInt("threshold.auto.truncate-length", 2000);
+            double temperature = config.getDouble("threshold.auto.llm-temperature", 0.3);
+            int maxTokens = config.getInt("threshold.auto.tags-max-tokens", 300);
+            String promptTmpl = config.getPrompt("prompt.auto.tag-generation",
+                    "请为以下内容生成3-5个中文标签，以JSON数组格式返回，例如 [\"标签1\", \"标签2\", \"标签3\"]。\n只返回JSON数组，不要额外说明。\n\n标题: %s\n\n内容: %s");
+            String prompt = String.format(promptTmpl, userTitle, LlmFailoverService.truncate(content, truncateLen));
+            String result = llmFailoverService.call(models, new LlmFailoverService.LlmCallOptions(prompt, temperature, maxTokens, false, null));
             if (result != null) {
                 String cleaned = result.trim();
                 if (cleaned.startsWith("[") && cleaned.endsWith("]")) {
@@ -132,8 +148,9 @@ public class AutoProcessService {
         if (embeddingModels.isEmpty()) return;
 
         ModelConfig embModel = embeddingModels.get(0);
+        int embedTruncate = config.getInt("threshold.auto.embedding-truncate-length", 8000);
         String text = (userTitle + "\n" + content);
-        if (text.length() > 8000) text = text.substring(0, 8000);
+        if (text.length() > embedTruncate) text = text.substring(0, embedTruncate);
 
         try {
             String embedUrl = buildEmbeddingUrl(embModel);
