@@ -99,9 +99,37 @@
     </div>
 
     <div class="flex-1 overflow-y-auto">
-      <div v-if="store.isLoading" class="flex justify-center py-12">
-        <div class="w-6 h-6 rounded-full animate-spin"
-          style="border: 2px solid var(--color-border); border-top-color: var(--color-accent)"></div>
+      <!-- Skeleton: card view -->
+      <div v-if="store.isLoading && viewMode === 'card'" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4 p-4 md:p-5">
+        <div v-for="i in 6" :key="i" class="skeleton-card p-4">
+          <div class="flex items-center gap-2 mb-3">
+            <div class="skeleton h-3 w-16" />
+            <div class="skeleton h-3 w-12 ml-auto" />
+          </div>
+          <div class="skeleton h-5 w-3/4 mb-2" />
+          <div class="skeleton h-4 w-full mb-1.5" />
+          <div class="skeleton h-4 w-2/3 mb-3" />
+          <div class="flex gap-1.5">
+            <div class="skeleton h-5 w-12 rounded-full" />
+            <div class="skeleton h-5 w-16 rounded-full" />
+          </div>
+        </div>
+      </div>
+      <div v-else-if="store.isLoading && viewMode === 'list'" class="px-4 md:px-5 py-2 space-y-2">
+        <div v-for="i in 8" :key="i" class="skeleton-card p-4 flex items-center gap-3">
+          <div class="skeleton h-4 w-4 rounded" />
+          <div class="flex-1">
+            <div class="skeleton h-4 w-1/3 mb-1.5" />
+            <div class="skeleton h-3 w-full" />
+          </div>
+        </div>
+      </div>
+      <div v-else-if="store.isLoading" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-3 p-4 md:p-5">
+        <div v-for="i in 8" :key="i" class="skeleton-card p-3">
+          <div class="skeleton h-4 w-3/4 mb-1.5" />
+          <div class="skeleton h-3 w-full mb-2" />
+          <div class="skeleton h-3 w-1/2" />
+        </div>
       </div>
 
       <div v-else-if="!filteredItems.length" class="flex flex-col items-center justify-center py-16" style="color: var(--color-text-secondary)">

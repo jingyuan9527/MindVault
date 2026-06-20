@@ -14,6 +14,8 @@
     --color-sage: #5d7a5a;
     --color-sage-light: #e8f0e6;
     --color-warm-gray: #6b6560;
+    --color-danger: #c0392b;
+    --color-danger-hover: #a93226;
   }
 
   .dark {
@@ -27,6 +29,12 @@
     --color-sage: #7a9a77;
     --color-sage-light: #2a3a28;
     --color-warm-gray: #9a958f;
+    --color-danger: #e74c3c;
+    --color-danger-hover: #c0392b;
+  }
+
+  * {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.15s ease;
   }
 
   .dark body {
@@ -53,11 +61,16 @@
     font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
     font-weight: 600;
   }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
 }
 
 @layer components {
   .btn-primary {
-    @apply px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200;
+    @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 select-none;
     background-color: var(--color-accent);
     color: white;
   }
@@ -65,6 +78,9 @@
     background-color: var(--color-accent-hover);
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(198, 95, 57, 0.25);
+  }
+  .btn-primary:active {
+    transform: translateY(0);
   }
   .btn-primary:disabled {
     opacity: 0.5;
@@ -74,13 +90,53 @@
   }
 
   .btn-secondary {
-    @apply px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200;
+    @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 select-none;
     color: var(--color-text-secondary);
     border: 1px solid var(--color-border);
   }
   .btn-secondary:hover {
     border-color: var(--color-accent);
     color: var(--color-accent);
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 select-none;
+    color: var(--color-text-secondary);
+  }
+  .btn-ghost:hover {
+    background-color: rgba(198, 95, 57, 0.08);
+    color: var(--color-accent);
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 select-none;
+    background-color: var(--color-danger);
+    color: white;
+  }
+  .btn-danger:hover {
+    background-color: var(--color-danger-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(192, 57, 43, 0.25);
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full;
+  }
+  .badge-accent {
+    background-color: rgba(198, 95, 57, 0.12);
+    color: var(--color-accent);
+  }
+  .badge-sage {
+    background-color: var(--color-sage-light);
+    color: var(--color-sage);
+  }
+  .badge-neutral {
+    background-color: rgba(107, 101, 96, 0.1);
+    color: var(--color-warm-gray);
   }
 
   .card {
@@ -95,6 +151,10 @@
     box-shadow: 0 8px 24px rgba(45, 42, 36, 0.08);
     border-color: #d4cdc4;
   }
+  .dark .card:hover {
+    border-color: #444444;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  }
 
   .card-title {
     display: -webkit-box;
@@ -105,7 +165,7 @@
   }
 
   .tag-pill {
-    @apply inline-flex items-center px-2.5 py-0.5 text-xs rounded-full transition-all duration-150;
+    @apply inline-flex items-center px-2.5 py-0.5 text-xs rounded-full transition-all duration-150 select-none;
     background-color: var(--color-sage-light);
     color: var(--color-sage);
     border: 1px solid transparent;
@@ -113,6 +173,9 @@
   .tag-pill:hover {
     background-color: #dce8d9;
     border-color: rgba(93, 122, 90, 0.15);
+  }
+  .dark .tag-pill:hover {
+    background-color: #354a33;
   }
 
   .tag-pill-active {
@@ -130,11 +193,18 @@
     border-color: var(--color-accent);
     box-shadow: 0 0 0 3px rgba(198, 95, 57, 0.1);
   }
+  .input-field::placeholder {
+    color: var(--color-text-secondary);
+    opacity: 0.6;
+  }
 
   .modal-overlay {
     @apply fixed inset-0 flex items-center justify-center z-50;
     background-color: rgba(45, 42, 36, 0.3);
     backdrop-filter: blur(2px);
+  }
+  .dark .modal-overlay {
+    background-color: rgba(0, 0, 0, 0.5);
   }
 
   .modal-panel {
@@ -145,11 +215,13 @@
     max-height: 90vh;
     overflow-y: auto;
   }
+  .dark .modal-panel {
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  }
 
   @media (max-width: 639px) {
     .modal-panel {
       border-radius: 12px;
-      margin-top: 0;
     }
     .modal-overlay {
       align-items: flex-start;
@@ -163,6 +235,24 @@
   }
   .slide-enter-active {
     transition: all 0.25s ease;
+  }
+
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--color-border) 25%,
+      rgba(198, 95, 57, 0.06) 50%,
+      var(--color-border) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+    border-radius: 6px;
+  }
+
+  .skeleton-card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
   }
 }
 
@@ -181,6 +271,16 @@
   50% { opacity: 0.7; }
 }
 
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
 .typing-cursor::after {
   content: '▊';
   animation: blink 1s step-end infinite;
@@ -190,6 +290,10 @@
 
 .fade-in-enter {
   animation: fade-in 0.3s ease forwards;
+}
+
+.scale-in-enter {
+  animation: scale-in 0.2s ease forwards;
 }
 
 .stagger-enter > * {
@@ -222,7 +326,6 @@
     opacity: 0;
   }
 
-/* Hover utilities */
 .hover-accent:hover { color: var(--color-accent); }
 .hover-accent-bg:hover { background-color: rgba(198, 95, 57, 0.08); }
 .hover-text:hover { color: var(--color-text); }
