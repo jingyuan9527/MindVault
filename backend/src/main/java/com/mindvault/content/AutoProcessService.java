@@ -10,6 +10,7 @@ import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
@@ -35,7 +36,7 @@ public class AutoProcessService {
 
     public AutoProcessService(ModelConfigService modelConfigService,
                               LlmFailoverService llmFailoverService,
-                              KnowledgeService knowledgeService,
+                              @Lazy KnowledgeService knowledgeService,
                               AutoProcessLogMapper logMapper) {
         this.modelConfigService = modelConfigService;
         this.llmFailoverService = llmFailoverService;

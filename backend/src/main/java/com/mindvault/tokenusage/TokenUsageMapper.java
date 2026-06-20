@@ -16,12 +16,16 @@ public interface TokenUsageMapper extends BaseMapper<TokenUsage> {
     List<TokenUsage> findByCreatedAtBetweenOrderByCreatedAtDesc(@Param("start") LocalDate start, @Param("end") LocalDate end);
 
     @Select(value = """
-            SELECT usage_date, provider, model_name, model_type,
-                   total_prompt_tokens, total_completion_tokens, total_tokens,
-                   total_cost, request_count
-            FROM token_usage_daily
+            SELECT DATE(created_at) AS usage_date, provider, model_name, model_type,
+                   COALESCE(SUM(prompt_tokens), 0) AS total_prompt_tokens,
+                   COALESCE(SUM(completion_tokens), 0) AS total_completion_tokens,
+                   COALESCE(SUM(total_tokens), 0) AS total_tokens,
+                   COALESCE(SUM(cost), 0) AS total_cost,
+                   COUNT(*) AS request_count
+            FROM token_usage
+            WHERE created_at >= CURRENT_DATE - CAST(#{limit} AS INTEGER)
+            GROUP BY DATE(created_at), provider, model_name, model_type
             ORDER BY usage_date DESC
-            LIMIT #{limit}
             """)
     List<Object[]> findDailySummary(@Param("limit") int limit);
 
