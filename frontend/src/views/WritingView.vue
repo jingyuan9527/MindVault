@@ -1,94 +1,82 @@
 <template>
   <div class="flex flex-col h-full">
     <div class="p-4 md:p-5 shrink-0" style="border-bottom: 1px solid var(--color-border)">
-      <h2 class="font-display text-lg md:text-xl mb-4">写作辅助</h2>
-      <div class="space-y-3">
-        <div>
-          <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">写作主题</label>
-          <input v-model="topic" placeholder="输入文章主题，如「Spring Boot 最佳实践」" class="input-field" />
-        </div>
-        <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
-          <div class="flex-1">
-            <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">写作风格（可选）</label>
-            <select v-model="style" class="input-field">
-              <option value="">默认</option>
-              <option value="正式、专业">正式专业</option>
-              <option value="通俗易懂">通俗易懂</option>
-              <option value="技术博客风格">技术博客</option>
-              <option value="学术论文风格">学术论文</option>
-              <option value="教程式、步骤清晰">教程式</option>
-            </select>
-          </div>
-          <div class="flex-1">
-            <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">关键词（可选）</label>
-            <input v-model="keywords" placeholder="逗号分隔" class="input-field" />
-          </div>
-        </div>
+      <n-form label-placement="top" :model="formData">
+        <n-form-item label="写作主题">
+          <n-input v-model:value="formData.topic" placeholder="输入文章主题，如「Spring Boot 最佳实践」" />
+        </n-form-item>
+        <n-space size="medium">
+          <n-form-item label="写作风格（可选）" class="flex-1">
+            <n-select v-model:value="formData.style" :options="styleOptions" placeholder="默认" clearable />
+          </n-form-item>
+          <n-form-item label="关键词（可选）" class="flex-1">
+            <n-input v-model:value="formData.keywords" placeholder="逗号分隔" />
+          </n-form-item>
+        </n-space>
         <div class="flex justify-end">
-          <button @click="generate" :disabled="!topic.trim() || generating"
-            class="btn-primary">
+          <n-button type="primary" :loading="generating" :disabled="!formData.topic.trim()" @click="generate">
             {{ generating ? '生成中...' : '生成文章' }}
-          </button>
+          </n-button>
         </div>
-      </div>
+      </n-form>
     </div>
 
     <div class="flex-1 overflow-y-auto p-4 md:p-5">
-      <div v-if="generating" class="flex justify-center py-12">
-        <div class="w-6 h-6 rounded-full animate-spin" style="border: 2px solid var(--color-border); border-top-color: var(--color-accent)"></div>
-      </div>
+      <n-spin v-if="generating" class="flex justify-center py-12" />
 
-      <div v-else-if="error" class="card p-6" :style="{ borderLeft: '3px solid var(--color-accent)' }">
-        <p style="color: var(--color-accent)">{{ error }}</p>
-      </div>
+      <n-alert v-else-if="error" type="error" :show-icon="true" closable @close="error = ''">
+        {{ error }}
+      </n-alert>
 
-      <div v-else-if="article" class="max-w-3xl mx-auto">
-        <div class="card p-6 fade-in-enter">
-          <div class="flex items-start justify-between mb-4">
-            <h3 class="font-display text-lg font-bold" style="color: var(--color-text)">{{ topic }}</h3>
-            <button @click="copyArticle"
-              class="text-xs px-3 py-1.5 rounded-lg transition-colors duration-150 hover-border-accent hover-accent"
-              style="color: var(--color-text-secondary); border: 1px solid var(--color-border)">
+      <n-card v-else-if="article" class="max-w-3xl mx-auto" size="small">
+        <template #header>
+          <div class="flex items-start justify-between">
+            <h3 class="font-display text-lg font-bold">{{ formData.topic }}</h3>
+            <n-button text size="tiny" type="primary" @click="copyArticle">
               {{ copied ? '已复制' : '复制全文' }}
-            </button>
+            </n-button>
           </div>
-          <div class="prose prose-sm max-w-none text-sm leading-relaxed whitespace-pre-wrap"
-            style="color: var(--color-warm-gray); line-height: 1.8">
-            {{ article }}
-          </div>
+        </template>
+        <div class="text-sm leading-relaxed whitespace-pre-wrap" style="color: var(--color-warm-gray); line-height: 1.8">
+          {{ article }}
         </div>
-      </div>
+      </n-card>
 
-      <div v-else class="flex flex-col items-center justify-center py-16" style="color: var(--color-text-secondary)">
-        <svg class="w-10 h-10 mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-        </svg>
-        <p class="text-lg font-display font-medium" style="color: var(--color-warm-gray)">输入主题开始写作</p>
-        <p class="text-sm mt-1">AI 会基于你的知识库内容生成文章</p>
-      </div>
+      <n-empty v-else description="输入主题开始写作">
+        <template #extra>
+          <p class="text-xs" style="color: var(--color-text-secondary)">AI 会基于你的知识库内容生成文章</p>
+        </template>
+      </n-empty>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, reactive } from 'vue'
 import { writingApi } from '@/api/writing'
 
-const topic = ref('')
-const style = ref('')
-const keywords = ref('')
+const formData = reactive({ topic: '', style: null, keywords: '' })
 const article = ref('')
 const generating = ref(false)
 const error = ref('')
 const copied = ref(false)
 
+const styleOptions = [
+  { label: '默认', value: '' },
+  { label: '正式专业', value: '正式、专业' },
+  { label: '通俗易懂', value: '通俗易懂' },
+  { label: '技术博客', value: '技术博客风格' },
+  { label: '学术论文', value: '学术论文风格' },
+  { label: '教程式', value: '教程式、步骤清晰' }
+]
+
 async function generate() {
-  if (!topic.value.trim()) return
+  if (!formData.topic.trim()) return
   generating.value = true
   error.value = ''
   article.value = ''
   try {
-    const res = await writingApi.generate(topic.value.trim(), style.value, keywords.value)
+    const res = await writingApi.generate(formData.topic.trim(), formData.style || '', formData.keywords)
     article.value = res.data.data || ''
   } catch (err) {
     error.value = err.response?.data?.message || '文章生成失败'

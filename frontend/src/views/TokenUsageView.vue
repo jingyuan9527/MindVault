@@ -1,51 +1,35 @@
 <template>
   <div class="flex flex-col h-full">
     <div class="p-4 md:p-5 shrink-0" style="border-bottom: 1px solid var(--color-border)">
-      <div class="flex items-center justify-between">
+      <div class="flex items-center justify-between flex-wrap gap-3">
         <h2 class="font-display text-lg md:text-xl">用量统计</h2>
-        <div class="flex items-center gap-1 p-0.5 rounded-lg" style="background-color: var(--color-bg)">
-          <button v-for="t in tabs" :key="t.key" @click="currentTab = t.key; loadData()"
-            class="px-3 py-1.5 text-sm rounded-lg transition-all duration-150"
-            :style="currentTab === t.key
-              ? { backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)', fontWeight: 500 }
-              : { color: 'var(--color-text-secondary)' }">
-            {{ t.label }}
-          </button>
-        </div>
+        <n-radio-group v-model:value="currentTab" size="small" @update:value="loadData">
+          <n-radio-button v-for="t in tabs" :key="t.key" :value="t.key">{{ t.label }}</n-radio-button>
+        </n-radio-group>
       </div>
       <div v-if="currentTab === 'daily'" class="flex items-center gap-2 mt-3">
         <span class="text-xs" style="color: var(--color-text-secondary)">最近</span>
-        <select v-model.number="days" @change="loadDaily"
-          class="text-xs px-2 py-1 rounded" style="border: 1px solid var(--color-border); background-color: var(--color-surface); color: var(--color-text)">
-          <option :value="7">7 天</option>
-          <option :value="14">14 天</option>
-          <option :value="30">30 天</option>
-          <option :value="90">90 天</option>
-        </select>
+        <n-select v-model:value="days" :options="dayOptions" size="tiny" class="w-24" @update:value="loadDaily" />
       </div>
     </div>
 
     <div class="flex-1 overflow-y-auto p-4 md:p-5">
-      <div v-if="loading" class="flex justify-center py-12">
-        <div class="w-6 h-6 rounded-full animate-spin" style="border: 2px solid var(--color-border); border-top-color: var(--color-accent)"></div>
-      </div>
+      <n-spin v-if="loading" class="flex justify-center py-12" />
 
-      <div v-else-if="error" class="card p-6" :style="{ borderLeft: '3px solid var(--color-accent)' }">
-        <p style="color: var(--color-accent)">{{ error }}</p>
-      </div>
+      <n-alert v-else-if="error" type="error" :show-icon="true" closable @close="error = ''">
+        {{ error }}
+      </n-alert>
 
       <template v-else-if="currentTab === 'daily'">
-        <div v-if="!groupedData.length" class="flex flex-col items-center justify-center py-16" style="color: var(--color-text-secondary)">
-          <p class="text-lg font-display font-medium" style="color: var(--color-warm-gray)">暂无用量数据</p>
-        </div>
+        <n-empty v-if="!groupedData.length" description="暂无用量数据" class="py-16" />
 
-        <div v-else class="max-w-5xl mx-auto space-y-6">
-          <div class="card p-4 md:p-5">
-            <p class="text-xs font-medium mb-3" style="color: var(--color-text-secondary)">每日 Token 消耗</p>
+        <n-space v-else vertical size="large" class="max-w-5xl mx-auto">
+          <n-card size="small">
+            <template #header><span class="text-xs font-medium">每日 Token 消耗</span></template>
             <div class="space-y-1">
               <div v-for="row in groupedData" :key="row.date" class="flex items-center gap-2">
                 <span class="text-xs shrink-0 w-16" style="color: var(--color-text-secondary)">{{ formatDateShort(row.date) }}</span>
-                <div class="flex-1 h-6 rounded flex" style="background-color: var(--color-bg); overflow: hidden;">
+                <div class="flex-1 h-6 rounded flex overflow-hidden" style="background-color: var(--color-bg)">
                   <div v-for="seg in row.segments" :key="seg.provider"
                     class="h-full transition-all duration-300"
                     :style="{ width: seg.pct + '%', backgroundColor: providerColor(seg.provider), minWidth: seg.pct > 0 ? '2px' : '0' }"
@@ -61,91 +45,71 @@
                 {{ p }}
               </span>
             </div>
-          </div>
+          </n-card>
 
-          <div class="card">
-            <div class="overflow-x-auto">
-              <table class="w-full text-xs md:text-sm">
-                <thead>
-                  <tr style="border-bottom: 1px solid var(--color-border); background-color: var(--color-bg)">
-                    <th class="text-left p-3 font-medium" style="color: var(--color-text-secondary)">日期</th>
-                    <th class="text-left p-3 font-medium" style="color: var(--color-text-secondary)">提供商</th>
-                    <th class="text-left p-3 font-medium" style="color: var(--color-text-secondary)">模型</th>
-                    <th class="text-right p-3 font-medium" style="color: var(--color-text-secondary)">输入</th>
-                    <th class="text-right p-3 font-medium" style="color: var(--color-text-secondary)">输出</th>
-                    <th class="text-right p-3 font-medium" style="color: var(--color-text-secondary)">总计</th>
-                    <th class="text-right p-3 font-medium" style="color: var(--color-text-secondary)">调用次数</th>
-                    <th class="text-right p-3 font-medium" style="color: var(--color-text-secondary)">费用 ($)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(item, idx) in dailyData" :key="idx"
-                    class="transition-colors duration-150 hover-sage-bg"
-                    style="border-bottom: 1px solid var(--color-border)">
-                    <td class="p-3" style="color: var(--color-text)">{{ formatDateShort(item.date) }}</td>
-                    <td class="p-3">
-                      <span class="tag-pill text-xs">{{ item.provider }}</span>
-                    </td>
-                    <td class="p-3" style="color: var(--color-warm-gray)">{{ item.modelName }}</td>
-                    <td class="p-3 text-right" style="color: var(--color-warm-gray)">{{ (item.promptTokens).toLocaleString() }}</td>
-                    <td class="p-3 text-right" style="color: var(--color-warm-gray)">{{ (item.completionTokens).toLocaleString() }}</td>
-                    <td class="p-3 text-right font-medium" style="color: var(--color-text)">{{ (item.totalTokens).toLocaleString() }}</td>
-                    <td class="p-3 text-right" style="color: var(--color-warm-gray)">{{ item.requestCount }}</td>
-                    <td class="p-3 text-right font-mono" style="color: var(--color-accent)">{{ Number(item.cost).toFixed(6) }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+          <n-data-table
+            :columns="dailyColumns"
+            :data="dailyData"
+            :bordered="false"
+            :single-line="false"
+            size="small"
+          />
+        </n-space>
       </template>
 
       <template v-else>
-        <div v-if="!totalStats" class="flex flex-col items-center justify-center py-16" style="color: var(--color-text-secondary)">
-          <p class="text-lg font-display font-medium" style="color: var(--color-warm-gray)">暂无统计数据</p>
-        </div>
+        <n-empty v-if="!totalStats" description="暂无统计数据" class="py-16" />
 
-        <div v-else class="max-w-4xl mx-auto space-y-6">
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-            <div class="card p-4 text-center">
-              <p class="text-xs font-medium mb-1" style="color: var(--color-text-secondary)">总 Token 数</p>
-              <p class="text-xl md:text-2xl font-bold font-mono" style="color: var(--color-text)">{{ (totalStats.totalTokens || 0).toLocaleString() }}</p>
-            </div>
-            <div class="card p-4 text-center">
-              <p class="text-xs font-medium mb-1" style="color: var(--color-text-secondary)">总费用</p>
-              <p class="text-xl md:text-2xl font-bold font-mono" style="color: var(--color-accent)">${{ (totalStats.totalCost || 0).toFixed(4) }}</p>
-            </div>
-            <div class="card p-4 text-center">
-              <p class="text-xs font-medium mb-1" style="color: var(--color-text-secondary)">请求次数</p>
-              <p class="text-xl md:text-2xl font-bold font-mono" style="color: var(--color-text)">{{ (totalStats.requestCount || 0).toLocaleString() }}</p>
-            </div>
-            <div class="card p-4 text-center">
-              <p class="text-xs font-medium mb-1" style="color: var(--color-text-secondary)">平均每次</p>
-              <p class="text-xl md:text-2xl font-bold font-mono" style="color: var(--color-text)">
-                {{ totalStats.requestCount > 0 ? Math.round(totalStats.totalTokens / totalStats.requestCount).toLocaleString() : 0 }}
-              </p>
-            </div>
-          </div>
+        <n-space v-else vertical size="large" class="max-w-4xl mx-auto">
+          <n-grid :cols="4" :x-gap="12" :y-gap="12">
+            <n-gi>
+              <n-card size="small" class="stats-card">
+                <n-statistic label="总 Token 数" :value="totalStats.totalTokens || 0" />
+              </n-card>
+            </n-gi>
+            <n-gi>
+              <n-card size="small" class="stats-card">
+                <n-statistic label="总费用" :value="Number(totalStats.totalCost || 0).toFixed(4)" precision="4">
+                  <template #prefix>$</template>
+                </n-statistic>
+              </n-card>
+            </n-gi>
+            <n-gi>
+              <n-card size="small" class="stats-card">
+                <n-statistic label="请求次数" :value="totalStats.requestCount || 0" />
+              </n-card>
+            </n-gi>
+            <n-gi>
+              <n-card size="small" class="stats-card">
+                <n-statistic label="平均每次" :value="avgTokens" />
+              </n-card>
+            </n-gi>
+          </n-grid>
 
-          <div class="card p-4 md:p-5">
-            <p class="text-xs font-medium mb-1" style="color: var(--color-text-secondary)">统计区间</p>
-            <p class="text-sm" style="color: var(--color-warm-gray)">
-              {{ totalStats.startDate }} ~ {{ totalStats.endDate }}
-            </p>
-          </div>
-        </div>
+          <n-card size="small" title="统计区间">
+            <span class="text-sm" style="color: var(--color-warm-gray)">{{ totalStats.startDate }} ~ {{ totalStats.endDate }}</span>
+          </n-card>
+        </n-space>
       </template>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, h, onMounted } from 'vue'
+import { NTime } from 'naive-ui'
 import { tokenUsageApi } from '@/api/tokenUsage'
 
 const tabs = [
   { key: 'daily', label: '每日用量' },
   { key: 'total', label: '总计统计' }
+]
+
+const dayOptions = [
+  { label: '7 天', value: 7 },
+  { label: '14 天', value: 14 },
+  { label: '30 天', value: 30 },
+  { label: '90 天', value: 90 }
 ]
 
 const currentTab = ref('daily')
@@ -154,6 +118,8 @@ const error = ref('')
 const days = ref(30)
 const dailyData = ref([])
 const totalStats = ref(null)
+const providers = ref([])
+const groupedData = ref([])
 
 const providerColors = {
   OPENAI: '#4a90d9',
@@ -166,9 +132,54 @@ function providerColor(p) {
   return providerColors[p] || 'var(--color-text-secondary)'
 }
 
-const providers = ref([])
+const avgTokens = computed(() => {
+  if (!totalStats.value || !totalStats.value.requestCount) return 0
+  return Math.round(totalStats.value.totalTokens / totalStats.value.requestCount)
+})
 
-const groupedData = ref([])
+const dailyColumns = [
+  { title: '日期', key: 'date', width: 100 },
+  {
+    title: '提供商',
+    key: 'provider',
+    width: 100
+  },
+  { title: '模型', key: 'modelName' },
+  {
+    title: '输入',
+    key: 'promptTokens',
+    width: 90,
+    sorter: (a, b) => a.promptTokens - b.promptTokens,
+    render(row) { return h('span', row.promptTokens.toLocaleString()) }
+  },
+  {
+    title: '输出',
+    key: 'completionTokens',
+    width: 90,
+    sorter: (a, b) => a.completionTokens - b.completionTokens,
+    render(row) { return h('span', row.completionTokens.toLocaleString()) }
+  },
+  {
+    title: '总计',
+    key: 'totalTokens',
+    width: 90,
+    sorter: (a, b) => a.totalTokens - b.totalTokens,
+    render(row) { return h('span', { style: 'font-weight: 500' }, row.totalTokens.toLocaleString()) }
+  },
+  {
+    title: '调用次数',
+    key: 'requestCount',
+    width: 80,
+    sorter: (a, b) => a.requestCount - b.requestCount
+  },
+  {
+    title: '费用 ($)',
+    key: 'cost',
+    width: 110,
+    sorter: (a, b) => a.cost - b.cost,
+    render(row) { return h('span', { style: 'font-family: monospace; color: var(--color-accent)' }, Number(row.cost).toFixed(6)) }
+  }
+]
 
 function formatDateShort(dateStr) {
   if (!dateStr) return ''
@@ -183,14 +194,10 @@ function buildGrouped(data) {
     provSet.add(item.provider)
     const key = item.date
     if (!byDate[key]) byDate[key] = { date: key, segments: [], totalTokens: 0 }
-    byDate[key].segments.push({
-      provider: item.provider,
-      totalTokens: item.totalTokens
-    })
+    byDate[key].segments.push({ provider: item.provider, totalTokens: item.totalTokens })
     byDate[key].totalTokens += item.totalTokens
   }
   providers.value = Array.from(provSet)
-
   const maxTokens = Math.max(...Object.values(byDate).map(d => d.totalTokens), 1)
   const result = Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date))
   for (const row of result) {
@@ -240,3 +247,9 @@ function loadData() {
 
 onMounted(loadDaily)
 </script>
+
+<style scoped>
+.stats-card {
+  --n-padding-bottom: 16px;
+}
+</style>

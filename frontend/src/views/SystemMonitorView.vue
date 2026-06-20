@@ -2,83 +2,82 @@
   <div class="flex-1 overflow-y-auto p-4 md:p-6 max-w-4xl">
     <h2 class="font-display text-xl md:text-2xl mb-4 md:mb-6" style="color: var(--color-text)">系统监控</h2>
 
-    <div v-if="loading" class="text-sm py-8 text-center" style="color: var(--color-text-secondary)">加载中...</div>
-    <template v-else>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div class="card p-4">
-          <p class="text-xs mb-1" style="color: var(--color-text-secondary)">运行状态</p>
-          <p class="text-lg font-semibold" :style="{ color: health.status === 'UP' ? 'var(--color-sage)' : 'var(--color-accent)' }">{{ health.status }}</p>
-        </div>
-        <div class="card p-4">
-          <p class="text-xs mb-1" style="color: var(--color-text-secondary)">运行时间</p>
-          <p class="text-lg font-semibold" style="color: var(--color-text)">{{ formatUptime(health.uptime) }}</p>
-        </div>
-        <div class="card p-4">
-          <p class="text-xs mb-1" style="color: var(--color-text-secondary)">JVM 版本</p>
-          <p class="text-lg font-semibold" style="color: var(--color-text)">{{ info.javaVersion }}</p>
-        </div>
-        <div class="card p-4">
-          <p class="text-xs mb-1" style="color: var(--color-text-secondary)">CPU 核心</p>
-          <p class="text-lg font-semibold" style="color: var(--color-text)">{{ info.availableProcessors }}</p>
-        </div>
-      </div>
+    <n-spin v-if="loading" class="flex justify-center py-12" />
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <div class="card p-4">
-          <h3 class="font-display text-sm mb-3" style="color: var(--color-text)">JVM 内存</h3>
-          <div class="space-y-2 text-sm">
-            <div class="flex justify-between">
-              <span style="color: var(--color-text-secondary)">堆已用</span>
-              <span style="color: var(--color-text)">{{ info.heapUsed }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span style="color: var(--color-text-secondary)">空闲</span>
-              <span style="color: var(--color-text)">{{ info.freeMemory }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span style="color: var(--color-text-secondary)">已分配</span>
-              <span style="color: var(--color-text)">{{ info.totalMemory }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span style="color: var(--color-text-secondary)">最大</span>
-              <span style="color: var(--color-text)">{{ info.maxMemory }}</span>
-            </div>
-          </div>
-        </div>
-        <div class="card p-4">
-          <h3 class="font-display text-sm mb-3" style="color: var(--color-text)">磁盘</h3>
-          <div class="space-y-2 text-sm">
-            <div class="flex justify-between">
-              <span style="color: var(--color-text-secondary)">空闲</span>
-              <span style="color: var(--color-text)">{{ health.checks?.disk?.free }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span style="color: var(--color-text-secondary)">总量</span>
-              <span style="color: var(--color-text)">{{ health.checks?.disk?.total }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span style="color: var(--color-text-secondary)">空闲比例</span>
-              <span style="color: var(--color-text)">{{ health.checks?.disk?.freePercent }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+    <n-space v-else vertical size="large">
+      <n-grid :cols="4" :x-gap="12" :y-gap="12">
+        <n-gi>
+          <n-card size="small" class="stat-card">
+            <n-statistic label="运行状态">
+              <template #default>
+                <n-tag :type="health.status === 'UP' ? 'success' : 'error'" :bordered="false">{{ health.status }}</n-tag>
+              </template>
+            </n-statistic>
+          </n-card>
+        </n-gi>
+        <n-gi>
+          <n-card size="small" class="stat-card">
+            <n-statistic label="运行时间" :value="formatUptime(health.uptime)" />
+          </n-card>
+        </n-gi>
+        <n-gi>
+          <n-card size="small" class="stat-card">
+            <n-statistic label="JVM 版本" :value="info.javaVersion" />
+          </n-card>
+        </n-gi>
+        <n-gi>
+          <n-card size="small" class="stat-card">
+            <n-statistic label="CPU 核心" :value="info.availableProcessors" />
+          </n-card>
+        </n-gi>
+      </n-grid>
 
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div class="card p-4">
-          <p class="text-xs mb-1" style="color: var(--color-text-secondary)">线程数</p>
-          <p class="text-lg font-semibold" style="color: var(--color-text)">{{ metrics['jvm.threads.live'] }}</p>
-        </div>
-        <div class="card p-4">
-          <p class="text-xs mb-1" style="color: var(--color-text-secondary)">活跃连接</p>
-          <p class="text-lg font-semibold" style="color: var(--color-text)">{{ metrics.activeConnections }}</p>
-        </div>
-        <div class="card p-4">
-          <p class="text-xs mb-1" style="color: var(--color-text-secondary)">数据库</p>
-          <p class="text-lg font-semibold" :style="{ color: health.checks?.database?.status === 'UP' ? 'var(--color-sage)' : 'var(--color-accent)' }">{{ health.checks?.database?.status }}</p>
-        </div>
-      </div>
-    </template>
+      <n-grid :cols="2" :x-gap="12" :y-gap="12">
+        <n-gi>
+          <n-card size="small" title="JVM 内存">
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between"><span style="color: var(--color-text-secondary)">堆已用</span><span>{{ info.heapUsed }}</span></div>
+              <div class="flex justify-between"><span style="color: var(--color-text-secondary)">空闲</span><span>{{ info.freeMemory }}</span></div>
+              <div class="flex justify-between"><span style="color: var(--color-text-secondary)">已分配</span><span>{{ info.totalMemory }}</span></div>
+              <div class="flex justify-between"><span style="color: var(--color-text-secondary)">最大</span><span>{{ info.maxMemory }}</span></div>
+            </div>
+          </n-card>
+        </n-gi>
+        <n-gi>
+          <n-card size="small" title="磁盘">
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between"><span style="color: var(--color-text-secondary)">空闲</span><span>{{ health.checks?.disk?.free }}</span></div>
+              <div class="flex justify-between"><span style="color: var(--color-text-secondary)">总量</span><span>{{ health.checks?.disk?.total }}</span></div>
+              <div class="flex justify-between"><span style="color: var(--color-text-secondary)">空闲比例</span><span>{{ health.checks?.disk?.freePercent }}</span></div>
+            </div>
+          </n-card>
+        </n-gi>
+      </n-grid>
+
+      <n-grid :cols="3" :x-gap="12" :y-gap="12">
+        <n-gi>
+          <n-card size="small" class="stat-card">
+            <n-statistic label="线程数" :value="metrics['jvm.threads.live']" />
+          </n-card>
+        </n-gi>
+        <n-gi>
+          <n-card size="small" class="stat-card">
+            <n-statistic label="活跃连接" :value="metrics.activeConnections" />
+          </n-card>
+        </n-gi>
+        <n-gi>
+          <n-card size="small" class="stat-card">
+            <n-statistic label="数据库">
+              <template #default>
+                <n-tag :type="health.checks?.database?.status === 'UP' ? 'success' : 'error'" :bordered="false">
+                  {{ health.checks?.database?.status }}
+                </n-tag>
+              </template>
+            </n-statistic>
+          </n-card>
+        </n-gi>
+      </n-grid>
+    </n-space>
   </div>
 </template>
 
@@ -119,3 +118,9 @@ async function loadAll() {
 
 onMounted(loadAll)
 </script>
+
+<style scoped>
+.stat-card {
+  --n-padding-bottom: 16px;
+}
+</style>

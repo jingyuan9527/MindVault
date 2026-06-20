@@ -3,9 +3,7 @@
     style="border-bottom: 1px solid var(--color-border)"
     @click="$emit('click', note)">
     <div class="flex items-center mr-3" @click.stop>
-      <input type="checkbox" :checked="selected" @change="$emit('toggle-select', note.id)"
-        class="w-4 h-4 rounded cursor-pointer"
-        :style="{ accentColor: 'var(--color-sage)' }" />
+      <n-checkbox :checked="selected" @update:checked="$emit('toggle-select', note.id)" size="small" />
     </div>
     <div class="flex-1 min-w-0">
       <p class="text-sm font-medium truncate" style="color: var(--color-text)">{{ note.aiTitle || note.title }}</p>
@@ -15,7 +13,7 @@
       </div>
     </div>
     <div class="flex flex-wrap gap-1 mx-3 max-w-[200px]" v-if="mergedTags.length">
-      <router-link v-for="tag in mergedTags.slice(0, 3)" :key="tag" :to="{ path: '/', query: { tag } }" @click.stop class="tag-pill text-xs">#{{ tag }}</router-link>
+      <router-link v-for="tag in mergedTags.slice(0, 3)" :key="tag" :to="{ path: '/', query: { tag } }" @click.stop><n-tag size="tiny" :bordered="false">#{{ tag }}</n-tag></router-link>
       <span v-if="mergedTags.length > 3" class="text-xs" style="color: var(--color-text-secondary)">+{{ mergedTags.length - 3 }}</span>
     </div>
     <span class="text-xs shrink-0" style="color: var(--color-text-secondary)">{{ formatTime(note.createdAt) }}</span>

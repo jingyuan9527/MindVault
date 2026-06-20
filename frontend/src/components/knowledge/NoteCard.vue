@@ -1,20 +1,32 @@
 <template>
-  <div class="card p-5 cursor-pointer flex flex-col" @click="$emit('click', note)">
-    <h3 class="font-display text-base font-bold leading-tight mb-2 card-title" style="color: var(--color-text)">{{ note.aiTitle || note.title }}</h3>
-    <p v-if="note.aiTitle && note.title" class="text-xs mb-1 truncate" style="color: var(--color-text-secondary)">原标题: {{ note.title }}</p>
-    <div class="flex-1 min-h-0 mb-3">
-      <ContentRenderer :content="note.content" preview class="line-clamp-3 text-sm" style="color: var(--color-warm-gray)" />
-    </div>
-    <div class="flex flex-wrap gap-1.5 mb-2" v-if="mergedTags.length">
-      <router-link v-for="tag in mergedTags" :key="tag" :to="{ path: '/', query: { tag } }" @click.stop class="tag-pill">#{{ tag }}</router-link>
-    </div>
-    <div class="flex items-center justify-between pt-2 text-xs" style="border-top: 1px solid var(--color-border)">
-      <span style="color: var(--color-text-secondary)">{{ formatTime(note.createdAt) }}</span>
-      <button @click.stop="$emit('delete', note.id)"
-        class="transition-colors duration-150 hover-accent"
-        style="color: var(--color-text-secondary)">删除</button>
-    </div>
-  </div>
+  <n-card
+    hoverable
+    size="small"
+    class="note-card"
+    @click="$emit('click', note)"
+  >
+    <template #header>
+      <div>
+        <div class="text-sm font-medium leading-tight">{{ note.aiTitle || note.title }}</div>
+        <div v-if="note.aiTitle && note.title" class="text-xs mt-0.5" style="color: var(--color-text-secondary)">原标题: {{ note.title }}</div>
+      </div>
+    </template>
+
+    <ContentRenderer :content="note.content" preview class="line-clamp-3 text-sm" style="color: var(--color-warm-gray)" />
+
+    <template v-if="mergedTags.length" #footer>
+      <n-space size="small" class="flex-wrap">
+        <n-tag v-for="tag in mergedTags" :key="tag" size="tiny" :bordered="false" class="tag-sage">#{{ tag }}</n-tag>
+      </n-space>
+    </template>
+
+    <template #action>
+      <n-space align="center" justify="space-between" class="w-full">
+        <n-time :time="new Date(note.createdAt)" format="yyyy-MM-dd HH:mm" class="text-xs" />
+        <n-button text size="tiny" type="error" @click.stop="$emit('delete', note.id)">删除</n-button>
+      </n-space>
+    </template>
+  </n-card>
 </template>
 
 <script setup>
@@ -38,10 +50,14 @@ const mergedTags = computed(() => {
   const merged = new Set([...ai, ...user])
   return [...merged]
 })
-
-function formatTime(dateStr) {
-  if (!dateStr) return ''
-  const d = new Date(dateStr)
-  return `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`
-}
 </script>
+
+<style scoped>
+.note-card {
+  cursor: pointer;
+}
+.tag-sage {
+  --n-color: var(--color-sage-light);
+  --n-text-color: var(--color-sage);
+}
+</style>

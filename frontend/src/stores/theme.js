@@ -1,8 +1,11 @@
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
+import { ref, computed } from 'vue'
+import { darkTheme } from 'naive-ui'
 
 export const useThemeStore = defineStore('theme', () => {
   const isDark = ref(false)
+
+  const naiveTheme = computed(() => isDark.value ? darkTheme : null)
 
   function init() {
     const saved = localStorage.getItem('mindvault-dark')
@@ -16,5 +19,5 @@ export const useThemeStore = defineStore('theme', () => {
     document.documentElement.classList.toggle('dark', isDark.value)
   }
 
-  return { isDark, init, toggle }
+  return { isDark, naiveTheme, init, toggle }
 })

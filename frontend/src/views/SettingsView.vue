@@ -2,67 +2,17 @@
   <div class="flex-1 overflow-y-auto p-4 md:p-6 max-w-4xl">
     <h2 class="font-display text-xl md:text-2xl mb-4 md:mb-6" style="color: var(--color-text)">系统设置</h2>
 
-    <section class="card p-4 md:p-6">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="font-display text-base md:text-lg" style="color: var(--color-text)">模型配置</h3>
-        <button @click="showAddForm = true" class="btn-primary text-sm">+ 添加模型</button>
-      </div>
+    <n-card size="small" class="mb-4 md:mb-6">
+      <template #header>
+        <div class="flex items-center justify-between w-full">
+          <span class="font-display text-base md:text-lg">模型配置</span>
+          <n-button type="primary" size="small" @click="showAddForm = true">+ 添加模型</n-button>
+        </div>
+      </template>
 
-      <!-- Desktop table -->
-      <div class="hidden md:block overflow-x-auto" v-if="models.length">
-        <table class="w-full text-sm">
-          <thead>
-            <tr style="border-bottom: 1px solid var(--color-border); color: var(--color-text-secondary)">
-              <th class="text-left py-2 font-medium">供应商</th>
-              <th class="text-left py-2 font-medium">模型</th>
-              <th class="text-left py-2 font-medium">类型</th>
-              <th class="text-center py-2 font-medium w-20">优先级</th>
-              <th class="text-center py-2 font-medium">状态</th>
-              <th class="text-center py-2 font-medium">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(m, idx) in models" :key="m.id" style="border-bottom: 1px solid var(--color-border)">
-              <td class="py-3" style="color: var(--color-text)">{{ m.provider }}</td>
-              <td class="py-3">
-                <span style="color: var(--color-text)">{{ m.modelName }}</span>
-                <span v-if="m.isPrimary" class="ml-2 px-1.5 py-0.5 text-xs rounded"
-                  :style="{ backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' }">主模型</span>
-              </td>
-              <td class="py-3" style="color: var(--color-warm-gray)">{{ m.modelType }}</td>
-              <td class="py-3 text-center">
-                <div class="flex items-center justify-center gap-1">
-                  <button @click="movePriority(m.id, m.priority - 1)" :disabled="idx === 0"
-                    class="text-xs transition-colors duration-150 disabled:opacity-20 hover-text"
-                    style="color: var(--color-text-secondary)">&#9650;</button>
-                  <span class="text-xs w-5 text-center" style="color: var(--color-warm-gray)">{{ m.priority }}</span>
-                  <button @click="movePriority(m.id, m.priority + 1)" :disabled="idx === models.length - 1"
-                    class="text-xs transition-colors duration-150 disabled:opacity-20 hover-text"
-                    style="color: var(--color-text-secondary)">&#9660;</button>
-                </div>
-              </td>
-              <td class="py-3 text-center">
-                <span class="px-2 py-0.5 text-xs rounded"
-                  :style="m.isEnabled ? { backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' } : { backgroundColor: '#f0eeeb', color: 'var(--color-text-secondary)' }">
-                  {{ m.isEnabled ? '启用' : '禁用' }}
-                </span>
-              </td>
-              <td class="py-3 text-center">
-                <div class="flex items-center justify-center gap-2">
-                  <button v-if="!m.isPrimary" @click="setPrimary(m.id)"
-                    class="text-xs transition-colors duration-150 hover-accent-hover"
-                    style="color: var(--color-accent)">设为主模型</button>
-                  <button @click="testConnection(m.id)"
-                    class="text-xs transition-colors duration-150 hover-text"
-                    style="color: var(--color-text-secondary)">测试</button>
-                  <button @click="deleteModel(m.id)"
-                    class="text-xs transition-colors duration-150 hover-accent"
-                    style="color: var(--color-text-secondary)">删除</button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- Desktop NDataTable -->
+      <div class="hidden md:block" v-if="models.length">
+        <n-data-table :columns="modelColumns" :data="models" :bordered="false" :single-line="false" size="small" />
       </div>
 
       <!-- Mobile cards -->
@@ -83,28 +33,18 @@
           </div>
           <p class="text-xs mb-1" style="color: var(--color-text)">{{ m.modelName }}</p>
           <p class="text-xs mb-2" style="color: var(--color-warm-gray)">{{ m.modelType }} · 优先级 {{ m.priority }}</p>
-          <div class="flex items-center gap-2 flex-wrap">
-            <button @click="movePriority(m.id, m.priority - 1)" :disabled="idx === 0"
-              class="text-xs px-2 py-1 rounded transition-colors duration-150 disabled:opacity-20"
-              style="color: var(--color-text-secondary); border: 1px solid var(--color-border)">上移</button>
-            <button @click="movePriority(m.id, m.priority + 1)" :disabled="idx === models.length - 1"
-              class="text-xs px-2 py-1 rounded transition-colors duration-150 disabled:opacity-20"
-              style="color: var(--color-text-secondary); border: 1px solid var(--color-border)">下移</button>
-            <button v-if="!m.isPrimary" @click="setPrimary(m.id)"
-              class="text-xs transition-colors duration-150"
-              style="color: var(--color-accent)">设为主模型</button>
-            <button @click="testConnection(m.id)"
-              class="text-xs transition-colors duration-150"
-              style="color: var(--color-text-secondary)">测试</button>
-            <button @click="deleteModel(m.id)"
-              class="text-xs transition-colors duration-150"
-              style="color: var(--color-text-secondary)">删除</button>
-          </div>
+          <n-space size="small">
+            <n-button text size="tiny" :disabled="idx === 0" @click="movePriority(m.id, m.priority - 1)">上移</n-button>
+            <n-button text size="tiny" :disabled="idx === models.length - 1" @click="movePriority(m.id, m.priority + 1)">下移</n-button>
+            <n-button v-if="!m.isPrimary" text size="tiny" type="primary" @click="setPrimary(m.id)">设为主模型</n-button>
+            <n-button text size="tiny" @click="testConnection(m.id)">测试</n-button>
+            <n-button text size="tiny" type="error" @click="deleteModel(m.id)">删除</n-button>
+          </n-space>
         </div>
       </div>
 
       <p v-else class="text-sm py-4" style="color: var(--color-text-secondary)">暂无模型配置，点击上方按钮添加</p>
-    </section>
+    </n-card>
 
     <section class="card p-4 md:p-6 mt-4 md:mt-6">
       <h3 class="font-display text-base md:text-lg mb-4" style="color: var(--color-text)">数据导入/导出</h3>
@@ -112,37 +52,29 @@
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <p class="text-sm mb-2" style="color: var(--color-text-secondary)">导出 JSON（完整备份）</p>
-            <button @click="exportJson" :disabled="exporting" class="btn-primary text-sm w-full sm:w-auto">
-              {{ exporting ? '导出中...' : '导出 JSON' }}
-            </button>
+            <n-button type="primary" size="small" :loading="exporting" @click="exportJson">导出 JSON</n-button>
           </div>
           <div>
             <p class="text-sm mb-2" style="color: var(--color-text-secondary)">导出 Markdown（按标签分类）</p>
-            <button @click="exportMarkdown" :disabled="exportingMd"
-              class="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover-opacity-90"
-              :style="{ backgroundColor: 'var(--color-sage)', color: 'white' }">
-              {{ exportingMd ? '导出中...' : '导出 Markdown' }}
-            </button>
+            <n-button size="small" :loading="exportingMd" @click="exportMarkdown"
+              :style="{ backgroundColor: 'var(--color-sage)', borderColor: 'var(--color-sage)' }"
+              class="!text-white hover:opacity-90">导出 Markdown</n-button>
           </div>
           <div>
             <p class="text-sm mb-2" style="color: var(--color-text-secondary)">导出 CSV（表格分析）</p>
-            <button @click="exportCsv" :disabled="exportingCsv"
-              class="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover-opacity-90"
-              :style="{ backgroundColor: 'var(--color-warm-gray)', color: 'white' }">
-              {{ exportingCsv ? '导出中...' : '导出 CSV' }}
-            </button>
+            <n-button size="small" :loading="exportingCsv" @click="exportCsv"
+              :style="{ backgroundColor: 'var(--color-warm-gray)', borderColor: 'var(--color-warm-gray)' }"
+              class="!text-white hover:opacity-90">导出 CSV</n-button>
           </div>
         </div>
         <div style="border-top: 1px solid var(--color-border); padding-top: 1rem">
           <p class="text-sm mb-2" style="color: var(--color-text-secondary)">导入 JSON 备份文件</p>
           <div class="flex items-center gap-3 mb-3">
             <span class="text-xs" style="color: var(--color-text-secondary)">冲突处理:</span>
-            <label class="text-xs flex items-center gap-1">
-              <input type="radio" v-model="conflictMode" value="skip" /> 跳过
-            </label>
-            <label class="text-xs flex items-center gap-1">
-              <input type="radio" v-model="conflictMode" value="overwrite" /> 覆盖
-            </label>
+            <n-radio-group v-model:value="conflictMode" size="small">
+              <n-radio value="skip">跳过</n-radio>
+              <n-radio value="overwrite">覆盖</n-radio>
+            </n-radio-group>
           </div>
           <div class="border-2 border-dashed rounded-lg p-6 text-center transition-colors duration-150 cursor-pointer"
             :style="{ borderColor: dragOver ? 'var(--color-sage)' : 'var(--color-border)', backgroundColor: dragOver ? 'var(--color-sage-light)' : 'transparent' }"
@@ -178,11 +110,8 @@
               冲突: {{ importPreview.conflictCount }} 条 (将{{ conflictMode === 'skip' ? '跳过' : '覆盖' }})
             </p>
             <div class="flex gap-2 mt-2">
-              <button @click="confirmImport" :disabled="importing"
-                class="btn-primary text-xs px-3 py-1.5">
-                {{ importing ? '导入中...' : '确认导入' }}
-              </button>
-              <button @click="cancelImport" class="btn-secondary text-xs px-3 py-1.5">取消</button>
+              <n-button type="primary" size="tiny" :loading="importing" @click="confirmImport">确认导入</n-button>
+              <n-button quaternary size="tiny" @click="cancelImport">取消</n-button>
             </div>
           </div>
           <p v-if="importResult" class="text-sm mt-2 fade-in-enter"
@@ -207,7 +136,7 @@
     <section class="card p-4 md:p-6 mt-4 md:mt-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="font-display text-base md:text-lg" style="color: var(--color-text)">API Token</h3>
-        <button @click="showTokenForm = true" class="btn-primary text-sm">+ 创建 Token</button>
+        <n-button type="primary" size="small" @click="showTokenForm = true">+ 创建 Token</n-button>
       </div>
       <div v-if="tokens.length" class="space-y-2">
         <div v-for="t in tokens" :key="t.id"
@@ -222,117 +151,71 @@
               {{ new Date(t.expiresAt) < new Date() ? '已过期' : '有效期至 ' + t.expiresAt?.slice(0, 10) }}
             </span>
           </div>
-          <button @click="deleteToken(t.id)"
-            class="text-xs px-3 py-1 rounded transition-colors duration-150 shrink-0 ml-2 hover-accent"
-            style="color: var(--color-text-secondary)">删除</button>
+          <n-button text size="tiny" type="error" @click="deleteToken(t.id)">删除</n-button>
         </div>
       </div>
       <p v-else class="text-sm py-4" style="color: var(--color-text-secondary)">暂无 API Token</p>
     </section>
 
-    <transition name="fade">
-      <div v-if="showTokenForm" class="modal-overlay" @click.self="showTokenForm = false">
-        <div class="modal-panel w-[calc(100%-2rem)] sm:w-[420px]">
-          <div class="p-6">
-            <h3 class="font-display text-base mb-4" style="color: var(--color-text)">创建 API Token</h3>
-            <div class="space-y-3">
-              <div>
-                <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">名称</label>
-                <input v-model="tokenForm.name" placeholder="如 web-clipper" class="input-field" />
-              </div>
-              <div>
-                <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">有效期（天）</label>
-                <input v-model.number="tokenForm.expireDays" type="number" min="1" max="365" class="input-field" />
-              </div>
-            </div>
-            <div class="flex justify-end gap-2 mt-6">
-              <button @click="showTokenForm = false" class="btn-secondary">取消</button>
-              <button @click="createToken" class="btn-primary" :disabled="creatingToken">{{ creatingToken ? '创建中...' : '创建' }}</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </transition>
+    <n-modal v-model:show="showTokenForm" preset="card" style="max-width: 420px" :bordered="false" title="创建 API Token">
+      <n-space vertical size="medium">
+        <n-input v-model:value="tokenForm.name" placeholder="如 web-clipper" />
+        <n-input-number v-model:value="tokenForm.expireDays" :min="1" :max="365" placeholder="有效期（天）" />
+      </n-space>
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="showTokenForm = false">取消</n-button>
+          <n-button type="primary" :loading="creatingToken" @click="createToken">创建</n-button>
+        </n-space>
+      </template>
+    </n-modal>
 
-    <transition name="fade">
-      <div v-if="newTokenValue" class="modal-overlay" @click.self="newTokenValue = ''">
-        <div class="modal-panel w-[calc(100%-2rem)] sm:w-[480px]">
-          <div class="p-6">
-            <h3 class="font-display text-base mb-2" style="color: var(--color-text)">Token 已创建</h3>
-            <p class="text-sm mb-4" style="color: var(--color-accent)">请立即复制保存，关闭后将无法再次查看</p>
-            <div class="flex items-center gap-2 p-3 rounded-lg" style="background-color: var(--color-bg)">
-              <code class="text-sm flex-1 break-all select-all" style="color: var(--color-text)">{{ newTokenValue }}</code>
-              <button @click="copyTokenValue"
-                class="text-xs px-3 py-1 rounded transition-colors duration-150 shrink-0 hover-accent"
-                style="color: var(--color-text-secondary)">复制</button>
-            </div>
-            <div class="flex justify-end mt-4">
-              <button @click="newTokenValue = ''" class="btn-primary">关闭</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </transition>
+    <n-modal v-model:show="newTokenValueShow" preset="card" style="max-width: 480px" :bordered="false" title="Token 已创建">
+      <p class="text-sm mb-4" style="color: var(--color-accent)">请立即复制保存，关闭后将无法再次查看</p>
+      <n-input :value="newTokenValue" readonly>
+        <template #suffix>
+          <n-button text size="tiny" @click="copyTokenValue">复制</n-button>
+        </template>
+      </n-input>
+      <template #footer>
+        <n-space justify="end">
+          <n-button type="primary" @click="newTokenValue = ''; newTokenValueShow = false">关闭</n-button>
+        </n-space>
+      </template>
+    </n-modal>
 
-    <transition name="fade">
-      <div v-if="showAddForm" class="modal-overlay" @click.self="showAddForm = false">
-        <div class="modal-panel w-[calc(100%-2rem)] sm:w-96">
-          <div class="p-4 sm:p-6">
-            <h3 class="font-display text-lg mb-4">添加模型</h3>
-            <div class="space-y-3">
-              <div>
-                <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">供应商</label>
-                <select v-model="form.provider" @change="onProviderChange" class="input-field">
-                  <option value="ALIYUN">阿里通义千问</option>
-                  <option value="DEEPSEEK">DeepSeek</option>
-                  <option value="OPENAI">OpenAI</option>
-                  <option value="ANTHROPIC">Anthropic</option>
-                  <option value="OLLAMA">Ollama（本地）</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">API Key</label>
-                <input v-model="form.apiKey" type="password" placeholder="sk-..." class="input-field" />
-              </div>
-              <div>
-                <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">Base URL（可选）</label>
-                <input v-model="form.baseUrl" placeholder="https://api.openai.com/v1" class="input-field" />
-              </div>
-              <div>
-                <button @click="fetchModels" :disabled="!form.apiKey || fetching"
-                  class="text-sm px-3 py-1.5 rounded-lg transition-all duration-150 mb-2 hover-opacity-80"
-                  :style="{ backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' }">
-                  {{ fetching ? '拉取中...' : '从远端拉取模型列表' }}
-                </button>
-                <div v-if="fetchedModelList.length" class="mt-1">
-                  <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">选择模型</label>
-                  <select v-model="form.modelName" class="input-field">
-                    <option value="" disabled>请选择一个模型</option>
-                    <option v-for="m in fetchedModelList" :key="m" :value="m">{{ m }}</option>
-                  </select>
-                </div>
-                <div v-else>
-                  <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">模型名称</label>
-                  <input v-model="form.modelName" placeholder="如 qwen-turbo（或先拉取列表）" class="input-field" />
-                </div>
-              </div>
-            </div>
-            <div class="flex justify-end gap-2 mt-6">
-              <button @click="showAddForm = false" class="btn-secondary">取消</button>
-              <button @click="addModel" class="btn-primary">保存</button>
-            </div>
-          </div>
+    <n-modal v-model:show="showAddForm" preset="card" style="max-width: 400px" :bordered="false" title="添加模型">
+      <n-space vertical size="medium">
+        <n-select v-model:value="form.provider" :options="providerOptions" @update:value="onProviderChange" />
+        <n-input v-model:value="form.apiKey" type="password" placeholder="sk-..." />
+        <n-input v-model:value="form.baseUrl" placeholder="https://api.openai.com/v1" />
+        <div>
+          <n-button size="tiny" :disabled="!form.apiKey" :loading="fetching" @click="fetchModels"
+            :style="{ backgroundColor: 'var(--color-sage-light)', borderColor: 'var(--color-sage-light)', color: 'var(--color-sage)' }"
+            class="mb-2">从远端拉取模型列表</n-button>
+          <n-select v-if="fetchedModelList.length" v-model:value="form.modelName" :options="fetchedModelOptions" placeholder="请选择一个模型" />
+          <n-input v-else v-model:value="form.modelName" placeholder="如 qwen-turbo（或先拉取列表）" />
         </div>
-      </div>
-    </transition>
+      </n-space>
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="showAddForm = false">取消</n-button>
+          <n-button type="primary" @click="addModel">保存</n-button>
+        </n-space>
+      </template>
+    </n-modal>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, h, onMounted } from 'vue'
+import { NTag, NButton, NSpace } from 'naive-ui'
 import { modelApi } from '@/api/models'
 import { knowledgeApi } from '@/api/knowledge'
 import { authApi } from '@/api/auth'
+
+const dialog = useDialog()
+const message = useMessage()
 
 const models = ref([])
 const showAddForm = ref(false)
@@ -356,6 +239,19 @@ const showTokenForm = ref(false)
 const tokenForm = ref({ name: '', expireDays: 30 })
 const creatingToken = ref(false)
 const newTokenValue = ref('')
+const newTokenValueShow = ref(false)
+
+const providerOptions = [
+  { label: '阿里通义千问', value: 'ALIYUN' },
+  { label: 'DeepSeek', value: 'DEEPSEEK' },
+  { label: 'OpenAI', value: 'OPENAI' },
+  { label: 'Anthropic', value: 'ANTHROPIC' },
+  { label: 'Ollama（本地）', value: 'OLLAMA' },
+]
+
+const fetchedModelOptions = computed(() =>
+  fetchedModelList.value.map(m => ({ label: m, value: m }))
+)
 
 async function loadTokens() {
   try {
@@ -371,6 +267,7 @@ async function createToken() {
     const res = await authApi.createToken(tokenForm.value)
     newTokenValue.value = res.data.data.token
     showTokenForm.value = false
+    newTokenValueShow.value = true
     await loadTokens()
   } finally {
     creatingToken.value = false
@@ -387,12 +284,63 @@ async function deleteToken(id) {
 function copyTokenValue() {
   navigator.clipboard?.writeText(newTokenValue.value)
   newTokenValue.value = ''
+  newTokenValueShow.value = false
 }
 
 async function loadModels() {
   const res = await modelApi.list()
   models.value = res.data.data || []
 }
+
+const modelColumns = [
+  { title: '供应商', key: 'provider', width: 100 },
+  {
+    title: '模型',
+    key: 'modelName',
+    render(row) {
+      const children = [row.modelName]
+      if (row.isPrimary) {
+        children.push(h(NTag, { size: 'tiny', type: 'success', bordered: false, style: 'margin-left: 8px' }, { default: () => '主模型' }))
+      }
+      return children
+    }
+  },
+  { title: '类型', key: 'modelType', width: 100 },
+  {
+    title: '优先级',
+    key: 'priority',
+    width: 80,
+    render(row, idx) {
+      return h('div', { style: 'display: flex; align-items: center; justify-content: center; gap: 4px' }, [
+        h(NButton, { text: true, size: 'tiny', disabled: idx === 0, onClick: () => movePriority(row.id, row.priority - 1) }, { default: () => '▲' }),
+        h('span', { style: 'font-size: 12px; width: 20px; text-align: center; color: var(--color-warm-gray)' }, String(row.priority)),
+        h(NButton, { text: true, size: 'tiny', disabled: idx === models.length - 1, onClick: () => movePriority(row.id, row.priority + 1) }, { default: () => '▼' }),
+      ])
+    }
+  },
+  {
+    title: '状态',
+    key: 'isEnabled',
+    width: 70,
+    render(row) {
+      return h(NTag, { size: 'small', type: row.isEnabled ? 'success' : 'default', bordered: false }, { default: () => row.isEnabled ? '启用' : '禁用' })
+    }
+  },
+  {
+    title: '操作',
+    key: 'actions',
+    width: 180,
+    render(row) {
+      const btns = []
+      if (!row.isPrimary) {
+        btns.push(h(NButton, { text: true, size: 'tiny', type: 'primary', onClick: () => setPrimary(row.id) }, { default: () => '设为主模型' }))
+      }
+      btns.push(h(NButton, { text: true, size: 'tiny', onClick: () => testConnection(row.id) }, { default: () => '测试' }))
+      btns.push(h(NButton, { text: true, size: 'tiny', type: 'error', onClick: () => deleteModel(row.id) }, { default: () => '删除' }))
+      return h(NSpace, { size: 'small', align: 'center', justify: 'center' }, { default: () => btns })
+    }
+  }
+]
 
 function onProviderChange() {
   fetchedModelList.value = []
@@ -436,14 +384,24 @@ async function setPrimary(id) {
 
 async function testConnection(id) {
   const res = await modelApi.testConnection(id)
-  alert(res.data.data ? '连接成功' : '连接失败')
+  if (res.data.data) {
+    message.success('连接成功')
+  } else {
+    message.error('连接失败')
+  }
 }
 
 async function deleteModel(id) {
-  if (confirm('确定删除此模型配置？')) {
-    await modelApi.delete(id)
-    await loadModels()
-  }
+  dialog.warning({
+    title: '删除模型',
+    content: '确定删除此模型配置？',
+    positiveText: '确定',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      await modelApi.delete(id)
+      await loadModels()
+    }
+  })
 }
 
 async function exportJson() {

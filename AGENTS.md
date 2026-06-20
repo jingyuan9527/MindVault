@@ -93,6 +93,7 @@ The pipeline processes each knowledge entry in three automated rounds:
 ## Testing Notes
 - `ModelApiIntegrationTest` runs real API calls against `agnes-2.0-flash` (~29s for 5 tests). Skipped when env var absent.
 - Frontend tests use `happy-dom` environment, `@vue/test-utils`, and `vitest`.
+- Frontend test count: 58 tests across 8 files.
 - Test data SQL (10 knowledge entries) in init script — rerun manually if DB is reset.
 - Auth is disabled in tests via `mindvault.auth.enabled=false` in `src/test/resources/application.properties`.
 

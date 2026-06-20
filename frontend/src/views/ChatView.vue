@@ -3,7 +3,7 @@
     <div class="flex-1 overflow-y-auto p-4 space-y-4" ref="messageContainer">
       <div v-if="error" class="flex flex-col items-center justify-center h-full">
         <p class="text-sm" style="color: #ef4444">{{ error }}</p>
-        <button @click="retry" class="text-sm mt-2 underline" style="color: var(--color-accent)">重试</button>
+        <n-button text size="tiny" type="primary" @click="retry" class="mt-2">重试</n-button>
       </div>
 
       <div v-else-if="!store.messages.length" class="flex flex-col items-center justify-center h-full">

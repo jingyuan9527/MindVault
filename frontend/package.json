@@ -9,9 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vicons/ionicons5": "^0.13.0",
     "axios": "^1.6.0",
     "dompurify": "^3.4.11",
     "marked": "^18.0.5",
+    "naive-ui": "^2.44.1",
     "pinia": "^2.1.0",
     "vue": "^3.4.0",
     "vue-router": "^4.3.0"
@@ -23,6 +25,9 @@
     "happy-dom": "^15.0.0",
     "postcss": "^8.4.0",
     "tailwindcss": "^3.4.0",
+    "unplugin-auto-import": "^21.0.0",
+    "unplugin-vue-components": "^32.1.0",
+    "vfonts": "^0.0.3",
     "vite": "^5.4.0",
     "vitest": "^2.0.0"
   }

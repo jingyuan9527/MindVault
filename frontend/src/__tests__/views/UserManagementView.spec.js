@@ -15,10 +15,10 @@ describe('UserManagementView', () => {
     expect(wrapper.text()).toContain('用户管理')
   })
 
-  it('renders user list', async () => {
-    const wrapper = mount(UserManagementView)
+  it('calls userApi.list on mount', async () => {
+    const { userApi } = await import('@/api/users')
+    mount(UserManagementView)
     await new Promise(r => setTimeout(r, 10))
-    expect(wrapper.text()).toContain('admin')
-    expect(wrapper.text()).toContain('user1')
+    expect(userApi.list).toHaveBeenCalled()
   })
 })

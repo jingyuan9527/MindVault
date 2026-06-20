@@ -1,106 +1,138 @@
 <template>
-  <ToastContainer />
-  <router-view v-slot="{ Component, route }">
-    <template v-if="route.path === '/login'">
-      <component :is="Component" />
-    </template>
-    <template v-else>
-      <div class="flex h-screen" :style="{ backgroundColor: 'var(--color-bg)' }">
-        <!-- Mobile overlay -->
-        <transition name="fade">
-          <div v-if="sidebarOpen" class="fixed inset-0 z-30 lg:hidden"
-            style="background-color: rgba(45,42,36,0.3); backdrop-filter: blur(2px)"
-            @click="sidebarOpen = false"></div>
-        </transition>
+  <n-config-provider :theme="themeStore.naiveTheme" :locale="zhCN" :date-locale="dateZhCN"
+    :theme-overrides="themeOverrides">
+    <n-message-provider>
+      <n-dialog-provider>
+      <router-view v-slot="{ Component, route }">
+        <template v-if="route.path === '/login'">
+          <component :is="Component" />
+        </template>
+        <template v-else>
+          <n-layout position="absolute" style="height: 100vh; --n-color: transparent">
+            <n-layout has-sider style="height: 100%; --n-color: transparent">
+              <n-layout-sider
+                :width="260"
+                :collapsed-width="0"
+                :collapsed="!sidebarOpen"
+                collapse-mode="transform"
+                :native-scrollbar="false"
+                bordered
+                class="sidebar-sider"
+                @update:collapsed="sidebarOpen = !sidebarOpen"
+              >
+                <AppSidebar @close="sidebarOpen = false" />
+              </n-layout-sider>
 
-        <!-- Sidebar -->
-        <transition name="sidebar-slide">
-          <div v-if="sidebarOpen || isDesktop" class="sidebar-drawer">
-            <AppSidebar @close="sidebarOpen = false" />
-          </div>
-        </transition>
+              <n-layout style="height: 100%; --n-color: transparent">
+                <!-- Mobile top bar -->
+                <n-layout-header bordered class="lg:hidden mobile-header">
+                  <div class="flex items-center gap-3 px-4 py-3">
+                    <n-button text @click="sidebarOpen = true" class="!text-secondary">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                      </svg>
+                    </n-button>
+                    <h1 class="font-display text-lg font-bold" style="color: #4D6A4A">MindVault</h1>
+                    <div class="ml-auto flex items-center gap-2">
+                      <n-button text @click="chatOpen = !chatOpen" class="!text-secondary">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                        </svg>
+                      </n-button>
+                      <n-button text @click="handleLogout" class="!text-secondary" title="退出登录">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                      </n-button>
+                    </div>
+                  </div>
+                </n-layout-header>
 
-        <!-- Mobile top bar -->
-        <div class="fixed top-0 left-0 right-0 z-20 flex items-center gap-3 px-4 py-3 lg:hidden"
-          :style="{ backgroundColor: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)' }">
-          <button @click="sidebarOpen = true" class="p-1 -ml-1 rounded-lg transition-colors duration-150 hover-text"
-            style="color: var(--color-text-secondary)">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-            </svg>
-          </button>
-          <h1 class="font-display text-lg font-bold" style="color: var(--color-accent)">MindVault</h1>
-          <div class="ml-auto flex items-center gap-2">
-            <button v-if="!chatOpen" @click="chatOpen = true"
-              class="p-1.5 rounded-lg transition-colors duration-150 hover-accent"
-              style="color: var(--color-text-secondary)">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
-              </svg>
-            </button>
-            <button v-else @click="chatOpen = false"
-              class="p-1.5 rounded-lg transition-colors duration-150"
-              style="color: var(--color-accent)">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-            </button>
-            <button @click="handleLogout"
-              class="p-1.5 rounded-lg transition-colors duration-150 hover-accent"
-              style="color: var(--color-text-secondary)"
-              title="退出登录">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-              </svg>
-            </button>
-          </div>
-        </div>
+                <!-- Main content -->
+                <n-layout-content content-style="display: flex; flex-direction: column; height: 100%" style="--n-color: transparent">
+                  <div class="flex flex-1 overflow-hidden">
+                    <div class="flex-1 flex flex-col overflow-hidden" style="background-color: var(--color-bg)">
+                      <transition name="fade" mode="out-in">
+                        <component :is="Component" />
+                      </transition>
+                    </div>
 
-        <!-- Main content -->
-        <main class="flex-1 flex overflow-hidden pt-[57px] lg:pt-0">
-          <div class="flex-1 flex flex-col overflow-hidden">
-            <transition name="fade" mode="out-in">
-              <component :is="Component" />
-            </transition>
-          </div>
+                    <!-- Chat panel -->
+                    <transition name="panel-transition">
+                      <div v-if="chatOpen" class="chat-panel-wrapper">
+                        <ChatPanel @close="chatOpen = false" />
+                      </div>
+                    </transition>
+                  </div>
+                </n-layout-content>
 
-          <!-- Chat panel -->
-          <transition name="panel-transition">
-            <div v-if="chatOpen" class="chat-panel-wrapper">
-              <ChatPanel @close="chatOpen = false" />
-            </div>
-          </transition>
-        </main>
-
-        <!-- Desktop chat FAB -->
-        <button v-if="!chatOpen && isDesktop"
-          @click="chatOpen = true"
-          class="fixed bottom-6 right-6 w-12 h-12 flex items-center justify-center rounded-full shadow-lg z-50 transition-all duration-200 hover:scale-105 hover:shadow-xl"
-          :style="{ backgroundColor: 'var(--color-accent)', color: 'white' }">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
-          </svg>
-        </button>
-      </div>
-    </template>
-  </router-view>
+                <!-- Desktop chat FAB -->
+                <n-button v-if="!chatOpen && isDesktop"
+                  circle
+                  :style="{ backgroundColor: 'var(--color-accent)' }"
+                  class="!fixed bottom-6 right-6 z-50 shadow-lg"
+                  @click="chatOpen = true"
+                >
+                  <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                  </svg>
+                </n-button>
+              </n-layout>
+            </n-layout>
+          </n-layout>
+        </template>
+      </router-view>
+    </n-dialog-provider>
+    </n-message-provider>
+  </n-config-provider>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { zhCN, dateZhCN } from 'naive-ui'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import ChatPanel from '@/components/chat/ChatPanel.vue'
-import ToastContainer from '@/components/common/ToastContainer.vue'
 import { useThemeStore } from '@/stores/theme'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
-const chatOpen = ref(true)
+const chatOpen = ref(false)
 const sidebarOpen = ref(false)
 const isDesktop = ref(true)
+
+const themeOverrides = computed(() => {
+  if (themeStore.isDark) {
+    return {
+      common: {
+        primaryColor: '#7a9a77',
+        primaryColorHover: '#8aaa87',
+        primaryColorPressed: '#6a8a67',
+        primaryColorSuppl: '#8aaa87',
+      },
+      Menu: {
+        itemColorActive: '#2a3a28',
+        itemTextColorActive: '#7a9a77',
+        itemIconColorActive: '#7a9a77',
+      },
+    }
+  }
+  return {
+    common: {
+      primaryColor: '#5d7a5a',
+      primaryColorHover: '#4d6a4a',
+      primaryColorPressed: '#3d5a3a',
+      primaryColorSuppl: '#6d8a6a',
+    },
+    Menu: {
+      itemColorActive: '#e8f0e6',
+      itemTextColorActive: '#5d7a5a',
+      itemIconColorActive: '#5d7a5a',
+    },
+  }
+})
 
 function handleLogout() {
   authStore.logout()
@@ -109,8 +141,7 @@ function handleLogout() {
 
 function checkScreen() {
   isDesktop.value = window.innerWidth >= 1024
-  if (isDesktop.value) sidebarOpen.value = true
-  else sidebarOpen.value = false
+  sidebarOpen.value = isDesktop.value
 }
 
 onMounted(() => {
@@ -125,21 +156,22 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.sidebar-drawer {
-  @apply fixed left-0 top-0 z-40 h-full lg:static lg:z-auto;
-  transition: transform 0.3s ease;
+.sidebar-sider {
+  --n-color: var(--color-surface);
 }
-
-.sidebar-slide-enter-from,
-.sidebar-slide-leave-to {
-  transform: translateX(-100%);
+.mobile-header {
+  --n-color: var(--color-surface);
 }
-.sidebar-slide-enter-active,
-.sidebar-slide-leave-active {
-  transition: transform 0.3s ease;
-}
-
 .chat-panel-wrapper {
   @apply w-full lg:w-96 shrink-0;
+}
+.panel-transition-enter-from,
+.panel-transition-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
+}
+.panel-transition-enter-active,
+.panel-transition-leave-active {
+  transition: all 0.3s ease;
 }
 </style>

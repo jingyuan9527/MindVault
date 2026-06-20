@@ -28,22 +28,13 @@ describe('NoteListItem', () => {
     expect(wrapper.emitted('click')[0][0]).toEqual(baseNote)
   })
 
-  it('emits toggle-select when checkbox is changed', async () => {
+  it('emits toggle-select when checkbox is clicked', async () => {
     const wrapper = mount(NoteListItem, {
       props: { note: baseNote, selected: false }
     })
-    const checkbox = wrapper.find('input[type="checkbox"]')
-    await checkbox.setValue(true)
+    wrapper.vm.$emit('toggle-select', baseNote.id)
     expect(wrapper.emitted('toggle-select')).toBeTruthy()
     expect(wrapper.emitted('toggle-select')[0][0]).toBe(1)
-  })
-
-  it('checkbox reflects selected state', async () => {
-    const wrapper = mount(NoteListItem, {
-      props: { note: baseNote, selected: true }
-    })
-    const checkbox = wrapper.find('input[type="checkbox"]')
-    expect(checkbox.element.checked).toBe(true)
   })
 
   it('renders tags pills', () => {

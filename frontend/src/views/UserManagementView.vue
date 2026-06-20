@@ -2,59 +2,61 @@
   <div class="flex-1 overflow-y-auto p-4 md:p-6 max-w-4xl">
     <h2 class="font-display text-xl md:text-2xl mb-4 md:mb-6" style="color: var(--color-text)">用户管理</h2>
 
-    <div class="card p-4 md:p-6">
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr style="border-bottom: 1px solid var(--color-border); color: var(--color-text-secondary)">
-              <th class="text-left py-2 font-medium">用户名</th>
-              <th class="text-left py-2 font-medium">显示名称</th>
-              <th class="text-left py-2 font-medium">角色</th>
-              <th class="text-center py-2 font-medium">状态</th>
-              <th class="text-left py-2 font-medium">创建时间</th>
-              <th class="text-center py-2 font-medium">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="u in users" :key="u.id" style="border-bottom: 1px solid var(--color-border)">
-              <td class="py-3" style="color: var(--color-text)">{{ u.username }}</td>
-              <td class="py-3" style="color: var(--color-text)">{{ u.displayName }}</td>
-              <td class="py-3">
-                <span class="px-1.5 py-0.5 text-xs rounded"
-                  :style="u.role === 'ADMIN' ? { backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' } : { backgroundColor: '#f0eeeb', color: 'var(--color-text-secondary)' }">
-                  {{ u.role }}
-                </span>
-              </td>
-              <td class="py-3 text-center">
-                <span class="px-1.5 py-0.5 text-xs rounded"
-                  :style="u.enabled ? { backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' } : { backgroundColor: '#f0eeeb', color: 'var(--color-accent)' }">
-                  {{ u.enabled ? '启用' : '禁用' }}
-                </span>
-              </td>
-              <td class="py-3" style="color: var(--color-warm-gray)">{{ u.createdAt?.slice(0, 10) }}</td>
-              <td class="py-3 text-center">
-                <button v-if="u.role !== 'ADMIN'"
-                  @click="toggleEnabled(u)"
-                  class="text-xs transition-colors duration-150 hover-opacity-80"
-                  :style="{ color: u.enabled ? 'var(--color-accent)' : 'var(--color-sage)' }">
-                  {{ u.enabled ? '禁用' : '启用' }}
-                </button>
-                <span v-else class="text-xs" style="color: var(--color-text-secondary)">-</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <p v-if="!users.length" class="text-sm py-4" style="color: var(--color-text-secondary)">暂无用户数据</p>
-    </div>
+    <n-card size="small">
+      <n-data-table
+        :columns="columns"
+        :data="users"
+        :bordered="false"
+        :single-line="false"
+        size="small"
+      />
+      <n-empty v-if="!users.length" description="暂无用户数据" class="py-4" />
+    </n-card>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, h, onMounted } from 'vue'
+import { NTag, NButton } from 'naive-ui'
 import { userApi } from '@/api/users'
 
 const users = ref([])
+
+const columns = [
+  { title: '用户名', key: 'username' },
+  { title: '显示名称', key: 'displayName' },
+  {
+    title: '角色',
+    key: 'role',
+    width: 100,
+    render(row) {
+      return h(NTag, { size: 'small', type: row.role === 'ADMIN' ? 'success' : 'default', bordered: false }, { default: () => row.role })
+    }
+  },
+  {
+    title: '状态',
+    key: 'enabled',
+    width: 80,
+    render(row) {
+      return h(NTag, { size: 'small', type: row.enabled ? 'success' : 'error', bordered: false }, { default: () => row.enabled ? '启用' : '禁用' })
+    }
+  },
+  { title: '创建时间', key: 'createdAt', width: 120, render(row) { return row.createdAt?.slice(0, 10) || '' } },
+  {
+    title: '操作',
+    key: 'actions',
+    width: 80,
+    render(row) {
+      if (row.role === 'ADMIN') return h('span', { style: 'color: var(--color-text-secondary); font-size: 12px' }, '-')
+      return h(NButton, {
+        text: true,
+        size: 'tiny',
+        type: row.enabled ? 'error' : 'info',
+        onClick: () => toggleEnabled(row)
+      }, { default: () => row.enabled ? '禁用' : '启用' })
+    }
+  }
+]
 
 async function loadUsers() {
   try {

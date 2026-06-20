@@ -8,7 +8,7 @@
         <span v-else-if="msg.type === 'error'" class="shrink-0">✕</span>
         <span v-else class="shrink-0">ℹ</span>
         <span style="color: white">{{ msg.text }}</span>
-        <button @click="store.remove(msg.id)" class="ml-auto shrink-0 opacity-70 hover:opacity-100">✕</button>
+        <n-button text size="tiny" @click="store.remove(msg.id)" class="ml-auto shrink-0 !text-white/70 hover:!text-white">✕</n-button>
       </div>
     </transition-group>
   </div>

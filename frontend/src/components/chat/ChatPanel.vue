@@ -3,9 +3,7 @@
     :style="{ backgroundColor: 'var(--color-surface)', borderLeft: '1px solid var(--color-border)' }">
     <div class="flex items-center justify-between p-4 shrink-0" style="border-bottom: 1px solid var(--color-border)">
       <h3 class="text-sm font-semibold" style="color: var(--color-text)">AI 助手</h3>
-      <button @click="$emit('close')"
-        class="text-lg leading-none transition-colors duration-150 hover-text"
-        style="color: var(--color-text-secondary)">&times;</button>
+      <n-button text size="small" @click="$emit('close')">✕</n-button>
     </div>
 
     <div class="flex-1 overflow-y-auto p-4 space-y-4" ref="msgContainer">

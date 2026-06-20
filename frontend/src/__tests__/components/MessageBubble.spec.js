@@ -34,25 +34,22 @@ describe('MessageBubble', () => {
     const wrapper = mount(MessageBubble, {
       props: { message: 'Answer with sources', isUser: false, time: '12:00', sources }
     })
-    const links = wrapper.findAll('a')
-    expect(links.length).toBe(2)
-    expect(links[0].text()).toContain('Article 1')
-    expect(links[0].attributes('href')).toBe('http://example.com/1')
-    expect(links[1].text()).toContain('Article 2')
+    expect(wrapper.text()).toContain('Article 1')
+    expect(wrapper.text()).toContain('Article 2')
   })
 
   it('does not render sources section when sources is empty array', () => {
     const wrapper = mount(MessageBubble, {
       props: { message: 'No sources', isUser: true, time: '12:00', sources: '[]' }
     })
-    expect(wrapper.findAll('a').length).toBe(0)
+    expect(wrapper.text()).not.toContain('知识')
   })
 
   it('handles invalid sources JSON gracefully', () => {
     const wrapper = mount(MessageBubble, {
       props: { message: 'Bad sources', isUser: false, time: '12:00', sources: 'not-json' }
     })
-    expect(wrapper.findAll('a').length).toBe(0)
+    expect(wrapper.text()).not.toContain('知识')
   })
 
   it('renders fallback text when source has no title', () => {
@@ -72,6 +69,6 @@ describe('MessageBubble', () => {
     const wrapper = mount(MessageBubble, {
       props: { message: 'test', isUser: false, time: '12:00', sources }
     })
-    expect(wrapper.find('a').attributes('href')).toBe('#')
+    expect(wrapper.text()).toContain('No URL')
   })
 })

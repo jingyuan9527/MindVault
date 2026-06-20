@@ -1,36 +1,33 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center p-4"
-    style="background-color: var(--color-bg)">
-    <div class="w-full max-w-sm p-8 rounded-2xl shadow-lg scale-in-enter card"
-      style="border: 1px solid var(--color-border)">
-      <div class="text-center mb-8">
-        <h1 class="font-display text-3xl font-bold" style="color: var(--color-accent)">MindVault</h1>
+  <div class="min-h-screen flex items-center justify-center p-4" style="background-color: var(--color-bg)">
+    <n-card class="w-full max-w-sm" :bordered="true" size="large">
+      <div class="text-center mb-6">
+        <h1 class="font-display text-3xl font-bold" style="color: #4D6A4A">MindVault</h1>
         <p class="text-sm mt-2" style="color: var(--color-text-secondary)">知忆 · 你的AI增强第二大脑</p>
       </div>
 
-      <form @submit.prevent="handleLogin" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium mb-1" style="color: var(--color-text)">用户名</label>
-          <input v-model="username" type="text" required
-            class="input-field" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-1" style="color: var(--color-text)">密码</label>
-          <input v-model="password" type="password" required
-            class="input-field" />
-        </div>
-        <p v-if="error" class="text-sm" style="color: var(--color-danger)">{{ error }}</p>
-        <button type="submit" :disabled="loading"
-          class="btn-primary w-full py-2.5 flex items-center justify-center">
-          {{ loading ? '登录中...' : '登录' }}
-        </button>
-      </form>
-    </div>
+      <n-form @submit.prevent="handleLogin" label-placement="top" :model="formData">
+        <n-form-item label="用户名" path="username">
+          <n-input v-model:value="formData.username" placeholder="请输入用户名" />
+        </n-form-item>
+        <n-form-item label="密码" path="password">
+          <n-input v-model:value="formData.password" type="password" placeholder="请输入密码" @keyup.enter="handleLogin" />
+        </n-form-item>
+
+        <n-alert v-if="error" type="error" :show-icon="true" class="mb-4">
+          {{ error }}
+        </n-alert>
+
+        <n-button type="primary" attr-type="submit" :loading="loading" block size="large">
+          登录
+        </n-button>
+      </n-form>
+    </n-card>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
@@ -38,8 +35,7 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
-const username = ref('')
-const password = ref('')
+const formData = reactive({ username: '', password: '' })
 const loading = ref(false)
 const error = ref('')
 
@@ -47,7 +43,7 @@ async function handleLogin() {
   loading.value = true
   error.value = ''
   try {
-    await auth.login(username.value, password.value)
+    await auth.login(formData.username, formData.password)
     const redirect = route.query.redirect || '/'
     router.push(redirect)
   } catch (e) {

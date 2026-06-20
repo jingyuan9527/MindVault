@@ -3,16 +3,12 @@
     <div class="shrink-0 p-4 md:p-6 pb-0 max-w-4xl">
       <div class="flex items-center justify-between mb-4 md:mb-6">
         <h2 class="font-display text-xl md:text-2xl" style="color: var(--color-text)">系统配置</h2>
-        <button @click="refreshCache" class="btn-secondary text-sm">刷新缓存</button>
+        <n-button secondary size="small" @click="refreshCache">刷新缓存</n-button>
       </div>
 
-      <div class="flex gap-1 mb-4 p-1 rounded-lg" style="background-color: var(--color-bg)">
-        <button v-for="tab in tabs" :key="tab.key" @click="activeTab = tab.key"
-          class="px-4 py-1.5 text-sm rounded-md transition-all duration-150"
-          :style="activeTab === tab.key ? { backgroundColor: 'var(--color-surface)', color: 'var(--color-text)', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' } : { color: 'var(--color-text-secondary)' }">
-          {{ tab.label }}
-        </button>
-      </div>
+      <n-radio-group v-model:value="activeTab" class="mb-4 p-1 rounded-lg" style="background-color: var(--color-bg)">
+        <n-radio-button v-for="tab in tabs" :key="tab.key" :value="tab.key" size="small">{{ tab.label }}</n-radio-button>
+      </n-radio-group>
     </div>
 
     <div class="flex-1 overflow-y-auto px-4 md:px-6 pb-4 md:pb-6 max-w-4xl">
@@ -20,13 +16,12 @@
     <!-- ==================== Tab: 配置列表 ==================== -->
     <div v-if="activeTab === 'config'">
       <div class="flex items-center gap-2 mb-4">
-        <input v-model="searchQuery" placeholder="搜索 key、描述或模块名..." class="input-field flex-1 min-w-0" />
+        <n-input v-model:value="searchQuery" placeholder="搜索 key、描述或模块名..." clearable class="flex-1 min-w-0" />
         <span class="text-xs shrink-0" style="color: var(--color-text-secondary)">{{ filteredConfigs.length }} 项</span>
       </div>
 
       <div v-if="paginatedConfigs.length" class="space-y-2">
-        <div v-for="cfg in paginatedConfigs" :key="cfg.configKey"
-          class="card p-3 md:p-4">
+        <n-card v-for="cfg in paginatedConfigs" :key="cfg.configKey" size="small">
           <div class="flex items-start justify-between gap-2">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap mb-1">
@@ -44,40 +39,20 @@
               <code class="text-xs font-mono block mt-0.5" style="color: var(--color-warm-gray)">{{ cfg.configKey }}</code>
             </div>
             <div class="flex items-center gap-1 shrink-0">
-              <button @click="editConfig(cfg)" class="text-xs px-2 py-1 rounded transition-colors hover-accent"
-                style="color: var(--color-text-secondary)">编辑</button>
-              <button @click="deleteConfig(cfg)" class="text-xs px-2 py-1 rounded transition-colors hover-accent"
-                style="color: var(--color-text-secondary)">删除</button>
+              <n-button text size="tiny" @click="editConfig(cfg)">编辑</n-button>
+              <n-button text size="tiny" type="error" @click="deleteConfig(cfg)">删除</n-button>
             </div>
           </div>
           <div class="text-sm break-all whitespace-pre-wrap max-h-24 overflow-y-auto rounded p-2 mt-2"
             :style="{ color: 'var(--color-text)', backgroundColor: 'var(--color-bg)' }">
             {{ displayValue(cfg) }}
           </div>
-        </div>
+        </n-card>
       </div>
 
       <!-- Pagination -->
-      <div v-if="totalPages > 1" class="flex items-center justify-center gap-1 mt-4">
-        <button @click="currentPage = 1" :disabled="currentPage === 1"
-          class="px-2 py-1 text-xs rounded transition-colors disabled:opacity-30"
-          style="color: var(--color-text-secondary)">&#171;</button>
-        <button @click="currentPage--" :disabled="currentPage === 1"
-          class="px-2 py-1 text-xs rounded transition-colors disabled:opacity-30"
-          style="color: var(--color-text-secondary)">&#8249;</button>
-        <span v-for="p in visiblePages" :key="p"
-          v-on="typeof p === 'number' ? { click: () => currentPage = p } : {}"
-          class="px-2.5 py-1 text-xs rounded select-none"
-          :class="typeof p === 'number' ? 'cursor-pointer transition-colors' : ''"
-          :style="p === currentPage ? { backgroundColor: 'var(--color-sage)', color: 'white' } : typeof p === 'number' ? { color: 'var(--color-text-secondary)' } : { color: 'var(--color-warm-gray)' }">
-          {{ p }}
-        </span>
-        <button @click="currentPage++" :disabled="currentPage === totalPages"
-          class="px-2 py-1 text-xs rounded transition-colors disabled:opacity-30"
-          style="color: var(--color-text-secondary)">&#8250;</button>
-        <button @click="currentPage = totalPages" :disabled="currentPage === totalPages"
-          class="px-2 py-1 text-xs rounded transition-colors disabled:opacity-30"
-          style="color: var(--color-text-secondary)">&#187;</button>
+      <div v-if="totalPages > 1" class="flex items-center justify-center mt-4">
+        <n-pagination :page="currentPage" :page-count="totalPages" @update:page="currentPage = $event" size="small" />
       </div>
 
       <p v-else-if="!paginatedConfigs.length" class="text-sm py-8 text-center" style="color: var(--color-text-secondary)">暂无匹配的配置项</p>
@@ -89,7 +64,7 @@
         修改后约 30 秒生效，无需重启
       </p>
       <div class="space-y-3">
-        <div v-for="task in tasks" :key="task.key" class="card p-4">
+        <n-card v-for="task in tasks" :key="task.key" size="small">
           <div class="flex items-start justify-between mb-3">
             <div>
               <div class="flex items-center gap-2 mb-0.5">
@@ -101,12 +76,7 @@
               </div>
               <p class="text-xs" style="color: var(--color-text-secondary)">{{ task.desc }}</p>
             </div>
-            <label class="relative inline-flex items-center cursor-pointer shrink-0">
-              <input type="checkbox" class="sr-only peer"
-                :checked="task.enabled" @change="toggleTask(task)" />
-              <div class="w-9 h-5 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"
-                :style="{ backgroundColor: task.enabled ? 'var(--color-sage)' : '#ccc' }"></div>
-            </label>
+            <n-switch :value="task.enabled" @update:value="toggleTask(task)" />
           </div>
 
           <!-- Schedule display -->
@@ -126,58 +96,38 @@
             <!-- Cron task: hour + minute pickers -->
             <template v-if="task.cronType === 'cron'">
               <span class="text-xs" style="color: var(--color-text-secondary)">每天</span>
-              <select v-model="task.editHour" @change="applyCronEdit(task)"
-                class="input-field text-xs w-20">
-                <option v-for="h in 24" :key="h-1" :value="h-1">{{ String(h-1).padStart(2, '0') }}</option>
-              </select>
+              <n-select v-model:value="task.editHour" :options="hourOptions" size="tiny" class="!w-20" @update:value="applyCronEdit(task)" />
               <span class="text-xs" style="color: var(--color-text-secondary)">:</span>
-              <select v-model="task.editMin" @change="applyCronEdit(task)"
-                class="input-field text-xs w-20">
-                <option v-for="m in 60" :key="m-1" :value="m-1">{{ String(m-1).padStart(2, '0') }}</option>
-              </select>
+              <n-select v-model:value="task.editMin" :options="minuteOptions" size="tiny" class="!w-20" @update:value="applyCronEdit(task)" />
               <span class="text-xs" style="color: var(--color-text-secondary)">执行</span>
             </template>
             <!-- Poll task: minute input -->
             <template v-else>
               <span class="text-xs" style="color: var(--color-text-secondary)">每</span>
-              <input v-model.number="task.editInterval" type="number" min="1" class="input-field text-xs w-24"
-                @change="applyPollEdit(task)" />
+              <n-input-number v-model:value="task.editInterval" :min="1" size="tiny" class="!w-24" @update:value="applyPollEdit(task)" />
               <span class="text-xs" style="color: var(--color-text-secondary)">分钟</span>
             </template>
-            <button @click="resetTask(task)"
-              class="text-xs px-2 py-1.5 rounded transition-colors"
-              style="color: var(--color-text-secondary)">重置默认</button>
+            <n-button text size="tiny" @click="resetTask(task)">重置默认</n-button>
           </div>
-        </div>
+        </n-card>
       </div>
     </div>
     </div>
 
     <!-- Edit modal -->
-    <transition name="fade">
-      <div v-if="editing" class="modal-overlay" @click.self="editing = null">
-        <div class="modal-panel w-[calc(100%-2rem)] sm:w-[600px]">
-          <div class="p-6">
-            <h3 class="font-display text-base mb-1" style="color: var(--color-text)">编辑配置</h3>
-            <code class="text-xs block mb-4" style="color: var(--color-accent)">{{ editing.configKey }}</code>
-            <div class="space-y-3">
-              <div>
-                <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">值</label>
-                <textarea v-model="editValue" rows="6" class="input-field font-mono text-sm w-full" spellcheck="false"></textarea>
-              </div>
-              <div>
-                <label class="block text-sm mb-1" style="color: var(--color-text-secondary)">描述</label>
-                <input v-model="editDesc" class="input-field" />
-              </div>
-            </div>
-            <div class="flex justify-end gap-2 mt-6">
-              <button @click="editing = null" class="btn-secondary">取消</button>
-              <button @click="saveEdit" :disabled="saving" class="btn-primary">{{ saving ? '保存中...' : '保存' }}</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </transition>
+    <n-modal v-model:show="editingShow" preset="card" style="max-width: 600px" :bordered="false" title="编辑配置">
+      <code class="text-xs block mb-4" style="color: var(--color-accent)">{{ editing?.configKey }}</code>
+      <n-space vertical size="medium">
+        <n-input v-model:value="editValue" type="textarea" :rows="6" placeholder="值" />
+        <n-input v-model:value="editDesc" placeholder="描述" />
+      </n-space>
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="closeEdit">取消</n-button>
+          <n-button type="primary" :loading="saving" @click="saveEdit">保存</n-button>
+        </n-space>
+      </template>
+    </n-modal>
   </div>
 </template>
 
@@ -185,16 +135,21 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { systemConfigApi } from '@/api/systemConfig'
 
+const dialog = useDialog()
 const PAGE_SIZE = 20
 
 const configs = ref([])
 const searchQuery = ref('')
 const currentPage = ref(1)
 const editing = ref(null)
+const editingShow = ref(false)
 const editValue = ref('')
 const editDesc = ref('')
 const saving = ref(false)
 const activeTab = ref('config')
+
+const hourOptions = Array.from({ length: 24 }, (_, i) => ({ label: String(i).padStart(2, '0'), value: i }))
+const minuteOptions = Array.from({ length: 60 }, (_, i) => ({ label: String(i).padStart(2, '0'), value: i }))
 
 const tabs = [
   { key: 'config', label: '配置列表' },
@@ -337,6 +292,12 @@ function editConfig(cfg) {
   editing.value = cfg
   editValue.value = cfg.configValue
   editDesc.value = cfg.description || ''
+  editingShow.value = true
+}
+
+function closeEdit() {
+  editing.value = null
+  editingShow.value = false
 }
 
 async function saveEdit() {
@@ -350,17 +311,25 @@ async function saveEdit() {
     })
     await loadConfigs()
     editing.value = null
+    editingShow.value = false
   } finally {
     saving.value = false
   }
 }
 
 async function deleteConfig(cfg) {
-  if (!confirm(`确定删除「${configLabel(cfg)}」(${cfg.configKey})？`)) return
-  try {
-    await systemConfigApi.delete(cfg.configKey)
-    await loadConfigs()
-  } catch {}
+  dialog.warning({
+    title: '删除配置',
+    content: `确定删除「${configLabel(cfg)}」(${cfg.configKey})？`,
+    positiveText: '确定',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await systemConfigApi.delete(cfg.configKey)
+        await loadConfigs()
+      } catch {}
+    }
+  })
 }
 
 async function refreshCache() {
@@ -456,9 +425,9 @@ const tasks = computed(() => {
   })
 })
 
-async function toggleTask(task) {
+async function toggleTask(task, enabled) {
   await systemConfigApi.update(task.key + '.enabled', {
-    configValue: task.enabled ? 'false' : 'true',
+    configValue: enabled ? 'true' : 'false',
     valueType: 'bool'
   })
   await loadConfigs()

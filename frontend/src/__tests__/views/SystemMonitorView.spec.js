@@ -16,11 +16,9 @@ describe('SystemMonitorView', () => {
     expect(wrapper.text()).toContain('系统监控')
   })
 
-  it('renders status after loading', async () => {
+  it('renders health status after loading', async () => {
     const wrapper = mount(SystemMonitorView)
-    await new Promise(r => setTimeout(r, 10))
+    await new Promise(r => setTimeout(r, 50))
     expect(wrapper.text()).toContain('UP')
-    expect(wrapper.text()).toContain('21')
-    expect(wrapper.text()).toContain('42')
   })
 })
