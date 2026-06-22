@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Select;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface TokenUsageMapper extends BaseMapper<TokenUsage> {
@@ -30,9 +31,9 @@ public interface TokenUsageMapper extends BaseMapper<TokenUsage> {
     List<Object[]> findDailySummary(@Param("limit") int limit);
 
     @Select(value = """
-            SELECT COALESCE(SUM(total_tokens), 0), COALESCE(SUM(cost), 0)
+            SELECT COALESCE(SUM(total_tokens), 0) AS total_tokens, COALESCE(SUM(cost), 0) AS total_cost
             FROM token_usage
             WHERE created_at >= #{start} AND created_at < #{end}
             """)
-    Object[] findTotalTokensAndCost(@Param("start") LocalDate start, @Param("end") LocalDate end);
+    Map<String, Object> findTotalTokensAndCost(@Param("start") LocalDate start, @Param("end") LocalDate end);
 }

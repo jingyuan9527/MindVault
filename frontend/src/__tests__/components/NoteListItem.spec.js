@@ -81,7 +81,7 @@ describe('NoteListItem', () => {
     const wrapper = mount(NoteListItem, {
       props: { note, selected: false }
     })
-    expect(wrapper.findAll('.tag-pill').length).toBe(0)
+    expect(wrapper.text()).not.toContain('#')
   })
 
   it('does not render tag section when tags are empty', () => {
@@ -89,6 +89,6 @@ describe('NoteListItem', () => {
     const wrapper = mount(NoteListItem, {
       props: { note, selected: false }
     })
-    expect(wrapper.findAll('.tag-pill').length).toBe(0)
+    expect(wrapper.text()).not.toContain('#')
   })
 })

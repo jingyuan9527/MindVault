@@ -81,7 +81,7 @@
         </template>
       </n-input>
       <div class="flex flex-wrap gap-2 mt-3" v-if="activeTags.length">
-        <n-tag v-for="tag in activeTags" :key="tag" closable size="small" :bordered="false" class="tag-sage" @close="removeTag(tag)">
+        <n-tag v-for="tag in activeTags" :key="tag" closable size="small" type="primary" :bordered="false" @close="removeTag(tag)">
           #{{ tag }}
         </n-tag>
         <span v-if="filteredItems.length !== store.items.length" class="text-xs self-center" style="color: var(--color-text-secondary)">
@@ -93,10 +93,25 @@
     <div v-if="selectedIds.length" class="px-3 md:px-5 py-2 flex items-center gap-2 md:gap-3 shrink-0 flex-wrap"
       style="background-color: var(--color-sage-light); border-bottom: 1px solid var(--color-border)">
       <span class="text-xs md:text-sm font-medium" style="color: var(--color-sage)">已选 {{ selectedIds.length }} 项</span>
-      <n-button text size="tiny" type="error" @click="batchDelete">批量删除</n-button>
-      <n-button text size="tiny" @click="showBatchTag = true">打标签</n-button>
-      <n-button text size="tiny" @click="batchExport">导出</n-button>
-      <n-button text size="tiny" class="ml-auto" @click="clearSelection">取消选择</n-button>
+      <n-button quaternary size="tiny" type="error" @click="batchDelete">
+        <template #icon>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        </template>
+        批量删除
+      </n-button>
+      <n-button quaternary size="tiny" @click="showBatchTag = true">
+        <template #icon>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+        </template>
+        打标签
+      </n-button>
+      <n-button quaternary size="tiny" @click="batchExport">
+        <template #icon>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        </template>
+        导出
+      </n-button>
+      <n-button quaternary size="tiny" class="ml-auto" @click="clearSelection">取消选择</n-button>
     </div>
 
     <div class="flex-1 overflow-y-auto">
@@ -131,7 +146,7 @@
       <!-- 卡片视图 -->
       <div v-else-if="viewMode === 'card'" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4 p-4 md:p-5 stagger-enter">
         <div v-for="note in filteredItems" :key="note.id" class="relative">
-          <div class="absolute top-3 left-3 z-10" @click.stop>
+          <div class="absolute top-3 left-0 z-10" @click.stop>
             <n-checkbox :checked="selectedIds.includes(note.id)" @update:checked="toggleSelect(note.id)" size="small" />
           </div>
           <NoteCard :note="note" @click="openDetail(note)" @delete="deleteNote" />
@@ -148,18 +163,22 @@
       <!-- 网格视图 -->
       <div v-else class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-3 p-4 md:p-5 stagger-enter">
         <div v-for="note in filteredItems" :key="note.id" class="relative">
-          <div class="absolute top-2 left-2 z-10" @click.stop>
+          <div class="absolute top-2 left-0 z-10" @click.stop>
             <n-checkbox :checked="selectedIds.includes(note.id)" @update:checked="toggleSelect(note.id)" size="small" />
           </div>
-          <n-card size="small" hoverable class="cursor-pointer" @click="openDetail(note)">
+          <n-card size="small" hoverable class="cursor-pointer" :segmented="{ action: 'soft' }" @click="openDetail(note)">
             <p class="text-sm font-medium truncate">{{ note.aiTitle || note.title }}</p>
-            <div class="text-xs mt-1 text-warm-gray">
+            <div class="text-xs mt-1 leading-relaxed" style="color: var(--color-warm-gray)">
               <ContentRenderer :content="note.summary || note.content" preview class="line-clamp-2" />
             </div>
             <div class="flex flex-wrap gap-1 mt-2" v-if="gridTags(note).length">
-              <n-tag v-for="tag in gridTags(note).slice(0, 2)" :key="tag" size="tiny" :bordered="false">#{{ tag }}</n-tag>
+              <n-tag v-for="tag in gridTags(note).slice(0, 2)" :key="tag" size="tiny" type="primary" :bordered="false">#{{ tag }}</n-tag>
             </div>
-            <p class="text-xs mt-2 text-secondary">{{ formatDate(note.createdAt) }}</p>
+            <template #action>
+              <div class="flex items-center justify-between w-full px-1">
+                <span class="text-xs" style="color: var(--color-text-secondary)">{{ formatDate(note.createdAt) }}</span>
+              </div>
+            </template>
           </n-card>
         </div>
       </div>
@@ -170,15 +189,23 @@
       <template v-if="!isEditing && detailNote">
               <div class="flex items-start justify-between mb-1">
                 <h3 class="font-display text-xl font-bold" style="color: var(--color-text)">{{ detailNote.aiTitle || detailNote.title }}</h3>
-                <div class="flex items-center gap-2 shrink-0 ml-4">
-                  <n-button text size="tiny" type="primary" @click="startEditing">编辑</n-button>
-                  <n-button v-if="detailNote.autoProcessStatus === 'COMPLETED' || detailNote.autoProcessStatus === 'RELATION_DONE'" text size="tiny" @click="reprocessNote">重新AI处理</n-button>
-                  <n-button text size="tiny" @click="closeDetail">✕</n-button>
+                <div class="flex items-center gap-1.5 shrink-0 ml-4">
+                  <n-button quaternary size="tiny" @click="startEditing">
+                    <template #icon>
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    </template>
+                  </n-button>
+                  <n-button v-if="detailNote.autoProcessStatus === 'COMPLETED' || detailNote.autoProcessStatus === 'RELATION_DONE'" quaternary size="tiny" @click="reprocessNote">
+                    <template #icon>
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    </template>
+                  </n-button>
+                  <n-button quaternary size="tiny" @click="closeDetail">✕</n-button>
                 </div>
               </div>
               <p v-if="detailNote.aiTitle && detailNote.title" class="text-xs mb-2" style="color: var(--color-text-secondary)">原标题: {{ detailNote.title }}</p>
               <n-space size="small" class="mb-4" v-if="mergedDetailTags.length">
-                <n-tag v-for="tag in mergedDetailTags" :key="tag" size="tiny" :bordered="false" class="tag-sage">#{{ tag }}</n-tag>
+                <n-tag v-for="tag in mergedDetailTags" :key="tag" size="tiny" type="primary" :bordered="false">#{{ tag }}</n-tag>
               </n-space>
               <div class="text-sm leading-relaxed" style="color: var(--color-warm-gray)">
                 <ContentRenderer :content="detailNote.content" />
@@ -208,7 +235,7 @@
           <template v-else>
               <div class="flex items-start justify-between mb-4">
                 <h3 class="font-display text-xl font-bold">编辑笔记</h3>
-                <n-button text size="tiny" @click="cancelEditing">✕</n-button>
+                <n-button quaternary size="tiny" @click="cancelEditing">✕</n-button>
               </div>
               <n-space vertical size="medium">
                 <n-form-item label="标题">
@@ -316,7 +343,7 @@ function onClickOutside(e) {
 }
 
 const viewModes = [
-  { key: 'card', label: '卡片视图', icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>' },
+  { key: 'card', label: '卡片视图', icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>' },
   { key: 'list', label: '列表视图', icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>' },
   { key: 'grid', label: '网格视图', icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/></svg>' }
 ]

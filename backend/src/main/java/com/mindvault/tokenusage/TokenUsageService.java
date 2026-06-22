@@ -74,12 +74,12 @@ public class TokenUsageService {
     }
 
     public Map<String, Object> getTotalStats(LocalDate start, LocalDate end) {
-        Object[] stats = mapper.findTotalTokensAndCost(start, end);
+        Map<String, Object> stats = mapper.findTotalTokensAndCost(start, end);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("startDate", start);
         result.put("endDate", end);
-        result.put("totalTokens", stats[0]);
-        result.put("totalCost", stats[1]);
+        result.put("totalTokens", stats.get("total_tokens"));
+        result.put("totalCost", stats.get("total_cost"));
         result.put("requestCount", mapper.findByCreatedAtBetweenOrderByCreatedAtDesc(start, end).size());
         return result;
     }
@@ -90,10 +90,10 @@ public class TokenUsageService {
         log.info("开始执行定时 Token 用量统计...");
         try {
             LocalDate yesterday = LocalDate.now().minusDays(1);
-            Object[] stats = mapper.findTotalTokensAndCost(yesterday, LocalDate.now());
-            long totalTokens = stats[0] instanceof Number n ? n.longValue() : 0;
+            Map<String, Object> stats = mapper.findTotalTokensAndCost(yesterday, LocalDate.now());
+            long totalTokens = stats.get("total_tokens") instanceof Number n ? n.longValue() : 0;
             log.info("Token 用量统计完成: 日期={}, 总Token={}, 总费用={}",
-                    yesterday, totalTokens, stats[1]);
+                    yesterday, totalTokens, stats.get("total_cost"));
         } catch (Exception e) {
             log.warn("Token 用量统计失败: {}", e.getMessage());
         }

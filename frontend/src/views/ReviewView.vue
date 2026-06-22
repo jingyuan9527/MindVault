@@ -55,7 +55,7 @@
               <span class="text-xs px-2 py-0.5 rounded-full" style="background-color: var(--color-sage-light); color: var(--color-sage)">{{ reviewIndex + 1 }} / {{ dueItems.length }}</span>
             </div>
             <div class="flex flex-wrap gap-1 mt-2" v-if="currentReviewTags.length">
-              <n-tag v-for="tag in currentReviewTags" :key="tag" size="tiny" :bordered="false" class="tag-sage">#{{ tag }}</n-tag>
+              <n-tag v-for="tag in currentReviewTags" :key="tag" size="tiny" type="primary" :bordered="false">#{{ tag }}</n-tag>
             </div>
           </div>
 

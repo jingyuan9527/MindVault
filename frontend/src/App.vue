@@ -117,6 +117,11 @@ const themeOverrides = computed(() => {
         itemTextColorActive: '#7a9a77',
         itemIconColorActive: '#7a9a77',
       },
+      Tag: {
+        colorPrimary: '#7a9a77',
+        textColorPrimary: '#ffffff',
+        borderPrimary: '1px solid #7a9a77',
+      },
     }
   }
   return {
@@ -130,6 +135,11 @@ const themeOverrides = computed(() => {
       itemColorActive: '#e8f0e6',
       itemTextColorActive: '#5d7a5a',
       itemIconColorActive: '#5d7a5a',
+    },
+    Tag: {
+      colorPrimary: '#5d7a5a',
+      textColorPrimary: '#ffffff',
+      borderPrimary: '1px solid #5d7a5a',
     },
   }
 })

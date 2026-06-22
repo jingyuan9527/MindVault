@@ -172,7 +172,9 @@ class TokenUsageServiceTest {
     void getTotalStats_shouldBuildCorrectResponse() {
         LocalDate start = LocalDate.of(2024, 1, 1);
         LocalDate end = LocalDate.of(2024, 1, 31);
-        Object[] stats = {50000L, BigDecimal.valueOf(2.50)};
+        Map<String, Object> stats = new LinkedHashMap<>();
+        stats.put("total_tokens", 50000L);
+        stats.put("total_cost", BigDecimal.valueOf(2.50));
         when(mapper.findTotalTokensAndCost(start, end)).thenReturn(stats);
         when(mapper.findByCreatedAtBetweenOrderByCreatedAtDesc(start, end)).thenReturn(List.of(
                 new TokenUsage(), new TokenUsage(), new TokenUsage()
