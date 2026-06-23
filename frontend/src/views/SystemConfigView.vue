@@ -1,8 +1,18 @@
 <template>
   <div class="flex flex-col h-full">
-    <div class="shrink-0 p-4 md:p-6 pb-0 max-w-4xl">
-      <div class="flex items-center justify-between mb-4 md:mb-6">
-        <h2 class="font-display text-xl md:text-2xl" style="color: var(--color-text)">系统配置</h2>
+    <div class="shrink-0 p-4 md:p-5 pb-0">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-3">
+          <div class="sysconfig-header-icon">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+            </svg>
+          </div>
+          <div>
+            <h2 class="font-display text-lg md:text-xl">系统配置</h2>
+            <p class="text-xs" style="color: var(--color-text-secondary)">管理运行参数和定时任务</p>
+          </div>
+        </div>
         <n-button secondary size="small" @click="refreshCache">刷新缓存</n-button>
       </div>
 
@@ -11,7 +21,7 @@
       </n-radio-group>
     </div>
 
-    <div class="flex-1 overflow-y-auto px-4 md:px-6 pb-4 md:pb-6 max-w-4xl">
+    <div class="flex-1 overflow-y-auto px-4 md:px-6 pb-4 md:pb-6">
 
     <!-- ==================== Tab: 配置列表 ==================== -->
     <div v-if="activeTab === 'config'">
@@ -459,3 +469,12 @@ async function resetTask(task) {
 
 onMounted(loadConfigs)
 </script>
+
+<style scoped>
+.sysconfig-header-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: white; flex-shrink: 0;
+  background: linear-gradient(135deg, #78716c 0%, #57534e 100%);
+}
+</style>

@@ -1,6 +1,7 @@
 package com.mindvault.content;
 
 import com.mindvault.auto.AutoProcessLogMapper;
+import com.mindvault.auto.entity.AutoProcessLog;
 import com.mindvault.common.service.LlmFailoverService;
 import com.mindvault.knowledge.KnowledgeService;
 import com.mindvault.knowledge.entity.Knowledge;
@@ -81,4 +82,67 @@ class AutoProcessServiceTest {
 
         verify(knowledgeService, never()).updateAiFields(any(), any(), any());
     }
-}
+
+    @Test
+    void autoProcess_summaryOnly_shouldUpdateSummary() {
+        ModelConfig model = new ModelConfig();
+        model.setModelName("gpt-4o");
+        when(modelConfigService.getAvailableChatModels()).thenReturn(List.of(model));
+        when(llmFailoverService.call(anyList(), any()))
+                .thenReturn(null)
+                .thenReturn(null)
+                .thenReturn("Generated summary");
+
+        Knowledge k = spy(new Knowledge());
+        k.setId(1L);
+        when(knowledgeService.getById(1L)).thenReturn(k);
+
+        service.autoProcess(1L, "Title", "Content");
+
+        verify(knowledgeService, never()).updateAiFields(any(), any(), any());
+        verify(k).setSummary("Generated summary");
+        verify(knowledgeService).updateKnowledge(1L, k);
+    }
+
+    @Test
+    void autoProcess_noEmbeddingModels_shouldSkipEmbedding() {
+        ModelConfig model = new ModelConfig();
+        model.setModelName("gpt-4o");
+        when(modelConfigService.getAvailableChatModels()).thenReturn(List.of(model));
+        when(modelConfigService.getAvailableEmbeddingModels()).thenReturn(List.of());
+        when(llmFailoverService.call(anyList(), any()))
+                .thenReturn("AI Title")
+                .thenReturn("[\"tag1\"]")
+                .thenReturn("Summary");
+
+        Knowledge k = new Knowledge();
+        k.setId(1L);
+        when(knowledgeService.getById(1L)).thenReturn(k);
+
+        service.autoProcess(1L, "Title", "Content");
+
+        verify(knowledgeService).updateAutoProcessStatus(1L, "TITLE_TAG_DONE");
+        verify(knowledgeService, never()).updateEmbedding(anyLong(), anyString());
+    }
+
+    @Test
+    void autoProcess_shouldSaveLogOnSuccess() {
+        ModelConfig model = new ModelConfig();
+        model.setModelName("gpt-4o");
+        when(modelConfigService.getAvailableChatModels()).thenReturn(List.of(model));
+        when(modelConfigService.getAvailableEmbeddingModels()).thenReturn(List.of());
+        when(llmFailoverService.call(anyList(), any()))
+                .thenReturn("AI Title")
+                .thenReturn("[\"tag1\"]")
+                .thenReturn("Summary");
+
+        Knowledge k = new Knowledge();
+        k.setId(1L);
+        when(knowledgeService.getById(1L)).thenReturn(k);
+
+        service.autoProcess(1L, "Title", "Content");
+
+        verify(logMapper, atLeastOnce()).insert((AutoProcessLog) any());
+    }
+
+    }

@@ -5,6 +5,7 @@ import com.mindvault.agent.tool.Tool;
 import com.mindvault.common.config.CircuitBreakerConfig;
 import com.mindvault.common.service.MetricsService;
 import com.mindvault.model.ModelConfigService;
+import com.mindvault.systemconfig.SystemConfigService;
 import com.mindvault.tokenusage.TokenUsageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ class AgentServiceTest {
     @Mock private Tool tool1;
     @Mock private Tool tool2;
     @Mock private MetricsService metricsService;
+    @Mock private SystemConfigService config;
 
     private AgentService service;
 
@@ -34,11 +36,13 @@ class AgentServiceTest {
     void setUp() {
         List<Tool> tools = List.of(tool1, tool2);
         service = new AgentService(modelConfigService, agentConfig, tools,
-                tokenUsageService, circuitBreaker, metricsService);
+                tokenUsageService, circuitBreaker, metricsService, config);
     }
 
     @Test
     void processMessage_noModels_shouldReturnErrorMessage() {
+        lenient().when(config.getString(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
+
         String result = service.processMessage("hello");
 
         assertEquals("系统未配置主模型，请先在设置中添加并设置主模型。", result);

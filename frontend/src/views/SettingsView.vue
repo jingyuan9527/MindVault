@@ -1,7 +1,20 @@
 <template>
-  <div class="flex-1 overflow-y-auto p-4 md:p-6 max-w-4xl">
-    <h2 class="font-display text-xl md:text-2xl mb-4 md:mb-6" style="color: var(--color-text)">系统设置</h2>
-
+  <div class="flex flex-col h-full">
+    <div class="shrink-0 px-4 md:px-5 py-3" style="border-bottom: 1px solid var(--color-border)">
+      <div class="flex items-center gap-3">
+        <div class="settings-header-icon">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="font-display text-lg md:text-xl">系统设置</h2>
+          <p class="text-xs" style="color: var(--color-text-secondary)">管理模型、Token 和数据</p>
+        </div>
+      </div>
+    </div>
+    <div class="flex-1 overflow-y-auto p-4 md:p-6">
     <n-card size="small" class="mb-4 md:mb-6">
       <template #header>
         <div class="flex items-center justify-between w-full">
@@ -204,6 +217,7 @@
         </n-space>
       </template>
     </n-modal>
+  </div>
   </div>
 </template>
 
@@ -518,3 +532,12 @@ onMounted(() => {
   loadTokens()
 })
 </script>
+
+<style scoped>
+.settings-header-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: white; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--color-sage) 0%, #4a6a47 100%);
+}
+</style>

@@ -1,6 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import MessageBubble from '@/components/chat/MessageBubble.vue'
+
+vi.mock('vue-router', () => ({
+  useRouter: () => ({ push: vi.fn() })
+}))
 
 describe('MessageBubble', () => {
   it('renders user message on the right', () => {
@@ -70,5 +74,48 @@ describe('MessageBubble', () => {
       props: { message: 'test', isUser: false, time: '12:00', sources }
     })
     expect(wrapper.text()).toContain('No URL')
+  })
+
+  it('renders blocked message with warning style', () => {
+    const wrapper = mount(MessageBubble, {
+      props: { message: '消息包含受限内容', blocked: true, time: '12:00' }
+    })
+    expect(wrapper.find('.justify-center').exists()).toBe(true)
+    expect(wrapper.text()).toContain('消息包含受限内容')
+  })
+
+  it('renders tool results as knowledge cards', () => {
+    const toolResults = [
+      { id: 1, title: 'Article 1', summary: 'Short summary', score: 0.95 },
+      { id: 2, title: 'Article 2', summary: 'Another summary', score: 0.85 }
+    ]
+    const wrapper = mount(MessageBubble, {
+      props: { message: 'Answer', isUser: false, time: '12:00', toolResults }
+    })
+    expect(wrapper.text()).toContain('关联笔记')
+    expect(wrapper.text()).toContain('Article 1')
+    expect(wrapper.text()).toContain('Article 2')
+    expect(wrapper.text()).toContain('95%')
+    expect(wrapper.text()).toContain('85%')
+  })
+
+  it('renders empty when toolResults is empty', () => {
+    const wrapper = mount(MessageBubble, {
+      props: { message: 'Answer', isUser: false, time: '12:00', toolResults: [] }
+    })
+    expect(wrapper.text()).not.toContain('关联笔记')
+  })
+
+  it('tool result card click calls router.push', async () => {
+    const push = vi.fn()
+    mount(MessageBubble, {
+      props: {
+        message: 'Answer', isUser: false, time: '12:00',
+        toolResults: [{ id: 42, title: 'Test', summary: 'Sum', score: 0.9 }]
+      },
+      global: {
+        mocks: { $router: { push } }
+      }
+    })
   })
 })

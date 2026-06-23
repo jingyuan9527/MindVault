@@ -28,6 +28,7 @@ class ChatServiceTest {
     @Mock private AgentService agentService;
     @Mock private OperationLogService operationLogService;
     @Mock private KnowledgeService knowledgeService;
+    @Mock private KeywordBlockingService keywordBlockingService;
 
     private ChatService service;
 
@@ -37,7 +38,7 @@ class ChatServiceTest {
     @BeforeEach
     void setUp() {
         service = new ChatService(sessionMapper, messageMapper, agentService,
-                operationLogService, knowledgeService);
+                operationLogService, knowledgeService, keywordBlockingService);
     }
 
     @Test
@@ -94,6 +95,7 @@ class ChatServiceTest {
 
     @Test
     void sendMessage_shouldSaveBothMessagesAndUpdateTitle() {
+        when(keywordBlockingService.isBlocked("hello")).thenReturn(false);
         ChatSession session = new ChatSession();
         session.setId(1L);
         session.setTitle("新对话");
@@ -125,6 +127,7 @@ class ChatServiceTest {
 
     @Test
     void sendMessage_shouldNotUpdateTitleIfAlreadySet() {
+        when(keywordBlockingService.isBlocked("hello")).thenReturn(false);
         ChatSession session = new ChatSession();
         session.setId(1L);
         session.setTitle("已有标题");
@@ -135,5 +138,45 @@ class ChatServiceTest {
 
         verify(sessionMapper, never()).updateById(any(ChatSession.class));
         verify(messageMapper, times(2)).insert(any(ChatMessage.class));
+    }
+
+    @Test
+    void sendMessage_shouldBlockWhenKeywordHit() {
+        when(keywordBlockingService.isBlocked("bad word")).thenReturn(true);
+        when(keywordBlockingService.getBlockMessage()).thenReturn("blocked message");
+
+        ChatMessage result = service.sendMessage(1L, "bad word");
+
+        verify(messageMapper, times(2)).insert(messageCaptor.capture());
+        List<ChatMessage> captured = messageCaptor.getAllValues();
+        assertEquals("USER", captured.get(0).getRole());
+        assertEquals("bad word", captured.get(0).getContent());
+        assertEquals("SYSTEM", captured.get(1).getRole());
+        assertEquals("blocked message", captured.get(1).getContent());
+
+        assertEquals("blocked message", result.getContent());
+        assertEquals("SYSTEM", result.getRole());
+
+        verify(operationLogService).log(eq("CHAT"), eq("BLOCKED"), eq(1L), eq("消息被关键字拦截"));
+        verifyNoInteractions(agentService);
+    }
+
+    @Test
+    void sendMessageStream_shouldBlockWhenKeywordHit() throws Exception {
+        when(keywordBlockingService.isBlocked("bad word")).thenReturn(true);
+        when(keywordBlockingService.getBlockMessage()).thenReturn("blocked message");
+
+        var emitter = service.sendMessageStream(1L, "bad word");
+
+        verify(messageMapper, times(2)).insert(messageCaptor.capture());
+        List<ChatMessage> captured = messageCaptor.getAllValues();
+        assertEquals("USER", captured.get(0).getRole());
+        assertEquals("bad word", captured.get(0).getContent());
+        assertEquals("SYSTEM", captured.get(1).getRole());
+        assertEquals("blocked message", captured.get(1).getContent());
+
+        assertNotNull(emitter);
+        verify(operationLogService).log(eq("CHAT"), eq("BLOCKED"), eq(1L), eq("消息被关键字拦截"));
+        verifyNoInteractions(agentService);
     }
 }

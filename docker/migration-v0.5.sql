@@ -413,3 +413,24 @@ INSERT INTO system_config (config_key, config_value, description, value_type) VA
 
 INSERT INTO system_config (config_key, config_value, description, value_type) VALUES
 ('default.cors.allowed-origin-pattern', '*', 'CORS 允许源', 'string');
+
+-- ============================================================
+-- 5. 聊天关键字拦截 + 工具配置（v0.6）
+-- ============================================================
+INSERT INTO system_config (config_key, config_value, description, value_type) VALUES
+('chat.keyword.blocklist', '', '聊天关键字拦截列表，逗号或换行分隔，支持 * 通配', 'string');
+
+INSERT INTO system_config (config_key, config_value, description, value_type) VALUES
+('chat.keyword.block-message', '消息包含受限内容，已拦截', '关键字拦截提示消息', 'string');
+
+INSERT INTO system_config (config_key, config_value, description, value_type) VALUES
+('chat.keyword.case-sensitive', 'false', '关键字匹配是否大小写敏感', 'bool');
+
+INSERT INTO system_config (config_key, config_value, description, value_type) VALUES
+('tool.search-knowledge.default-limit', '3', '@tool 知识搜索默认返回条数', 'int');
+
+INSERT INTO system_config (config_key, config_value, description, value_type) VALUES
+('tool.search-knowledge.max-limit', '10', '@tool 知识搜索最大返回条数', 'int');
+
+INSERT INTO system_config (config_key, config_value, description, value_type) VALUES
+('tool.search-knowledge.search-method', 'rewrite', '@tool 知识搜索方法 (rewrite/hyde/hybrid)', 'string');

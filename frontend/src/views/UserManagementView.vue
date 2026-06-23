@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-1 overflow-y-auto p-4 md:p-6 max-w-4xl">
+  <div class="flex-1 overflow-y-auto p-4 md:p-6">
     <div class="flex items-center gap-3 mb-4 md:mb-6">
       <div class="users-header-icon">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

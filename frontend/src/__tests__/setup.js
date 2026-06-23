@@ -60,3 +60,11 @@ global.ResizeObserver = class ResizeObserver {
   unobserve() {}
   disconnect() {}
 }
+
+// Naive UI auto-imported hooks (unplugin-auto-import not active in tests)
+import { vi } from 'vitest'
+globalThis.useDialog = () => ({ warning: vi.fn(), info: vi.fn(), success: vi.fn(), error: vi.fn() })
+globalThis.useMessage = () => ({ success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() })
+globalThis.useNotification = () => ({})
+
+

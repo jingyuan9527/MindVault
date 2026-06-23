@@ -4,6 +4,7 @@ import com.mindvault.knowledge.KnowledgeService;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.operationlog.OperationLogService;
 import com.mindvault.review.entity.ReviewSchedule;
+import com.mindvault.systemconfig.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,6 +29,7 @@ class ReviewServiceTest {
     @Mock private ReviewScheduleMapper mapper;
     @Mock private KnowledgeService knowledgeService;
     @Mock private OperationLogService operationLogService;
+    @Mock private SystemConfigService config;
 
     private ReviewService service;
 
@@ -35,7 +37,9 @@ class ReviewServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ReviewService(mapper, knowledgeService, operationLogService);
+        service = new ReviewService(mapper, knowledgeService, operationLogService, config);
+        lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));
     }
 
     private ReviewSchedule createSchedule(Long id, Long knowledgeId, BigDecimal easeFactor,

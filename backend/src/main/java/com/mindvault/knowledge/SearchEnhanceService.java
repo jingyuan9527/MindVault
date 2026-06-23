@@ -6,6 +6,7 @@ import com.mindvault.common.service.LlmFailoverService;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
+import com.mindvault.systemconfig.SystemConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -24,14 +25,17 @@ public class SearchEnhanceService {
     private final KnowledgeService knowledgeService;
     private final ModelConfigService modelConfigService;
     private final LlmFailoverService llmFailoverService;
+    private final SystemConfigService config;
     private final ObjectMapper objectMapper;
 
     public SearchEnhanceService(KnowledgeService knowledgeService,
                                 ModelConfigService modelConfigService,
-                                LlmFailoverService llmFailoverService) {
+                                LlmFailoverService llmFailoverService,
+                                SystemConfigService config) {
         this.knowledgeService = knowledgeService;
         this.modelConfigService = modelConfigService;
         this.llmFailoverService = llmFailoverService;
+        this.config = config;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -77,36 +81,31 @@ public class SearchEnhanceService {
         List<ModelConfig> chatModels = modelConfigService.getAvailableChatModels();
         if (chatModels.isEmpty()) return null;
 
-        String prompt = """
-                你是一个搜索查询优化助手。请将用户的原始问题改写成更适合向量检索和关键词检索的形式。
-                要求：
-                1. 提取核心关键词和实体
-                2. 补充同义词或相关术语
-                3. 保持简洁，长度不超过50字
-                4. 只返回改写后的查询文本，不要额外说明
+        String promptTmpl = config.getPrompt("prompt.search.query-rewrite",
+                "你是一个搜索查询优化助手。请将用户的原始问题改写成更适合向量检索和关键词检索的形式。\n要求：\n1. 提取核心关键词和实体\n2. 补充同义词或相关术语\n3. 保持简洁，长度不超过50字\n4. 只返回改写后的查询文本，不要额外说明\n\n原始问题: %s");
+        String prompt = String.format(promptTmpl, query);
+        double temperature = config.getDouble("threshold.search.rewrite-temperature", 0.2);
+        int maxTokens = config.getInt("threshold.search.rewrite-max-tokens", 100);
 
-                原始问题: %s
-                """.formatted(query);
-
-        return llmFailoverService.call(chatModels, new LlmFailoverService.LlmCallOptions(prompt, 0.2, 100, false, null));
+        return llmFailoverService.call(chatModels, new LlmFailoverService.LlmCallOptions(prompt, temperature, maxTokens, false, null));
     }
 
     private String generateHypotheticalDocument(String query) {
         List<ModelConfig> chatModels = modelConfigService.getAvailableChatModels();
         if (chatModels.isEmpty()) return null;
 
-        String prompt = """
-                你是一个知识库检索助手。用户提出了一个问题，请生成一段假设性的文档内容，
-                这段内容应当包含回答该问题所需的关键信息。只返回文档内容本身，不要额外说明。
+        String promptTmpl = config.getPrompt("prompt.search.hyde-document",
+                "你是一个知识库检索助手。用户提出了一个问题，请生成一段假设性的文档内容，\n这段内容应当包含回答该问题所需的关键信息。只返回文档内容本身，不要额外说明。\n\n用户问题: %s");
+        String prompt = String.format(promptTmpl, query);
+        double temperature = config.getDouble("threshold.search.hyde-temperature", 0.3);
+        int maxTokens = config.getInt("threshold.search.hyde-max-tokens", 500);
 
-                用户问题: %s
-                """.formatted(query);
-
-        return llmFailoverService.call(chatModels, new LlmFailoverService.LlmCallOptions(prompt, 0.3, 500, false, null));
+        return llmFailoverService.call(chatModels, new LlmFailoverService.LlmCallOptions(prompt, temperature, maxTokens, false, null));
     }
 
     private String generateEmbeddingForText(String text, ModelConfig embModel) {
-        if (text.length() > 8000) text = text.substring(0, 8000);
+        int embedTruncate = config.getInt("threshold.search.hyde-embedding-truncate", 8000);
+        if (text.length() > embedTruncate) text = text.substring(0, embedTruncate);
         try {
             String embedUrl = switch (embModel.getProvider().toUpperCase()) {
                 case "ALIYUN" -> "https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings";
@@ -176,7 +175,8 @@ public class SearchEnhanceService {
             String content = (String) item.getOrDefault("content", "");
             String summary = (String) item.getOrDefault("summary", "");
             String display = summary != null && !summary.isBlank() ? summary : content;
-            if (display.length() > 300) display = display.substring(0, 300);
+            int truncateLen = config.getInt("threshold.search.rerank-truncate-length", 300);
+            if (display.length() > truncateLen) display = display.substring(0, truncateLen);
             sb.append("--- 结果 ").append(i + 1).append(" ---\n");
             sb.append("标题: ").append(title).append("\n");
             sb.append("内容: ").append(display).append("\n\n");
@@ -185,7 +185,9 @@ public class SearchEnhanceService {
         sb.append("请只返回 JSON 数组格式的评分，例如 [9, 5, 7]，不要额外说明。");
 
         try {
-            String content = llmFailoverService.call(chatModels, new LlmFailoverService.LlmCallOptions(sb.toString(), 0.1, 200, false, null));
+            double rerankTemp = config.getDouble("threshold.search.rerank-temperature", 0.1);
+            int rerankMaxTokens = config.getInt("threshold.search.rerank-max-tokens", 200);
+            String content = llmFailoverService.call(chatModels, new LlmFailoverService.LlmCallOptions(sb.toString(), rerankTemp, rerankMaxTokens, false, null));
 
             if (content != null) {
                 String cleaned = content.trim();

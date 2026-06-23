@@ -30,6 +30,8 @@ describe('Chat Store', () => {
     expect(store.isLoading).toBe(false)
     expect(store.streamingContent).toBe('')
     expect(store.streamingSources).toEqual([])
+    expect(store.streamingToolCall).toBeNull()
+    expect(store.streamingToolResults).toEqual([])
     expect(store.cancelStream).toBeNull()
   })
 
@@ -146,6 +148,56 @@ describe('Chat Store', () => {
 
     expect(store.isLoading).toBe(false)
     expect(store.messages[1].content).toContain('Network issue')
+  })
+
+  it('sendMessage handles blocked callback', async () => {
+    store.currentSessionId = 1
+    let capturedCallbacks = {}
+    chatApi.sendMessageStream.mockImplementation((sessionId, content, callbacks) => {
+      capturedCallbacks = callbacks
+      return vi.fn()
+    })
+
+    await store.sendMessage('bad word')
+    capturedCallbacks.onBlocked('消息包含受限内容，已拦截')
+
+    expect(store.isLoading).toBe(false)
+    expect(store.cancelStream).toBeNull()
+    expect(store.messages.length).toBe(2)
+    expect(store.messages[1].role).toBe('SYSTEM')
+    expect(store.messages[1].content).toBe('消息包含受限内容，已拦截')
+    expect(store.messages[1].blocked).toBe(true)
+  })
+
+  it('sendMessage handles onToolCall callback', async () => {
+    store.currentSessionId = 1
+    let capturedCallbacks = {}
+    chatApi.sendMessageStream.mockImplementation((sessionId, content, callbacks) => {
+      capturedCallbacks = callbacks
+      return vi.fn()
+    })
+
+    await store.sendMessage('search something')
+    capturedCallbacks.onToolCall({ name: 'search_knowledge', args: { query: 'something' } })
+
+    expect(store.streamingToolCall).toEqual({ name: 'search_knowledge', args: { query: 'something' } })
+  })
+
+  it('sendMessage handles onToolResult callback', async () => {
+    store.currentSessionId = 1
+    let capturedCallbacks = {}
+    chatApi.sendMessageStream.mockImplementation((sessionId, content, callbacks) => {
+      capturedCallbacks = callbacks
+      return vi.fn()
+    })
+
+    await store.sendMessage('search something')
+    const results = [{ id: 1, title: 'Result 1', summary: 'Summary 1', score: 0.95 }]
+    capturedCallbacks.onToolResult(results)
+
+    expect(store.streamingToolCall).toBeNull()
+    expect(store.streamingToolResults).toEqual(results)
+    expect(store.messages[1].toolResults).toEqual(results)
   })
 
   it('sendMessage returns abort function as cancelStream', async () => {

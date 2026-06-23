@@ -8,6 +8,7 @@ import com.mindvault.common.config.CircuitBreakerConfig;
 import com.mindvault.common.service.MetricsService;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
+import com.mindvault.systemconfig.SystemConfigService;
 import com.mindvault.tokenusage.TokenUsageService;
 import io.micrometer.core.instrument.Timer;
 import jakarta.annotation.PostConstruct;
@@ -41,24 +42,27 @@ public class AgentService {
     private final TokenUsageService tokenUsageService;
     private final CircuitBreakerConfig circuitBreaker;
     private final MetricsService metricsService;
+    private final SystemConfigService config;
     private final ObjectMapper objectMapper;
 
     private volatile List<ModelEndpoint> modelEndpoints = List.of();
     private String systemPrompt;
-    private static final double TOKEN_ESTIMATE_RATIO = 3.0;
+    private double tokenEstimateRatio;
 
     public AgentService(ModelConfigService modelConfigService,
                         AgentConfig agentConfig,
                         List<Tool> tools,
                         TokenUsageService tokenUsageService,
                         CircuitBreakerConfig circuitBreaker,
-                        MetricsService metricsService) {
+                        MetricsService metricsService,
+                        SystemConfigService config) {
         this.modelConfigService = modelConfigService;
         this.agentConfig = agentConfig;
         this.tools = tools;
         this.tokenUsageService = tokenUsageService;
         this.circuitBreaker = circuitBreaker;
         this.metricsService = metricsService;
+        this.config = config;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -66,6 +70,7 @@ public class AgentService {
     public void init() {
         refreshModels();
         systemPrompt = buildSystemPrompt();
+        tokenEstimateRatio = config.getDouble("threshold.agent.token-estimate-ratio", 3.0);
     }
 
     public void refreshModels() {
@@ -88,27 +93,18 @@ public class AgentService {
     }
 
     private String buildSystemPrompt() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("你是 MindVault（知忆）AI 助手，一个个人知识库 Agent。\n\n");
-        sb.append("你可以使用以下工具来帮助用户管理知识库：\n");
-
+        StringBuilder toolList = new StringBuilder();
         for (Tool tool : tools) {
-            sb.append("- ").append(tool.getName()).append(": ").append(tool.getDescription()).append("\n");
+            toolList.append("- ").append(tool.getName()).append(": ").append(tool.getDescription()).append("\n");
         }
-
-        sb.append("\n当你需要使用工具时，请按以下格式返回：\n");
-        sb.append("[TOOL_CALL]\n");
-        sb.append("name: 工具名称\n");
-        sb.append("args: {\"key\": \"value\"}\n");
-        sb.append("[END_TOOL_CALL]\n\n");
-        sb.append("请用中文回复用户。");
-
-        return sb.toString();
+        String promptTmpl = config.getPrompt("prompt.agent.system-prompt",
+                "你是 MindVault（知忆）AI 助手，一个个人知识库 Agent。\n\n你可以使用以下工具来帮助用户管理知识库：\n%s\n当你需要使用工具时，请按以下格式返回：\n[TOOL_CALL]\nname: 工具名称\nargs: {\"key\": \"value\"}\n[END_TOOL_CALL]\n\n请用中文回复用户。");
+        return String.format(promptTmpl, toolList.toString());
     }
 
     public String processMessage(String userMessage) {
         if (modelEndpoints.isEmpty()) {
-            return "系统未配置主模型，请先在设置中添加并设置主模型。";
+            return config.getString("default.agent.no-model-message", "系统未配置主模型，请先在设置中添加并设置主模型。");
         }
 
         try {
@@ -127,9 +123,10 @@ public class AgentService {
             String toolResult = executeToolCall(response);
 
             if (toolResult != null) {
+                String cleanResponse = stripToolCallMarkers(response);
                 Map<String, String> assistantMsg = new LinkedHashMap<>();
                 assistantMsg.put("role", "assistant");
-                assistantMsg.put("content", response);
+                assistantMsg.put("content", cleanResponse);
                 messages.add(assistantMsg);
 
                 Map<String, String> toolMsg = new LinkedHashMap<>();
@@ -143,13 +140,13 @@ public class AgentService {
             return response;
         } catch (Exception e) {
             log.error("Agent 处理消息失败: {}", e.getMessage(), e);
-            return "抱歉，处理您的消息时遇到了问题，请稍后重试。";
+            return config.getString("default.agent.error-message", "抱歉，处理您的消息时遇到了问题，请稍后重试。");
         }
     }
 
     public void processMessageStream(String userMessage, StreamCallback callback) {
         if (modelEndpoints.isEmpty()) {
-            callback.onError("系统未配置主模型，请先在设置中添加并设置主模型。");
+            callback.onError(config.getString("default.agent.no-model-message", "系统未配置主模型，请先在设置中添加并设置主模型。"));
             return;
         }
 
@@ -161,17 +158,24 @@ public class AgentService {
             StringBuilder fullResponse = new StringBuilder();
             streamFromLlm(messages, callback, fullResponse);
 
-            String toolResult = executeToolCall(fullResponse.toString());
-            if (toolResult != null) {
-                messages.add(Map.of("role", "assistant", "content", fullResponse.toString()));
-                messages.add(Map.of("role", "user", "content", "工具执行结果: " + toolResult));
+            ToolCallInfo toolCall = extractToolCall(fullResponse.toString());
+            if (toolCall != null) {
+                callback.onToolCall(toolCall.name, toolCall.argsJson);
+
+                String result = executeToolByName(toolCall.name, toolCall.argsJson);
+
+                callback.onToolResult(result);
+
+                String cleanResponse = stripToolCallMarkers(fullResponse.toString());
+                messages.add(Map.of("role", "assistant", "content", cleanResponse));
+                messages.add(Map.of("role", "user", "content", "工具执行结果: " + result));
                 streamFromLlm(messages, callback, new StringBuilder());
             }
 
             callback.onComplete();
         } catch (Exception e) {
             log.error("Agent 流式处理失败: {}", e.getMessage(), e);
-            callback.onError("抱歉，处理您的消息时遇到了问题，请稍后重试。");
+            callback.onError(config.getString("default.agent.error-message", "抱歉，处理您的消息时遇到了问题，请稍后重试。"));
         }
     }
 
@@ -185,7 +189,7 @@ public class AgentService {
             Timer.Sample sample = metricsService.startLlmCall();
             try {
                 JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory();
-                factory.setReadTimeout(120_000);
+                factory.setReadTimeout(config.getInt("threshold.agent.stream-read-timeout-ms", 120_000));
 
                 RestClient client = RestClient.builder()
                         .baseUrl(me.endpoint.getFullUrl())
@@ -197,13 +201,13 @@ public class AgentService {
                 Map<String, Object> requestBody = new LinkedHashMap<>();
                 requestBody.put("model", me.endpoint.getModelName());
                 requestBody.put("messages", messages);
-                requestBody.put("temperature", 0.7);
+                requestBody.put("temperature", config.getDouble("threshold.agent.default-temperature", 0.7));
                 requestBody.put("stream", true);
 
                 String jsonBody = objectMapper.writeValueAsString(requestBody);
 
                 String promptText = objectMapper.writeValueAsString(messages);
-                int promptTokens = (int) (promptText.length() / TOKEN_ESTIMATE_RATIO);
+                int promptTokens = (int) (promptText.length() / tokenEstimateRatio);
 
                 boolean isOllama = me.endpoint.getFullUrl().contains("ollama") || me.endpoint.getFullUrl().contains("11434");
 
@@ -241,7 +245,7 @@ public class AgentService {
 
     private void recordStreamUsage(ModelEndpoint me, int promptTokens, int completionChars) {
         try {
-            int completionTokens = (int) (completionChars / TOKEN_ESTIMATE_RATIO);
+            int completionTokens = (int) (completionChars / tokenEstimateRatio);
             if (completionTokens == 0) return;
             metricsService.recordTokens(promptTokens, completionTokens);
             ModelConfig mc = new ModelConfig();
@@ -314,7 +318,7 @@ public class AgentService {
                 Map<String, Object> requestBody = new LinkedHashMap<>();
                 requestBody.put("model", me.endpoint.getModelName());
                 requestBody.put("messages", messages);
-                requestBody.put("temperature", 0.7);
+                requestBody.put("temperature", config.getDouble("threshold.agent.default-temperature", 0.7));
 
                 String jsonBody = objectMapper.writeValueAsString(requestBody);
                 String responseJson = client.post()
@@ -338,10 +342,12 @@ public class AgentService {
             }
         }
 
-        if (retryCount < 2) {
-            log.warn("所有模型失败，{} 秒后重试 ({}/2)", (retryCount + 1) * 2, retryCount + 1);
+        int maxRetries = config.getInt("threshold.agent.max-retries", 2);
+        if (retryCount < maxRetries) {
+            long retryDelayMs = config.getLong("threshold.agent.retry-delay-ms", 2000);
+            log.warn("所有模型失败，{} 秒后重试 ({}/{})", (retryCount + 1) * retryDelayMs / 1000, retryCount + 1, maxRetries);
             try {
-                Thread.sleep((retryCount + 1L) * 2000);
+                Thread.sleep((retryCount + 1L) * retryDelayMs);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new RuntimeException("线程被中断", e);
@@ -422,6 +428,39 @@ public class AgentService {
         return null;
     }
 
+    public String stripToolCallMarkers(String text) {
+        return text.replaceAll("\\[TOOL_CALL\\].*?\\[END_TOOL_CALL\\]", "").trim();
+    }
+
+    public ToolCallInfo extractToolCall(String response) {
+        Pattern pattern = Pattern.compile(
+                "\\[TOOL_CALL\\]\\s*name:\\s*(\\S+)\\s*args:\\s*(\\{.*?\\})\\s*\\[END_TOOL_CALL\\]",
+                Pattern.DOTALL);
+        Matcher matcher = pattern.matcher(response);
+        if (matcher.find()) {
+            return new ToolCallInfo(matcher.group(1).trim(), matcher.group(2).trim());
+        }
+        return null;
+    }
+
+    public String executeToolByName(String toolName, String argsJson) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> args = objectMapper.readValue(argsJson, Map.class);
+            for (Tool tool : tools) {
+                if (tool.getName().equals(toolName)) {
+                    return tool.execute(args);
+                }
+            }
+            return "未知工具: " + toolName;
+        } catch (Exception e) {
+            log.error("执行工具 {} 失败: {}", toolName, e.getMessage());
+            return "工具执行失败: " + e.getMessage();
+        }
+    }
+
+    public record ToolCallInfo(String name, String argsJson) {}
+
     public List<Tool> getTools() {
         return tools;
     }
@@ -430,6 +469,8 @@ public class AgentService {
         void onToken(String token);
         void onComplete();
         void onError(String error);
+        default void onToolCall(String toolName, String argsJson) {}
+        default void onToolResult(String resultJson) {}
     }
 
     private record ModelEndpoint(Long modelId, String provider, LlmEndpoint endpoint) {}

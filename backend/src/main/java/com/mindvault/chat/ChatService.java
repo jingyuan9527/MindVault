@@ -30,18 +30,21 @@ public class ChatService {
     private final AgentService agentService;
     private final OperationLogService operationLogService;
     private final KnowledgeService knowledgeService;
+    private final KeywordBlockingService keywordBlockingService;
     private final ObjectMapper objectMapper;
 
     public ChatService(ChatSessionMapper sessionMapper,
                        ChatMessageMapper messageMapper,
                        AgentService agentService,
                        OperationLogService operationLogService,
-                       KnowledgeService knowledgeService) {
+                       KnowledgeService knowledgeService,
+                       KeywordBlockingService keywordBlockingService) {
         this.sessionMapper = sessionMapper;
         this.messageMapper = messageMapper;
         this.agentService = agentService;
         this.operationLogService = operationLogService;
         this.knowledgeService = knowledgeService;
+        this.keywordBlockingService = keywordBlockingService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -68,6 +71,25 @@ public class ChatService {
 
     @Transactional
     public ChatMessage sendMessage(Long sessionId, String content) {
+        if (keywordBlockingService.isBlocked(content)) {
+            log.info("消息被关键字拦截: sessionId={}", sessionId);
+            operationLogService.log("CHAT", "BLOCKED", sessionId, "消息被关键字拦截");
+            ChatMessage userMsg = new ChatMessage();
+            userMsg.setSessionId(sessionId);
+            userMsg.setRole("USER");
+            userMsg.setContent(content);
+            userMsg.setCreatedAt(LocalDateTime.now());
+            messageMapper.insert(userMsg);
+
+            ChatMessage blockMsg = new ChatMessage();
+            blockMsg.setSessionId(sessionId);
+            blockMsg.setRole("SYSTEM");
+            blockMsg.setContent(keywordBlockingService.getBlockMessage());
+            blockMsg.setCreatedAt(LocalDateTime.now());
+            messageMapper.insert(blockMsg);
+            return blockMsg;
+        }
+
         LocalDateTime now = LocalDateTime.now();
         ChatMessage userMsg = new ChatMessage();
         userMsg.setSessionId(sessionId);
@@ -100,6 +122,32 @@ public class ChatService {
 
     public SseEmitter sendMessageStream(Long sessionId, String content) {
         SseEmitter emitter = new SseEmitter(300_000L);
+
+        if (keywordBlockingService.isBlocked(content)) {
+            log.info("消息被关键字拦截(流式): sessionId={}", sessionId);
+            operationLogService.log("CHAT", "BLOCKED", sessionId, "消息被关键字拦截");
+            LocalDateTime now = LocalDateTime.now();
+            ChatMessage userMsg = new ChatMessage();
+            userMsg.setSessionId(sessionId);
+            userMsg.setRole("USER");
+            userMsg.setContent(content);
+            userMsg.setCreatedAt(now);
+            messageMapper.insert(userMsg);
+            ChatMessage blockMsg = new ChatMessage();
+            blockMsg.setSessionId(sessionId);
+            blockMsg.setRole("SYSTEM");
+            blockMsg.setContent(keywordBlockingService.getBlockMessage());
+            blockMsg.setCreatedAt(now);
+            messageMapper.insert(blockMsg);
+            try {
+                emitter.send(SseEmitter.event().name("blocked").data(keywordBlockingService.getBlockMessage()));
+                emitter.send(SseEmitter.event().name("done").data(""));
+                emitter.complete();
+            } catch (IOException e) {
+                log.warn("发送拦截 SSE 事件失败: {}", e.getMessage());
+            }
+            return emitter;
+        }
 
         LocalDateTime now = LocalDateTime.now();
         ChatMessage userMsg = new ChatMessage();
@@ -135,9 +183,28 @@ public class ChatService {
                     }
 
                     @Override
+                    public void onToolCall(String toolName, String argsJson) {
+                        try {
+                            emitter.send(SseEmitter.event().name("tool_call")
+                                    .data("{\"name\":\"" + toolName + "\",\"args\":" + argsJson + "}"));
+                        } catch (IOException e) {
+                            log.warn("发送 tool_call 事件失败: {}", e.getMessage());
+                        }
+                    }
+
+                    @Override
+                    public void onToolResult(String resultJson) {
+                        try {
+                            emitter.send(SseEmitter.event().name("tool_result").data(resultJson));
+                        } catch (IOException e) {
+                            log.warn("发送 tool_result 事件失败: {}", e.getMessage());
+                        }
+                    }
+
+                    @Override
                     public void onComplete() {
                         try {
-                            String reply = fullReply.toString();
+                            String reply = agentService.stripToolCallMarkers(fullReply.toString());
                             agentMsg.setContent(reply);
                             agentMsg.setCreatedAt(LocalDateTime.now());
                             String sourceJson = extractSources(reply);

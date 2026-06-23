@@ -9,6 +9,8 @@ export const useChatStore = defineStore('chat', {
     isLoading: false,
     streamingContent: '',
     streamingSources: [],
+    streamingToolCall: null,
+    streamingToolResults: [],
     cancelStream: null,
   }),
 
@@ -43,16 +45,19 @@ export const useChatStore = defineStore('chat', {
       this.isLoading = true
       this.streamingContent = ''
       this.streamingSources = []
+      this.streamingToolCall = null
+      this.streamingToolResults = []
 
       const tempAgentMsgIndex = this.messages.length
-      this.messages.push({ id: 'streaming', role: 'ASSISTANT', content: '', sources: '[]', createdAt: new Date().toISOString() })
+      this.messages.push({ id: 'streaming', role: 'ASSISTANT', content: '', sources: '[]', toolResults: [], createdAt: new Date().toISOString() })
 
       this.cancelStream = chatApi.sendMessageStream(this.currentSessionId, content, {
         onToken: (token) => {
           this.streamingContent += token
           this.messages[tempAgentMsgIndex] = {
             ...this.messages[tempAgentMsgIndex],
-            content: this.streamingContent
+            content: this.streamingContent,
+            toolResults: this.streamingToolResults
           }
         },
         onSources: (sources) => {
@@ -62,10 +67,32 @@ export const useChatStore = defineStore('chat', {
             sources: JSON.stringify(sources)
           }
         },
+        onToolCall: (data) => {
+          this.streamingToolCall = data
+        },
+        onToolResult: (results) => {
+          this.streamingToolCall = null
+          this.streamingToolResults = results
+          this.messages[tempAgentMsgIndex] = {
+            ...this.messages[tempAgentMsgIndex],
+            toolResults: results
+          }
+        },
+        onBlocked: (msg) => {
+          this.isLoading = false
+          this.cancelStream = null
+          this.messages.pop()
+          this.messages.push({
+            id: Date.now(), role: 'SYSTEM', content: msg,
+            blocked: true, createdAt: new Date().toISOString()
+          })
+        },
         onDone: () => {
           this.isLoading = false
           this.streamingContent = ''
           this.streamingSources = []
+          this.streamingToolCall = null
+          this.streamingToolResults = []
           this.cancelStream = null
           this.loadMessages(this.currentSessionId)
         },
@@ -73,6 +100,8 @@ export const useChatStore = defineStore('chat', {
           this.isLoading = false
           this.streamingContent = ''
           this.streamingSources = []
+          this.streamingToolCall = null
+          this.streamingToolResults = []
           this.cancelStream = null
           this.messages[tempAgentMsgIndex] = {
             ...this.messages[tempAgentMsgIndex],

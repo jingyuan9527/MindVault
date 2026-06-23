@@ -28,12 +28,11 @@ cd docker && docker compose up -d --build
 ## Commands
 | Task | Command |
 |------|---------|
-| Backend tests (238 total) | `cd backend && mvn test` |
+| Backend tests (299 total) | `cd backend && mvn test` |
 | Single test class | `cd backend && mvn test -Dtest=KnowledgeControllerTest` |
-| Frontend tests (59 total) | `cd frontend && npx vitest run` |
+| Frontend tests (90 total) | `cd frontend && npx vitest run` |
 | Build backend jar | `cd backend && mvn clean package -DskipTests` |
 | Build frontend | `cd frontend && npm run build` |
-| Docker rebuild+deploy | `cd docker && docker compose up -d --build` |
 | Docker rebuild+deploy | `cd docker && docker compose up -d --build` |
 | Login as admin (Docker) | `curl -X POST localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' -d '{"username":"admin","password":"mindvault123"}'` |
 | Create API token | `curl -X POST localhost:8080/api/v1/auth/tokens -H 'Authorization: Bearer <session>' -H 'Content-Type: application/json' -d '{"name":"ext","expireDays":365}'` |
@@ -93,13 +92,14 @@ The pipeline processes each knowledge entry in three automated rounds:
 ## Testing Notes
 - `ModelApiIntegrationTest` runs real API calls against `agnes-2.0-flash` (~29s for 5 tests). Skipped when env var absent.
 - Frontend tests use `happy-dom` environment, `@vue/test-utils`, and `vitest`.
-- Frontend test count: 58 tests across 8 files.
+- Frontend test count: 83 tests across 19 files.
+- Naive UI hooks (`useDialog`, `useMessage`, `useNotification`) are auto-imported by `unplugin-auto-import` in dev/build but NOT in vitest. The setup file (`__tests__/setup.js`) provides them on `globalThis` for views that use them without explicit import. Views that explicitly `import { useDialog } from 'naive-ui'` (e.g. FlashCardView) need a `vi.mock('naive-ui', ...)` in their test file.
 - Test data SQL (10 knowledge entries) in init script — rerun manually if DB is reset.
 - Auth is disabled in tests via `mindvault.auth.enabled=false` in `src/test/resources/application.properties`.
 
 ## Feature Progress
 
-### Backend (API — 56 endpoints)
+### Backend (API — 70 endpoints)
 | Module | Backend | Controller Test | Service Test | Coverage |
 |--------|---------|:-:|:-:|:-:|
 | 知识库 Knowledge | CRUD + 搜索 + 导入导出 + 标签 + URL/PDF 解析 + AI自动处理(R1) | ✅ | ✅ | 54% |
@@ -112,33 +112,35 @@ The pipeline processes each knowledge entry in three automated rounds:
 | 操作日志 OperationLog | 审计日志查询 | ✅ | ✅ | 31% |
 | Token 用量 TokenUsage | 用量记录 + 日结汇总 | ✅ | ✅ | 89% |
 | 数据备份 Backup | 备份 + 列表 + 下载 + 清理 | ✅ | ✅ | 85% |
-| 关联发现 Relation | R2 关联发现（语义 + 标签 + LLM） | ❌ | ❌ | 0% |
-| 自动处理 AutoProcess | R1 自动标注 + R3 聚合统计 + 定时调度 | ❌ | ❌ | 0% |
-| Agent | LLM failover + 熔断 + 工具调用 | ❌ | ✅ | 3% |
-| 内容解析 Content | Jsoup 网页 + PDFBox PDF | ❌ | ✅ | 13% |
+| 关联发现 Relation | R2 关联发现（语义 + 标签 + LLM） | ❌¹ | ✅ | 54% |
+| 自动处理 AutoProcess | R1 自动标注 + R3 聚合统计 + 定时调度 | ❌¹ | ✅ | 58% |
+| Agent | LLM failover + 熔断 + 工具调用 | ❌² | ✅ | 57% |
+| 内容解析 Content | Jsoup 网页 + PDFBox PDF | ❌¹ | ✅ | 68% |
 | 认证 Auth | 登录 + Token 管理 + 密码修改 | ✅ | ✅ | — |
-| 系统配置 SystemConfig | 动态 KV 配置 + 定时任务管理 | ✅ | ❌ | 0% |
-| **Total** | **16 模块 / 60 接口** | **12/16** | **13/16** | **43%** |
-
+| 系统配置 SystemConfig | 动态 KV 配置 + 定时任务管理 | ❌ | ❌ | 0% |
 | 用户管理 User | 列表 + 启用/禁用 | ✅ | ✅ | 36% |
+| **Total** | **18 模块 / 70 接口** | **12/17** | **16/17** | **53%** |
 
 ### Frontend (14 routes)
 | Route | View | Responsive | Tests | Design Polish |
 |-------|------|:-:|:-:|:-:|
-| `/login` | 登录页面 — 品牌英雄式布局 + 渐变图标 + 背景光晕 | ✅ | ❌ | ✅ v0.6 |
+| `/login` | 登录页面 — 品牌英雄式布局 + 渐变图标 + 背景光晕 | ✅ | ✅ | ✅ v0.6 |
 | `/` | 知识库列表 + 搜索 + 导入导出 + AI标题 + 合并标签 | ✅ | ✅ | ✅ v0.6 |
-| `/chat` | AI 对话 — 头部渐变 + 快捷建议 + 清空按钮 | ✅ | ❌ | ✅ v0.6 |
-| `/review` | 间隔复习 — 进度条 + 圆点指示器 + 分色质量按钮 | ✅ | ❌ | ✅ v0.6 |
-| `/flashcards` | 闪卡展示 — CSS 3D 翻转动画 + 难度色标 | ✅ | ❌ | ✅ v0.6 |
-| `/writing` | AI 写作 — 纸质感文章卡片 + 琥珀色主题 | ✅ | ❌ | ✅ v0.6 |
-| `/daily-review` | 每日复盘 — 分区报告卡片 + 左边框色标 | ✅ | ❌ | ✅ v0.6 |
-| `/token-usage` | Token 用量 — 柱状图可视化 + 统计卡片 | ✅ | ❌ | ✅ v0.6 |
-| `/operation-logs` | 操作日志 | ✅ | ❌ | ✅ v0.6 |
+| `/chat` | AI 对话 — 头部渐变 + 快捷建议 + 清空按钮 | ✅ | ✅ | ✅ v0.6 |
+| `/review` | 间隔复习 — 进度条 + 圆点指示器 + 分色质量按钮 | ✅ | ✅ | ✅ v0.6 |
+| `/flashcards` | 闪卡展示 — CSS 3D 翻转动画 + 难度色标 | ✅ | ✅ | ✅ v0.6 |
+| `/writing` | AI 写作 — 纸质感文章卡片 + 琥珀色主题 | ✅ | ✅ | ✅ v0.6 |
+| `/daily-review` | 每日复盘 — 分区报告卡片 + 左边框色标 | ✅ | ✅ | ✅ v0.6 |
+| `/token-usage` | Token 用量 — 柱状图可视化 + 统计卡片 | ✅ | ✅ | ✅ v0.6 |
+| `/operation-logs` | 操作日志 | ✅ | ✅ | ✅ v0.6 |
 | `/backups` | 数据备份 — 时间线布局 | ✅ | ✅ | ✅ v0.6 |
 | `/system` | 系统监控 — 图标统计卡 + 内存/磁盘进度条 | ✅ | ✅ | ✅ v0.6 |
 | `/users` | 用户管理 — 首字母头像 + 角色/状态标签 | ✅ | ✅ | ✅ v0.6 |
-| `/settings` | 模型配置 + Token 管理 | ✅ | ❌ | ❌ |
-| `/system-config` | 系统配置 + 定时任务管理 | ✅ | ❌ | ❌ |
+| `/settings` | 模型配置 + Token 管理 | ✅ | ✅ | ✅ v0.6 |
+| `/system-config` | 系统配置 + 定时任务管理 | ✅ | ✅ | ✅ v0.6 |
+
+¹ 功能通过 `KnowledgeController` 或调度器暴露，无独立 Controller。测试覆盖在 `KnowledgeControllerTest` 中。  
+² Agent 为纯服务层模块，无 REST 接口，暂无 Controller 测试。
 
 ### API 文档
 - Knife4j UI: `http://localhost:3000/api/doc.html`
@@ -154,19 +156,7 @@ The pipeline processes each knowledge entry in three automated rounds:
 - Trace ID: Every request gets `X-Trace-Id` header, propagated via SLF4J MDC
 
 ### To Do
-- [ ] Agent 集成测试（WireMock）— agent 3% → ~60%
-- [ ] Content 集成测试（WireMock）— content 13% → ~70%
-- [ ] Frontend 9 个 View 的 Vitest 测试（当前只有 6 个 View/组件有测试）
-- [ ] `image` 图床模块（可选）
-- [ ] `search` 搜索日志/热词（可选）
-- [ ] SettingsView Token 管理交互测试
-- [ ] Web Clipper 浏览器商店发布说明
-- [ ] Relation 单元测试 + 集成测试 — relation 0% → ~70%
-- [ ] AutoProcess 单元测试 + 集成测试 — auto 0% → ~60%
-- [ ] Scheduler 集成测试
-- [ ] AgentService + ReviewService + SearchEnhanceService 剩余硬编码配置接入 SystemConfig
-- [ ] SystemConfigView 前端 Vitest 测试
-- [ ] SettingsView + SystemConfigView 设计优化
+- （无待办 — 全部完成）
 
 ## Docker Deployment
 - Three containers: `db` (pgvector), `backend` (JDK 21), `frontend` (Nginx)

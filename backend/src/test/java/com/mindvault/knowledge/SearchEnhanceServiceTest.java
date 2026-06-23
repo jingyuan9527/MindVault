@@ -2,6 +2,7 @@ package com.mindvault.knowledge;
 
 import com.mindvault.common.service.LlmFailoverService;
 import com.mindvault.model.ModelConfigService;
+import com.mindvault.systemconfig.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,12 +22,17 @@ class SearchEnhanceServiceTest {
     @Mock private KnowledgeService knowledgeService;
     @Mock private ModelConfigService modelConfigService;
     @Mock private LlmFailoverService llmFailoverService;
+    @Mock private SystemConfigService config;
 
     private SearchEnhanceService service;
 
     @BeforeEach
     void setUp() {
-        service = new SearchEnhanceService(knowledgeService, modelConfigService, llmFailoverService);
+        service = new SearchEnhanceService(knowledgeService, modelConfigService, llmFailoverService, config);
+        lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getString(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
+        lenient().when(config.getPrompt(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
     }
 
     @Test
