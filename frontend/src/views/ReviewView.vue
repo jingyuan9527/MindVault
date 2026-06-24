@@ -132,7 +132,7 @@ onMounted(loadDue)
   width: 36px; height: 36px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
   color: white; flex-shrink: 0;
-  background: linear-gradient(135deg, var(--color-sage) 0%, #4a6a47 100%);
+  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
 }
 .review-start-icon {
   width: 72px; height: 72px; border-radius: 20px;
@@ -140,7 +140,7 @@ onMounted(loadDue)
   color: var(--color-sage); background-color: var(--color-sage-light);
 }
 .review-start-btn {
-  --n-color: var(--color-sage); --n-color-hover: #4a6a47; --n-color-pressed: #3d5a3a;
+  --n-color: rgba(139,92,246,0.2); --n-color-hover: rgba(139,92,246,0.3); --n-color-pressed: rgba(139,92,246,0.35);
 }
 .review-progress-strip {
   display: flex; align-items: center; gap: 6px; margin-bottom: 20px; justify-content: center;
@@ -165,6 +165,6 @@ onMounted(loadDue)
 .quality-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .quality-btn { font-size: 0.75rem !important; }
 .q-0, .q-1 { --n-color: #fef2f2; --n-color-hover: #fee2e2; color: #dc2626; }
-.q-2, .q-3 { --n-color: var(--color-sage-light); --n-color-hover: #dce8d9; color: var(--color-sage); }
-.q-4, .q-5 { --n-color: var(--color-sage); --n-color-hover: #4a6a47; color: white; }
+.q-2, .q-3 { --n-color: rgba(139,92,246,0.1); --n-color-hover: rgba(139,92,246,0.15); color: var(--color-sage); }
+.q-4, .q-5 { --n-color: rgba(139,92,246,0.2); --n-color-hover: rgba(139,92,246,0.3); color: white; }
 </style>

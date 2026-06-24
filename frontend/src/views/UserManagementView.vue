@@ -42,7 +42,7 @@ import { userApi } from '@/api/users'
 
 const users = ref([])
 
-const avatarColors = ['#5d7a5a', '#c65f39', '#4f46e5', '#0891b2', '#ca8a04', '#7c3aed', '#dc2626', '#0d9488']
+const avatarColors = ['#8B5CF6', '#c65f39', '#4f46e5', '#0891b2', '#ca8a04', '#7c3aed', '#dc2626', '#0d9488']
 function userColor(name) { let hash = 0; for (let i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash); return avatarColors[Math.abs(hash) % avatarColors.length] }
 function initials(name) { if (!name) return '?'; return name.slice(0, 2).toUpperCase() }
 

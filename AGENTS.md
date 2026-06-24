@@ -134,20 +134,20 @@ The pipeline processes each knowledge entry in three automated rounds:
 ### Frontend (14 routes)
 | Route | View | Responsive | Tests | Design Polish |
 |-------|------|:-:|:-:|:-:|
-| `/login` | 登录页面 — 品牌英雄式布局 + 渐变图标 + 背景光晕 | ✅ | ✅ | ✅ v0.6 |
-| `/` | 知识库列表 + 搜索 + 导入导出 + AI标题 + 合并标签 | ✅ | ✅ | ✅ v0.6 |
-| `/chat` | AI 对话 — 头部渐变 + 快捷建议 + 清空按钮 | ✅ | ✅ | ✅ v0.6 |
-| `/review` | 间隔复习 — 进度条 + 圆点指示器 + 分色质量按钮 | ✅ | ✅ | ✅ v0.6 |
-| `/flashcards` | 闪卡展示 — CSS 3D 翻转动画 + 难度色标 | ✅ | ✅ | ✅ v0.6 |
-| `/writing` | AI 写作 — 纸质感文章卡片 + 琥珀色主题 | ✅ | ✅ | ✅ v0.6 |
-| `/daily-review` | 每日复盘 — 分区报告卡片 + 左边框色标 | ✅ | ✅ | ✅ v0.6 |
-| `/token-usage` | Token 用量 — 柱状图可视化 + 统计卡片 | ✅ | ✅ | ✅ v0.6 |
-| `/operation-logs` | 操作日志 | ✅ | ✅ | ✅ v0.6 |
-| `/backups` | 数据备份 — 时间线布局 | ✅ | ✅ | ✅ v0.6 |
-| `/system` | 系统监控 — 图标统计卡 + 内存/磁盘进度条 | ✅ | ✅ | ✅ v0.6 |
-| `/users` | 用户管理 — 首字母头像 + 角色/状态标签 | ✅ | ✅ | ✅ v0.6 |
-| `/settings` | 模型配置 + Token 管理 | ✅ | ✅ | ✅ v0.6 |
-| `/system-config` | 系统配置 + 定时任务管理 | ✅ | ✅ | ✅ v0.6 |
+| `/login` | 登录页面 — 品牌英雄式布局 + 渐变图标 + 背景光晕 | ✅ | ✅ | ✅ v0.10 |
+| `/` | 知识库列表 + 搜索 + 导入导出 + AI标题 + 合并标签 | ✅ | ✅ | ✅ v0.10 |
+| `/chat` | AI 对话 — 头部渐变 + 快捷建议 + 清空按钮 | ✅ | ✅ | ✅ v0.10 |
+| `/review` | 间隔复习 — 进度条 + 圆点指示器 + 分色质量按钮 | ✅ | ✅ | ✅ v0.10 |
+| `/flashcards` | 闪卡展示 — CSS 3D 翻转动画 + 难度色标 | ✅ | ✅ | ✅ v0.10 |
+| `/writing` | AI 写作 — 纸质感文章卡片 + 琥珀色主题 | ✅ | ✅ | ✅ v0.10 |
+| `/daily-review` | 每日复盘 — 分区报告卡片 + 左边框色标 | ✅ | ✅ | ✅ v0.10 |
+| `/token-usage` | Token 用量 — 柱状图可视化 + 统计卡片 | ✅ | ✅ | ✅ v0.10 |
+| `/operation-logs` | 操作日志 | ✅ | ✅ | ✅ v0.10 |
+| `/backups` | 数据备份 — 时间线布局 | ✅ | ✅ | ✅ v0.10 |
+| `/system` | 系统监控 — 图标统计卡 + 内存/磁盘进度条 | ✅ | ✅ | ✅ v0.10 |
+| `/users` | 用户管理 — 首字母头像 + 角色/状态标签 | ✅ | ✅ | ✅ v0.10 |
+| `/settings` | 模型配置 + Token 管理 | ✅ | ✅ | ✅ v0.10 |
+| `/system-config` | 系统配置 + 定时任务管理 | ✅ | ✅ | ✅ v0.10 |
 
 ¹ 功能通过 `KnowledgeController` 或调度器暴露，无独立 Controller。测试覆盖在 `KnowledgeControllerTest` 中。  
 ² Agent 为纯服务层模块，无 REST 接口，暂无 Controller 测试。
@@ -164,6 +164,18 @@ The pipeline processes each knowledge entry in three automated rounds:
 - Actuator: `GET /api/v1/actuator/health`, `/api/v1/actuator/info`, `/api/v1/actuator/metrics`, `/api/v1/actuator/prometheus`
 - Prometheus metrics: `mindvault.api.calls`, `mindvault.api.errors`, `mindvault.llm.calls`, `mindvault.llm.duration`, `mindvault.llm.tokens.*`, `mindvault.circuitbreaker.open`, `mindvault.backup.count`, `mindvault.connections.active`
 - Trace ID: Every request gets `X-Trace-Id` header, propagated via SLF4J MDC
+
+## Frontend Design System (v0.10 — Multi-Theme Glassmorphism)
+- **3 themes × 2 modes** = 6 color combinations, switchable via sidebar footer
+  - 🌄 **Amber Earth** (default): Terracotta `#D4856A` + Olive `#8B9C68`, warm cream/dark brown background
+  - 🌿 **Lavender Calm**: Warm purple `#A855F7` + Emerald `#34D399`; Soft UI evolution, neumorphism-glass fusion
+  - 💎 **Violet Glass**: Violet `#8B5CF6` + Cyan `#06B6D4`; original dark glassmorphism
+- **Theme mechanism**: `<html data-theme="X">` + `.light` class; all colors via CSS custom properties; no hardcoded colors in components
+- **Naive UI overrides**: Dynamic per-theme+per-mode `themeColors()` function in `App.vue`
+- **CSS architecture**: 6 variable blocks in `style.css` (3 themes × 2 modes); shared `.glass`, `.card`, `.tag-pill` components use `var(--color-*)`
+- **Persistence**: Theme + mode saved to `localStorage`
+- **Fonts**: Outfit (headings), Inter (body), JetBrains Mono (mono)
+- **Key effects**: `backdrop-filter: blur(20px)`, animated background glows per-theme, `--gradient-brand` for brand elements
 
 ### To Do
 - （无待办 — 全部完成）

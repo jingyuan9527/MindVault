@@ -96,9 +96,9 @@ onMounted(() => { store.loadItems(); loadCards() })
   width: 36px; height: 36px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
   color: white; flex-shrink: 0;
-  background: linear-gradient(135deg, var(--color-sage) 0%, #4a6a47 100%);
+  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
 }
-.generate-btn { --n-color: var(--color-sage); --n-color-hover: #4a6a47; --n-color-pressed: #3d5a3a; }
+.generate-btn { --n-color: rgba(139,92,246,0.2); --n-color-hover: rgba(139,92,246,0.3); --n-color-pressed: rgba(139,92,246,0.35); }
 .flashcard-container { perspective: 1200px; cursor: pointer; }
 .flashcard-inner { position: relative; width: 100%; min-height: 200px; transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1); transform-style: preserve-3d; }
 .flashcard-inner.flipped { transform: rotateY(180deg); }

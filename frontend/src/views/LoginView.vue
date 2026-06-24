@@ -3,6 +3,7 @@
     <div class="login-bg">
       <div class="bg-ornament top-right"></div>
       <div class="bg-ornament bottom-left"></div>
+      <div class="bg-ornament center-glow"></div>
       <div class="bg-grid"></div>
     </div>
     <div class="login-content">
@@ -43,7 +44,7 @@
             {{ error }}
           </n-alert>
 
-          <n-button type="primary" attr-type="submit" :loading="loading" block size="large" class="login-btn">
+          <n-button attr-type="submit" :loading="loading" block size="large" class="login-btn">
             登录
           </n-button>
         </n-form>
@@ -56,10 +57,12 @@
 import { ref, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useThemeStore } from '@/stores/theme'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const themeStore = useThemeStore()
 
 const formData = reactive({ username: '', password: '' })
 const loading = ref(false)
@@ -99,21 +102,33 @@ async function handleLogin() {
 
 .bg-ornament {
   position: absolute;
-  width: 400px;
-  height: 400px;
   border-radius: 50%;
-  filter: blur(100px);
-  opacity: 0.12;
+  filter: blur(120px);
 }
 .bg-ornament.top-right {
-  top: -100px;
-  right: -100px;
-  background: radial-gradient(circle, var(--color-accent) 0%, transparent 70%);
+  width: 500px;
+  height: 500px;
+  top: -200px;
+  right: -150px;
+  background: radial-gradient(circle, var(--color-ornament-primary) 0%, transparent 70%);
+  animation: bg-shift 20s ease-in-out infinite;
 }
 .bg-ornament.bottom-left {
-  bottom: -100px;
+  width: 400px;
+  height: 400px;
+  bottom: -150px;
   left: -100px;
-  background: radial-gradient(circle, var(--color-sage) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--color-ornament-secondary) 0%, transparent 70%);
+  animation: bg-shift 25s ease-in-out infinite reverse;
+}
+.bg-ornament.center-glow {
+  width: 300px;
+  height: 300px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, var(--color-ornament-accent) 0%, transparent 70%);
+  animation: bg-shift 30s ease-in-out infinite;
 }
 
 .bg-grid {
@@ -123,7 +138,7 @@ async function handleLogin() {
     linear-gradient(var(--color-border) 1px, transparent 1px),
     linear-gradient(90deg, var(--color-border) 1px, transparent 1px);
   background-size: 60px 60px;
-  opacity: 0.15;
+  opacity: 0.12;
 }
 
 .login-content {
@@ -148,15 +163,18 @@ async function handleLogin() {
   justify-content: center;
   margin-bottom: 20px;
   color: white;
-  background: linear-gradient(135deg, var(--color-sage) 0%, #4a6a47 100%);
-  box-shadow: 0 4px 16px rgba(93, 122, 90, 0.3);
+  background: var(--gradient-brand);
+  box-shadow: 0 4px 20px var(--color-accent-light);
 }
 
 .brand-title {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
   font-size: 2.5rem;
   font-weight: 800;
-  color: var(--color-text);
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   letter-spacing: -0.03em;
   line-height: 1.1;
   margin-bottom: 4px;
@@ -170,7 +188,8 @@ async function handleLogin() {
 
 .brand-desc {
   font-size: 0.85rem;
-  color: var(--color-warm-gray);
+  color: var(--color-text-secondary);
+  opacity: 0.7;
   line-height: 1.6;
 }
 
@@ -178,9 +197,11 @@ async function handleLogin() {
   width: 360px;
   padding: 32px;
   border-radius: 16px;
-  background-color: var(--color-surface);
+  background: var(--color-surface);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
   border: 1px solid var(--color-border);
-  box-shadow: 0 8px 32px rgba(45, 42, 36, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
 }
 
 @media (max-width: 768px) {
@@ -205,10 +226,10 @@ async function handleLogin() {
 }
 
 .login-btn {
-  --n-color: var(--color-sage);
-  --n-color-hover: #4a6a47;
-  --n-color-pressed: #3d5a3a;
-  --n-color-active: #4a6a47;
-  --n-ripple-color: var(--color-sage);
+  --n-color: var(--color-accent);
+  --n-color-hover: var(--color-accent-hover);
+  --n-color-pressed: var(--color-primary);
+  --n-color-active: var(--color-accent);
+  --n-ripple-color: var(--color-accent);
 }
 </style>

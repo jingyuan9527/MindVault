@@ -89,7 +89,7 @@ function retry() { error.value = '' }
   width: 36px; height: 36px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
   color: white; flex-shrink: 0;
-  background: linear-gradient(135deg, var(--color-sage) 0%, #4a6a47 100%);
+  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
 }
 .chat-empty-icon {
   width: 80px; height: 80px; border-radius: 24px;
