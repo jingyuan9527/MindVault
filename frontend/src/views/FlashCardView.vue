@@ -3,7 +3,7 @@
     <div class="p-4 md:p-5 shrink-0" style="border-bottom: 1px solid var(--color-border)">
       <div class="flex items-center gap-3 mb-3">
         <div class="flashcard-header-icon">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
           </svg>
         </div>
@@ -32,7 +32,7 @@
       </n-empty>
 
       <div v-else class="max-w-2xl mx-auto space-y-6">
-        <div v-for="(card, idx) in cards" :key="card.id" class="flashcard-container" @click="flipCard(idx)">
+        <div v-for="(card, idx) in cards" :key="card.id" class="flashcard-container" @click="flipCard(idx)" @keydown.enter="flipCard(idx)" @keydown.space.prevent="flipCard(idx)" tabindex="0" role="button" :aria-label="'翻转第' + (idx + 1) + '张卡片'">
           <div class="flashcard-inner" :class="{ flipped: flipped[idx] }">
             <div class="flashcard-front">
               <div class="card-label">问题</div>
@@ -96,9 +96,9 @@ onMounted(() => { store.loadItems(); loadCards() })
   width: 36px; height: 36px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
   color: white; flex-shrink: 0;
-  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+  background: var(--gradient-brand);
 }
-.generate-btn { --n-color: rgba(139,92,246,0.2); --n-color-hover: rgba(139,92,246,0.3); --n-color-pressed: rgba(139,92,246,0.35); }
+.generate-btn { --n-color: var(--color-accent-light); --n-color-hover: var(--color-accent-light); --n-color-pressed: var(--color-accent-light); }
 .flashcard-container { perspective: 1200px; cursor: pointer; }
 .flashcard-inner { position: relative; width: 100%; min-height: 200px; transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1); transform-style: preserve-3d; }
 .flashcard-inner.flipped { transform: rotateY(180deg); }

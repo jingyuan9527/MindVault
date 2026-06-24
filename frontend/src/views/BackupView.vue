@@ -2,7 +2,7 @@
   <div class="flex-1 overflow-y-auto p-4 md:p-6">
     <div class="flex items-center gap-3 mb-4 md:mb-6">
       <div class="backup-header-icon">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
         </svg>
       </div>
@@ -61,7 +61,7 @@ onMounted(loadBackups)
   width: 40px; height: 40px; border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
   color: white; flex-shrink: 0;
-  background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+  background: var(--gradient-brand);
 }
 .backup-btn { --n-color: #4f46e5; --n-color-hover: #3730a3; --n-color-pressed: #312e81; }
 .backup-card { padding: 20px; border-radius: 14px; background-color: var(--color-surface); border: 1px solid var(--color-border); }

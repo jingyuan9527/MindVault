@@ -2,7 +2,7 @@
   <div class="flex-1 overflow-y-auto p-4 md:p-6">
     <div class="flex items-center gap-3 mb-4 md:mb-6">
       <div class="users-header-icon">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
         </svg>
       </div>
@@ -11,8 +11,8 @@
         <p class="text-xs" style="color: var(--color-text-secondary)">管理系统用户与权限</p>
       </div>
     </div>
-
-    <div class="users-card">
+    <n-spin v-if="loading" class="flex justify-center py-12" />
+    <div v-else class="users-card">
       <div v-for="u in users" :key="u.id" class="user-row">
         <div class="user-avatar" :style="{ backgroundColor: userColor(u.username) }">{{ initials(u.username) }}</div>
         <div class="user-info">
@@ -41,19 +41,20 @@ import { ref, onMounted } from 'vue'
 import { userApi } from '@/api/users'
 
 const users = ref([])
+const loading = ref(true)
 
 const avatarColors = ['#8B5CF6', '#c65f39', '#4f46e5', '#0891b2', '#ca8a04', '#7c3aed', '#dc2626', '#0d9488']
 function userColor(name) { let hash = 0; for (let i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash); return avatarColors[Math.abs(hash) % avatarColors.length] }
 function initials(name) { if (!name) return '?'; return name.slice(0, 2).toUpperCase() }
 
-async function loadUsers() { try { const res = await userApi.list(); users.value = res.data.data || [] } catch {} }
+async function loadUsers() { loading.value = true; try { const res = await userApi.list(); users.value = res.data.data || [] } catch (e) { console.error('加载用户列表失败:', e) } finally { loading.value = false } }
 async function toggleEnabled(u) { try { await userApi.setEnabled(u.id, !u.enabled); u.enabled = !u.enabled } catch {} }
 
 onMounted(loadUsers)
 </script>
 
 <style scoped>
-.users-header-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0; background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%); }
+.users-header-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0; background: var(--gradient-brand); }
 .users-card { border-radius: 14px; background-color: var(--color-surface); border: 1px solid var(--color-border); overflow: hidden; }
 .user-row { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--color-border); }
 .user-row:last-child { border-bottom: none; }

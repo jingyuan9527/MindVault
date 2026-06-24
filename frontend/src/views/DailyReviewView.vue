@@ -7,7 +7,7 @@
       <div class="flex-1 overflow-y-auto p-2 space-y-1">
         <div v-for="r in recentReports" :key="r.id"
           class="history-item" :class="{ active: selectedDate === r.reportDate }"
-          @click="loadByDate(r.reportDate)">
+          @click="loadByDate(r.reportDate)" @keydown.enter="loadByDate(r.reportDate)" tabindex="0" role="button">
           <p class="text-xs font-medium">{{ r.reportDate }}</p>
           <p class="text-xs mt-0.5 opacity-70">{{ r.totalCount || 0 }} 条知识</p>
         </div>
@@ -19,7 +19,7 @@
       <div class="shrink-0 px-4 md:px-5 py-3" style="border-bottom: 1px solid var(--color-border)">
         <div class="flex items-center gap-3 mb-3">
           <div class="review-daily-icon">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
             </svg>
           </div>
@@ -55,7 +55,7 @@
 
           <div class="report-section">
             <div class="report-section-title">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
               总结
             </div>
             <div class="report-summary">{{ report.summary }}</div>
@@ -63,7 +63,7 @@
 
           <div v-if="keyInsights.length" class="report-section insight">
             <div class="report-section-title">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
               关键洞见
             </div>
             <ul class="report-list">
@@ -73,7 +73,7 @@
 
           <div v-if="recommendations.length" class="report-section rec">
             <div class="report-section-title">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
               后续建议
             </div>
             <ul class="report-list">
@@ -83,7 +83,7 @@
 
           <div v-if="categoryKeys.length" class="report-section">
             <div class="report-section-title">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
               知识分类统计
             </div>
             <div class="flex flex-wrap gap-2 mt-2">
@@ -132,7 +132,7 @@ onMounted(async () => { await loadRecent(); await loadLatest() })
   width: 36px; height: 36px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
   color: white; flex-shrink: 0;
-  background: linear-gradient(135deg, #ca8a04 0%, #a16207 100%);
+  background: var(--gradient-brand);
 }
 .generate-daily-btn { --n-color: #ca8a04; --n-color-hover: #a16207; --n-color-pressed: #854d0e; }
 .history-item { padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: all 0.15s; color: var(--color-text-secondary); }

@@ -9,7 +9,7 @@
     <div class="login-content">
       <div class="login-brand">
         <div class="brand-icon">
-          <svg viewBox="0 0 48 48" fill="none" class="w-10 h-10">
+          <svg viewBox="0 0 48 48" fill="none" class="w-10 h-10" aria-hidden="true">
             <rect x="4" y="4" width="40" height="40" rx="10" stroke="currentColor" stroke-width="2"/>
             <path d="M16 32V20l8-6 8 6v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             <path d="M20 28h8v4h-8z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -22,7 +22,7 @@
       <div class="login-card">
         <n-form @submit.prevent="handleLogin" label-placement="top" :model="formData">
           <n-form-item label="用户名" path="username">
-            <n-input v-model:value="formData.username" placeholder="请输入用户名" size="large">
+            <n-input v-model:value="formData.username" type="text" autocomplete="username" placeholder="请输入用户名" size="large">
               <template #prefix>
                 <svg class="w-4 h-4" style="color: var(--color-text-secondary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
@@ -31,7 +31,7 @@
             </n-input>
           </n-form-item>
           <n-form-item label="密码" path="password">
-            <n-input v-model:value="formData.password" type="password" placeholder="请输入密码" size="large" @keyup.enter="handleLogin">
+            <n-input v-model:value="formData.password" type="password" placeholder="请输入密码" autocomplete="current-password" size="large" @keyup.enter="handleLogin">
               <template #prefix>
                 <svg class="w-4 h-4" style="color: var(--color-text-secondary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>

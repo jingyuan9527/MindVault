@@ -4,7 +4,7 @@
       <div class="flex items-center justify-between mb-3">
         <div class="flex items-center gap-3">
           <div class="sysconfig-header-icon">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
             </svg>
           </div>
@@ -21,7 +21,8 @@
       </n-radio-group>
     </div>
 
-    <div class="flex-1 overflow-y-auto px-4 md:px-6 pb-4 md:pb-6">
+    <n-spin v-if="loading" class="flex justify-center py-12" />
+    <div v-else class="flex-1 overflow-y-auto px-4 md:px-6 pb-4 md:pb-6">
 
     <!-- ==================== Tab: 配置列表 ==================== -->
     <div v-if="activeTab === 'config'">
@@ -91,7 +92,7 @@
 
           <!-- Schedule display -->
           <div class="flex items-center gap-2 text-sm mb-3" style="color: var(--color-text)">
-            <span>&#9200;</span>
+            <span aria-hidden="true">&#9200;</span>
             <span v-if="task.cronType === 'cron'" class="font-medium">
               {{ task.humanTime }}
             </span>
@@ -149,6 +150,7 @@ const dialog = useDialog()
 const PAGE_SIZE = 20
 
 const configs = ref([])
+const loading = ref(false)
 const searchQuery = ref('')
 const currentPage = ref(1)
 const editing = ref(null)
@@ -292,10 +294,15 @@ watch(searchQuery, () => { currentPage.value = 1 })
 
 /* ---- Data loading ---- */
 async function loadConfigs() {
+  loading.value = true
   try {
     const res = await systemConfigApi.list()
     configs.value = res.data.data || []
-  } catch {}
+  } catch (e) {
+    console.error('加载系统配置失败:', e)
+  } finally {
+    loading.value = false
+  }
 }
 
 function editConfig(cfg) {
@@ -475,6 +482,6 @@ onMounted(loadConfigs)
   width: 36px; height: 36px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
   color: white; flex-shrink: 0;
-  background: linear-gradient(135deg, #78716c 0%, #57534e 100%);
+  background: var(--gradient-brand);
 }
 </style>

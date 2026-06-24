@@ -2,7 +2,7 @@
   <div class="flex-1 overflow-y-auto p-4 md:p-6">
     <div class="flex items-center gap-3 mb-4 md:mb-6">
       <div class="monitor-header-icon">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
         </svg>
       </div>
@@ -27,7 +27,7 @@
         </div>
         <div class="monitor-stat">
           <div class="monitor-stat-icon" style="background-color: rgba(198, 95, 57, 0.12)">
-            <svg class="w-5 h-5" style="color: var(--color-accent)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <svg class="w-5 h-5" style="color: var(--color-accent)" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           </div>
           <div>
             <p class="monitor-stat-label">运行时间</p>
@@ -36,7 +36,7 @@
         </div>
         <div class="monitor-stat">
           <div class="monitor-stat-icon" style="background-color: rgba(93, 122, 90, 0.12)">
-            <svg class="w-5 h-5" style="color: var(--color-sage)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+            <svg class="w-5 h-5" style="color: var(--color-sage)" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
           </div>
           <div>
             <p class="monitor-stat-label">JVM 版本</p>
@@ -45,7 +45,7 @@
         </div>
         <div class="monitor-stat">
           <div class="monitor-stat-icon" style="background-color: rgba(198, 95, 57, 0.12)">
-            <svg class="w-5 h-5" style="color: var(--color-accent)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+            <svg class="w-5 h-5" style="color: var(--color-accent)" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
           </div>
           <div>
             <p class="monitor-stat-label">CPU 核心</p>
@@ -83,7 +83,7 @@
       <div class="monitor-grid">
         <div class="monitor-stat">
           <div class="monitor-stat-icon" style="background-color: rgba(93, 122, 90, 0.12)">
-            <svg class="w-5 h-5" style="color: var(--color-sage)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+            <svg class="w-5 h-5" style="color: var(--color-sage)" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
           </div>
           <div>
             <p class="monitor-stat-label">线程数</p>
@@ -92,7 +92,7 @@
         </div>
         <div class="monitor-stat">
           <div class="monitor-stat-icon" style="background-color: rgba(198, 95, 57, 0.12)">
-            <svg class="w-5 h-5" style="color: var(--color-accent)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+            <svg class="w-5 h-5" style="color: var(--color-accent)" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
           </div>
           <div>
             <p class="monitor-stat-label">活跃连接</p>
@@ -142,13 +142,13 @@ function formatUptime(seconds) {
   const parts = []; if (d) parts.push(d + '天'); if (h) parts.push(h + '时'); parts.push(m + '分'); return parts.join(' ')
 }
 
-async function loadAll() { try { const [hRes, iRes, mRes] = await Promise.all([systemApi.health(), systemApi.info(), systemApi.metrics()]); health.value = hRes.data || {}; info.value = iRes.data?.data || {}; metrics.value = mRes.data?.data || {} } catch {}; loading.value = false }
+async function loadAll() { try { const [hRes, iRes, mRes] = await Promise.all([systemApi.health(), systemApi.info(), systemApi.metrics()]); health.value = hRes.data || {}; info.value = iRes.data?.data || {}; metrics.value = mRes.data?.data || {} } catch (e) { console.error('加载系统监控失败:', e) } finally { loading.value = false } }
 
 onMounted(loadAll)
 </script>
 
 <style scoped>
-.monitor-header-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); }
+.monitor-header-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0; background: var(--gradient-brand); }
 .monitor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .monitor-card-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 .monitor-stat { display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: 12px; background-color: var(--color-surface); border: 1px solid var(--color-border); }

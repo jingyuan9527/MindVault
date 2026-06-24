@@ -3,7 +3,7 @@
     <div class="p-4 md:p-5 shrink-0" style="border-bottom: 1px solid var(--color-border)">
       <div class="flex items-center gap-3">
         <div class="review-header-icon">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
           </svg>
         </div>
@@ -33,7 +33,7 @@
 
       <div v-else-if="!currentReview && dueItems.length" class="flex flex-col items-center justify-center py-16">
         <div class="review-start-icon">
-          <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
           </svg>
         </div>
@@ -64,7 +64,7 @@
           </div>
 
           <div v-if="currentReview.summary" class="review-summary">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             <span>{{ currentReview.summary }}</span>
           </div>
 
@@ -132,7 +132,7 @@ onMounted(loadDue)
   width: 36px; height: 36px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
   color: white; flex-shrink: 0;
-  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+  background: var(--gradient-brand);
 }
 .review-start-icon {
   width: 72px; height: 72px; border-radius: 20px;
@@ -140,7 +140,7 @@ onMounted(loadDue)
   color: var(--color-sage); background-color: var(--color-sage-light);
 }
 .review-start-btn {
-  --n-color: rgba(139,92,246,0.2); --n-color-hover: rgba(139,92,246,0.3); --n-color-pressed: rgba(139,92,246,0.35);
+  --n-color: var(--color-accent-light); --n-color-hover: var(--color-accent-light); --n-color-pressed: var(--color-accent-light);
 }
 .review-progress-strip {
   display: flex; align-items: center; gap: 6px; margin-bottom: 20px; justify-content: center;
@@ -165,6 +165,6 @@ onMounted(loadDue)
 .quality-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .quality-btn { font-size: 0.75rem !important; }
 .q-0, .q-1 { --n-color: #fef2f2; --n-color-hover: #fee2e2; color: #dc2626; }
-.q-2, .q-3 { --n-color: rgba(139,92,246,0.1); --n-color-hover: rgba(139,92,246,0.15); color: var(--color-sage); }
-.q-4, .q-5 { --n-color: rgba(139,92,246,0.2); --n-color-hover: rgba(139,92,246,0.3); color: white; }
+.q-2, .q-3 { --n-color: var(--color-accent-light); --n-color-hover: var(--color-accent-light); color: var(--color-sage); }
+.q-4, .q-5 { --n-color: var(--color-accent-light); --n-color-hover: var(--color-accent-light); color: white; }
 </style>

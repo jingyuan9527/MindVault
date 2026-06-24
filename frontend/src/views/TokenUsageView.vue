@@ -3,7 +3,7 @@
     <div class="shrink-0 px-4 md:px-5 py-3" style="border-bottom: 1px solid var(--color-border)">
       <div class="flex items-center gap-3 mb-3">
         <div class="token-header-icon">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
           </svg>
         </div>
@@ -136,7 +136,7 @@ onMounted(loadDaily)
   width: 36px; height: 36px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
   color: white; flex-shrink: 0;
-  background: linear-gradient(135deg, #0891b2 0%, #065f73 100%);
+  background: var(--gradient-brand);
 }
 .chart-card { padding: 20px; border-radius: 14px; background-color: var(--color-surface); border: 1px solid var(--color-border); }
 .chart-title { font-size: 0.8rem; font-weight: 600; color: var(--color-text-secondary); margin-bottom: 16px; }
