@@ -79,7 +79,13 @@ public class KnowledgeService {
         operationLogService.log("KNOWLEDGE", "ADD", knowledge.getId(),
                 "添加知识「" + knowledge.getTitle() + "」");
 
-        triggerAutoProcess(knowledge);
+        if (knowledge.getContent() != null && !knowledge.getContent().isBlank()) {
+            String aiTitle = autoProcessService.generateAiTitleSync(knowledge.getId(), knowledge.getTitle(), knowledge.getContent());
+            if (aiTitle != null) {
+                knowledge.setAiTitle(aiTitle);
+            }
+            triggerAutoProcess(knowledge);
+        }
         try {
             reviewService.scheduleReview(knowledge.getId());
         } catch (Exception e) {

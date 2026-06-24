@@ -55,6 +55,20 @@ public class AutoProcessService {
         autoProcess(knowledgeId, userTitle, content);
     }
 
+    public String generateAiTitleSync(Long knowledgeId, String userTitle, String content) {
+        try {
+            modelConfigService.getPrimaryChatModel();
+        } catch (Exception e) {
+            log.warn("未配置主模型，跳过 AI 标题生成: knowledgeId={}", knowledgeId);
+            return null;
+        }
+        String aiTitle = generateAiTitle(userTitle, content);
+        if (aiTitle != null) {
+            knowledgeService.updateAiFields(knowledgeId, aiTitle, null);
+        }
+        return aiTitle;
+    }
+
     public void autoProcess(Long knowledgeId, String userTitle, String content) {
         try {
             modelConfigService.getPrimaryChatModel();
@@ -64,7 +78,11 @@ public class AutoProcessService {
         }
 
         LocalDateTime startedAt = LocalDateTime.now();
-        String aiTitle = generateAiTitle(userTitle, content);
+        var existing = knowledgeService.getById(knowledgeId);
+        String aiTitle = existing.getAiTitle();
+        if (aiTitle == null) {
+            aiTitle = generateAiTitle(userTitle, content);
+        }
         String tagsJson = generateTags(userTitle, content);
         String summary = generateSummary(userTitle, content);
 

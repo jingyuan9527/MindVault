@@ -314,6 +314,7 @@ import ContentRenderer from '@/components/common/ContentRenderer.vue'
 import TagInput from '@/components/common/TagInput.vue'
 
 const dialog = useDialog()
+const message = useMessage()
 const store = useKnowledgeStore()
 const route = useRoute()
 const searchText = ref('')
@@ -555,7 +556,10 @@ async function saveEdit() {
 }
 
 async function addNote() {
-  if (!addForm.value.title || !addForm.value.content) return
+  if (!addForm.value.content) {
+    message.warning('请输入内容')
+    return
+  }
   await store.add({
     title: addForm.value.title,
     content: addForm.value.content,

@@ -79,6 +79,7 @@ class AutoProcessServiceTest {
         model.setModelName("gpt-4o");
         when(modelConfigService.getPrimaryChatModel()).thenReturn(model);
         when(aiService.call(anyString(), anyDouble(), anyInt())).thenReturn(null);
+        when(knowledgeService.getById(1L)).thenReturn(new Knowledge());
 
         service.autoProcess(1L, "User Title", "Content");
 

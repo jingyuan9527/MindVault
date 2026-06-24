@@ -19,7 +19,6 @@ public class Knowledge {
     @Schema(description = "主键 ID")
     private Long id;
 
-    @NotBlank(message = "标题不能为空")
     @Schema(description = "用户标题（AI 永不修改）")
     private String title;
 
