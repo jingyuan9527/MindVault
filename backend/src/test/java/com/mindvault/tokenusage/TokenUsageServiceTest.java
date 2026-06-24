@@ -147,9 +147,12 @@ class TokenUsageServiceTest {
 
     @Test
     void getDailySummary_shouldMapObjectRowsToMap() {
-        Object[] row1 = {LocalDate.of(2024, 1, 1), "OPENAI", "gpt-4", "CHAT", 1000L, 500L, 1500L, BigDecimal.valueOf(0.05), 3L};
-        Object[] row2 = {LocalDate.of(2024, 1, 2), "DEEPSEEK", "deepseek-chat", "CHAT", 2000L, 1000L, 3000L, BigDecimal.valueOf(0.01), 5L};
-        when(mapper.findDailySummary(7)).thenReturn(List.of(row1, row2));
+        when(mapper.findDailySummary(7)).thenReturn(List.of(
+                Map.of("date", LocalDate.of(2024, 1, 1), "provider", "OPENAI", "model_name", "gpt-4", "model_type", "CHAT",
+                        "prompt_tokens", 1000L, "completion_tokens", 500L, "total_tokens", 1500L, "cost", BigDecimal.valueOf(0.05), "request_count", 3L),
+                Map.of("date", LocalDate.of(2024, 1, 2), "provider", "DEEPSEEK", "model_name", "deepseek-chat", "model_type", "CHAT",
+                        "prompt_tokens", 2000L, "completion_tokens", 1000L, "total_tokens", 3000L, "cost", BigDecimal.valueOf(0.01), "request_count", 5L)
+        ));
 
         List<Map<String, Object>> result = service.getDailySummary(7);
 

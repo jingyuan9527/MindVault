@@ -1,36 +1,35 @@
 package com.mindvault.common.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mindvault.agent.config.AgentConfig;
+import com.mindvault.ai.client.AiModelFactory;
 import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.tokenusage.TokenUsageService;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
+import org.springframework.ai.chat.metadata.ChatResponseMetadata;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.prompt.ChatOptions;
+import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class LlmFailoverService {
 
     private static final Logger log = LoggerFactory.getLogger(LlmFailoverService.class);
 
-    private final AgentConfig agentConfig;
-    private final ObjectMapper objectMapper;
+    private final AiModelFactory aiModelFactory;
     private final MetricsService metricsService;
     private final TokenUsageService tokenUsageService;
 
-    public LlmFailoverService(AgentConfig agentConfig, ObjectMapper objectMapper,
-                              MetricsService metricsService, TokenUsageService tokenUsageService) {
-        this.agentConfig = agentConfig;
-        this.objectMapper = objectMapper;
+    public LlmFailoverService(AiModelFactory aiModelFactory,
+                              MetricsService metricsService,
+                              TokenUsageService tokenUsageService) {
+        this.aiModelFactory = aiModelFactory;
         this.metricsService = metricsService;
         this.tokenUsageService = tokenUsageService;
     }
@@ -52,32 +51,23 @@ public class LlmFailoverService {
         for (ModelConfig mc : models) {
             Timer.Sample sample = opts.recordMetrics ? metricsService.startLlmCall() : null;
             try {
-                AgentConfig.LlmEndpoint ep = agentConfig.buildEndpoint(mc);
-                RestClient client = RestClient.builder()
-                        .baseUrl(ep.getFullUrl())
-                        .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                        .defaultHeader("Authorization", "Bearer " + ep.getApiKey())
+                ChatModel chatModel = aiModelFactory.buildChatModel(mc);
+
+                ChatOptions options = ChatOptions.builder()
+                        .temperature(opts.temperature)
+                        .maxTokens(opts.maxTokens)
                         .build();
 
-                Map<String, Object> requestBody = new LinkedHashMap<>();
-                requestBody.put("model", ep.getModelName());
-                requestBody.put("messages", List.of(Map.of("role", "user", "content", opts.prompt)));
-                requestBody.put("temperature", opts.temperature);
-                requestBody.put("max_tokens", opts.maxTokens);
+                Prompt prompt = new Prompt(new UserMessage(opts.prompt()), options);
+                ChatResponse response = chatModel.call(prompt);
 
-                String responseJson = client.post()
-                        .body(objectMapper.writeValueAsString(requestBody))
-                        .retrieve()
-                        .body(String.class);
-
-                Map<?, ?> responseMap = objectMapper.readValue(responseJson, Map.class);
-                String content = extractContent(responseMap);
+                String content = response.getResult().getOutput().getText();
                 if (content != null) {
                     if (opts.recordMetrics && sample != null) {
-                        metricsService.recordLlmCallSuccess(sample, mc.getProvider(), ep.getModelName());
+                        metricsService.recordLlmCallSuccess(sample, mc.getProvider(), mc.getModelName());
                     }
                     if (opts.source != null) {
-                        recordUsage(mc, responseMap, opts.source);
+                        recordUsage(mc, response.getMetadata(), opts.source);
                     }
                     return content.trim();
                 }
@@ -93,40 +83,20 @@ public class LlmFailoverService {
         return null;
     }
 
-    @SuppressWarnings("unchecked")
-    private void recordUsage(ModelConfig mc, Map<?, ?> responseMap, String source) {
+    private void recordUsage(ModelConfig mc, ChatResponseMetadata metadata, String source) {
         try {
-            Map<String, Object> usage = (Map<String, Object>) responseMap.get("usage");
+            var usage = metadata.getUsage();
             if (usage != null) {
-                int promptTokens = ((Number) usage.getOrDefault("prompt_tokens", 0)).intValue();
-                int completionTokens = ((Number) usage.getOrDefault("completion_tokens", 0)).intValue();
-                metricsService.recordTokens(promptTokens, completionTokens);
-                tokenUsageService.recordUsage(mc, promptTokens, completionTokens, source, null);
+                int promptTokens = usage.getPromptTokens() != null ? usage.getPromptTokens() : 0;
+                int completionTokens = usage.getCompletionTokens() != null ? usage.getCompletionTokens() : 0;
+                if (promptTokens > 0 || completionTokens > 0) {
+                    metricsService.recordTokens(promptTokens, completionTokens);
+                    tokenUsageService.recordUsage(mc, promptTokens, completionTokens, source, null);
+                }
             }
         } catch (Exception e) {
             log.warn("记录 Token 用量失败: {}", e.getMessage());
         }
-    }
-
-    public static String extractContent(Map<?, ?> responseMap) {
-        if (responseMap.containsKey("choices")) {
-            List<?> choices = (List<?>) responseMap.get("choices");
-            if (!choices.isEmpty()) {
-                Map<?, ?> choice = (Map<?, ?>) choices.get(0);
-                Map<?, ?> message = (Map<?, ?>) choice.get("message");
-                if (message != null && message.get("content") instanceof String s) return s;
-                if (choice.get("text") instanceof String s) return s;
-            }
-        }
-        if (responseMap.containsKey("message")) {
-            Map<?, ?> message = (Map<?, ?>) responseMap.get("message");
-            if (message.get("content") instanceof String s) return s;
-        }
-        if (responseMap.containsKey("response")) {
-            Object resp = responseMap.get("response");
-            if (resp instanceof String s) return s;
-        }
-        return null;
     }
 
     public static String truncate(String text, int maxLen) {

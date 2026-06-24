@@ -18,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Map;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -93,8 +94,8 @@ class RelationServiceTest {
         candidate.setTags("[]");
         candidate.setUserTags("[]");
 
-        List<Object[]> similar = new ArrayList<>();
-        similar.add(new Object[]{2L, 0.85d});
+        List<Map<String, Object>> similar = new ArrayList<>();
+        similar.add(Map.of("id", 2L, "similarity", 0.85d));
 
         when(knowledgeMapper.findByAutoProcessStatus("COMPLETED", 50)).thenReturn(Collections.singletonList(candidate));
         when(knowledgeMapper.findSimilarIds("[0.1,0.2,0.3]", 10)).thenReturn(similar);
@@ -125,8 +126,8 @@ class RelationServiceTest {
         candidate.setTags("[]");
         candidate.setUserTags("[]");
 
-        List<Object[]> similar = new ArrayList<>();
-        similar.add(new Object[]{2L, 0.3d});
+        List<Map<String, Object>> similar = new ArrayList<>();
+        similar.add(Map.of("id", 2L, "similarity", 0.3d));
 
         when(knowledgeMapper.findByAutoProcessStatus("COMPLETED", 50)).thenReturn(Collections.singletonList(candidate));
         when(knowledgeMapper.findSimilarIds("[0.1,0.2,0.3]", 10)).thenReturn(similar);

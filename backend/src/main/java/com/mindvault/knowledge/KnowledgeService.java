@@ -2,6 +2,7 @@ package com.mindvault.knowledge;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mindvault.ai.client.AiModelFactory;
 import com.mindvault.common.service.MetricsService;
 import com.mindvault.content.AutoProcessService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -15,11 +16,9 @@ import com.mindvault.review.ReviewService;
 import com.mindvault.systemconfig.SystemConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestClient;
 
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
@@ -42,6 +41,7 @@ public class KnowledgeService {
     private final AutoProcessService autoProcessService;
     private final ReviewService reviewService;
     private final ModelConfigService modelConfigService;
+    private final AiModelFactory aiModelFactory;
     private final MetricsService metricsService;
     private final KnowledgeRelationMapper relationMapper;
     private final SystemConfigService config;
@@ -52,6 +52,7 @@ public class KnowledgeService {
                             AutoProcessService autoProcessService,
                             ReviewService reviewService,
                             ModelConfigService modelConfigService,
+                            AiModelFactory aiModelFactory,
                             MetricsService metricsService,
                             KnowledgeRelationMapper relationMapper,
                             SystemConfigService config) {
@@ -60,6 +61,7 @@ public class KnowledgeService {
         this.autoProcessService = autoProcessService;
         this.reviewService = reviewService;
         this.modelConfigService = modelConfigService;
+        this.aiModelFactory = aiModelFactory;
         this.metricsService = metricsService;
         this.relationMapper = relationMapper;
         this.config = config;
@@ -99,11 +101,11 @@ public class KnowledgeService {
     }
 
     public List<Map<String, Object>> searchSimilar(String embedding, int topN) {
-        List<Object[]> results = mapper.findSimilarIds(embedding, topN);
+        List<Map<String, Object>> results = mapper.findSimilarIds(embedding, topN);
         Map<Long, Double> similarityMap = new LinkedHashMap<>();
-        for (Object[] row : results) {
-            Long id = ((Number) row[0]).longValue();
-            Double similarity = ((Number) row[1]).doubleValue();
+        for (Map<String, Object> row : results) {
+            Long id = ((Number) row.get("id")).longValue();
+            Double similarity = ((Number) row.get("similarity")).doubleValue();
             similarityMap.put(id, similarity);
         }
         List<Knowledge> knowledgeList = mapper.selectBatchIds(similarityMap.keySet());
@@ -151,19 +153,19 @@ public class KnowledgeService {
         int multiplier = config.getInt("threshold.search.fetch-limit-multiplier", 3);
         int minFetch = config.getInt("threshold.search.min-fetch-limit", 20);
         int fetchLimit = Math.max(limit * multiplier, minFetch);
-        List<Object[]> keywordResults = mapper.keywordSearchWithRank(query, fetchLimit);
-        List<Object[]> vectorResults = mapper.findSimilarIds(embedding, fetchLimit);
+        List<Map<String, Object>> keywordResults = mapper.keywordSearchWithRank(query, fetchLimit);
+        List<Map<String, Object>> vectorResults = mapper.findSimilarIds(embedding, fetchLimit);
         double k = config.getDouble("threshold.search.rrf-k", 60.0);
         Map<Long, Double> rrfScores = new LinkedHashMap<>();
         int rank = 1;
-        for (Object[] row : keywordResults) {
-            Long id = ((Number) row[0]).longValue();
+        for (Map<String, Object> row : keywordResults) {
+            Long id = ((Number) row.get("id")).longValue();
             rrfScores.merge(id, 1.0 / (k + rank), Double::sum);
             rank++;
         }
         rank = 1;
-        for (Object[] row : vectorResults) {
-            Long id = ((Number) row[0]).longValue();
+        for (Map<String, Object> row : vectorResults) {
+            Long id = ((Number) row.get("id")).longValue();
             rrfScores.merge(id, 1.0 / (k + rank), Double::sum);
             rank++;
         }
@@ -226,57 +228,15 @@ public class KnowledgeService {
         ModelConfig embModel = embeddingModels.get(0);
         if (text.length() > 8000) text = text.substring(0, 8000);
         try {
-            String embedUrl = buildEmbeddingUrl(embModel);
-            if (embedUrl == null) return null;
-            RestClient.Builder builder = RestClient.builder()
-                    .baseUrl(embedUrl)
-                    .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                    .defaultHeader("Authorization", "Bearer " + embModel.getApiKey());
-            Map<String, Object> requestBody = new LinkedHashMap<>();
-            requestBody.put("model", embModel.getModelName());
-            if ("OLLAMA".equalsIgnoreCase(embModel.getProvider())) {
-                requestBody.put("prompt", text);
-            } else {
-                requestBody.put("input", text);
-            }
-            String responseJson = builder.build().post()
-                    .body(objectMapper.writeValueAsString(requestBody))
-                    .retrieve()
-                    .body(String.class);
-            List<Double> vector = parseEmbeddingResponse(embModel.getProvider(), responseJson);
-            if (vector != null && !vector.isEmpty()) {
-                return "[" + vector.stream().map(String::valueOf).collect(Collectors.joining(",")) + "]";
+            EmbeddingModel model = aiModelFactory.buildEmbeddingModel(embModel);
+            float[] vector = model.embed(text);
+            if (vector != null && vector.length > 0) {
+                StringJoiner sj = new StringJoiner(",");
+                        for (float v : vector) sj.add(String.valueOf(v));
+                        return "[" + sj + "]";
             }
         } catch (Exception e) {
             log.warn("生成查询向量失败: {}", e.getMessage());
-        }
-        return null;
-    }
-
-    private String buildEmbeddingUrl(ModelConfig config) {
-        return switch (config.getProvider().toUpperCase()) {
-            case "ALIYUN" -> "https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings";
-            case "DEEPSEEK" -> (config.getBaseUrl() != null ? config.getBaseUrl() : "https://api.deepseek.com/v1") + "/embeddings";
-            case "OPENAI" -> (config.getBaseUrl() != null ? config.getBaseUrl() : "https://api.openai.com/v1") + "/embeddings";
-            case "OLLAMA" -> (config.getBaseUrl() != null ? config.getBaseUrl() : "http://localhost:11434") + "/api/embeddings";
-            default -> null;
-        };
-    }
-
-    @SuppressWarnings("unchecked")
-    private List<Double> parseEmbeddingResponse(String provider, String json) {
-        try {
-            Map<String, Object> root = objectMapper.readValue(json, Map.class);
-            if ("OLLAMA".equalsIgnoreCase(provider)) {
-                if (root.containsKey("embedding")) return (List<Double>) root.get("embedding");
-            } else {
-                List<Map<String, Object>> data = (List<Map<String, Object>>) root.get("data");
-                if (data != null && !data.isEmpty()) {
-                    return (List<Double>) data.get(0).get("embedding");
-                }
-            }
-        } catch (Exception e) {
-            log.warn("解析嵌入向量响应失败: {}", e.getMessage());
         }
         return null;
     }

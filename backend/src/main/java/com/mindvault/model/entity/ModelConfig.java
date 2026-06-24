@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.mindvault.common.handler.JsonbStringTypeHandler;
 import lombok.Data;
 import java.time.LocalDateTime;
 
@@ -54,7 +55,7 @@ public class ModelConfig {
     @Schema(description = "优先级")
     private Integer priority = 0;
 
-    @TableField("metadata")
+    @TableField(value = "metadata", typeHandler = JsonbStringTypeHandler.class)
     @Schema(description = "元数据")
     private String metadata = "{}";
 

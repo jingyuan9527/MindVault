@@ -1,7 +1,7 @@
 package com.mindvault.agent;
 
-import com.mindvault.agent.config.AgentConfig;
 import com.mindvault.agent.tool.Tool;
+import com.mindvault.ai.client.AiModelFactory;
 import com.mindvault.common.config.CircuitBreakerConfig;
 import com.mindvault.common.service.MetricsService;
 import com.mindvault.model.ModelConfigService;
@@ -22,7 +22,7 @@ import static org.mockito.Mockito.*;
 class AgentServiceTest {
 
     @Mock private ModelConfigService modelConfigService;
-    @Mock private AgentConfig agentConfig;
+    @Mock private AiModelFactory aiModelFactory;
     @Mock private TokenUsageService tokenUsageService;
     @Mock private CircuitBreakerConfig circuitBreaker;
     @Mock private Tool tool1;
@@ -35,7 +35,7 @@ class AgentServiceTest {
     @BeforeEach
     void setUp() {
         List<Tool> tools = List.of(tool1, tool2);
-        service = new AgentService(modelConfigService, agentConfig, tools,
+        service = new AgentService(modelConfigService, aiModelFactory, tools,
                 tokenUsageService, circuitBreaker, metricsService, config);
     }
 
@@ -46,7 +46,7 @@ class AgentServiceTest {
         String result = service.processMessage("hello");
 
         assertEquals("系统未配置主模型，请先在设置中添加并设置主模型。", result);
-        verifyNoInteractions(modelConfigService);
+        verify(modelConfigService).getAvailableChatModels();
     }
 
     @Test

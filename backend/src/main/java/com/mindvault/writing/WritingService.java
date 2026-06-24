@@ -1,6 +1,7 @@
 package com.mindvault.writing;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mindvault.ai.prompt.PromptRegistry;
 import com.mindvault.common.service.LlmFailoverService;
 import com.mindvault.knowledge.KnowledgeMapper;
 import com.mindvault.knowledge.entity.Knowledge;
@@ -63,12 +64,9 @@ public class WritingService {
 
         double temperature = config.getDouble("threshold.writing.temperature", 0.7);
         int maxTokens = config.getInt("threshold.writing.max-tokens", 4096);
-        String promptTmpl = config.getPrompt("prompt.writing.article",
-                "你是一个基于个人知识库的写作助手。请根据参考内容撰写一篇文章。\n\n"
-                + "%s\n%s\n\n主题: %s\n\n%s\n请撰写一篇结构完整、内容详实的文章。使用中文。");
         String knowledgePart = !related.isEmpty() ? knowledgeContext.toString()
                 : "（知识库中没有直接相关的参考内容，请基于你的知识进行创作）\n\n";
-        String prompt = String.format(promptTmpl, styleGuide, kwGuide, topic, knowledgePart);
+        String prompt = PromptRegistry.WRITING_ARTICLE.resolve(config, styleGuide, kwGuide, topic, knowledgePart);
 
         String result = llmFailoverService.call(models, new LlmFailoverService.LlmCallOptions(prompt, temperature, maxTokens, true, "WRITING"));
         return result != null ? result : config.getString("default.writing.fallback-message", "文章生成失败，请稍后重试。");

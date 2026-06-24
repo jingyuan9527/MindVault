@@ -40,7 +40,7 @@ cd docker && docker compose up -d --build
 | Delete API token | `curl -X DELETE localhost:8080/api/v1/auth/tokens/{id} -H 'Authorization: Bearer <token>'` |
 
 ## Architecture
-- **Backend**: Spring Boot 3.2.5, JDK 21 (virtual threads), MyBatis-Plus (NOT JPA)
+- **Backend**: Spring Boot 3.4.3, Spring AI 2.0.0, JDK 21 (virtual threads), MyBatis-Plus (NOT JPA)
 - **Frontend**: Vue 3 + Pinia + Vue Router 4, Tailwind CSS, Vite, `marked` for markdown rendering
 - **DB**: PostgreSQL 16 with pgvector extension (Docker image `pgvector/pgvector:pg16`)
 - **Proxy**: Nginx (frontend container) proxies `/api/` → `http://backend:8080`
@@ -49,6 +49,7 @@ cd docker && docker compose up -d --build
 ## Package Map (backend)
 | Package | Responsibility |
 |---------|---------------|
+| `ai` | Spring AI wrapper: `AiModelFactory` (builds ChatModel/EmbeddingModel from ModelConfig), `PromptRegistry` (11 prompt templates via SystemConfig overrides) |
 | `knowledge` | CRUD + tags + search + export/import + separate user/AI fields, `updateAiFields()`, `reprocessKnowledge()`, `displayTitle()` |
 | `chat` | Chat sessions, messages, SSE streaming |
 | `agent` | LLM calling with failover, tool execution |
@@ -89,10 +90,19 @@ The pipeline processes each knowledge entry in three automated rounds:
 | R2 | Relation Discovery | `RelationService` | Discovers associations using semantic similarity + tag overlap + LLM analysis; writes to `knowledge_relation`; sets status → `RELATION_DONE` | `AutoProcessScheduler` every 5 minutes |
 | R3 | Aggregation | `AggregationService` | Rebuilds tag cloud, refreshes stats, completes processing; sets status → `COMPLETED` | `AutoProcessScheduler` every 30 minutes |
 
+## Spring AI 2.0 Conventions
+- **AiModelFactory** (`ai.client`): Builds `ChatModel` / `EmbeddingModel` dynamically from `ModelConfig` entities. OpenAI/DeepSeek/Alibaba → `OpenAiChatModel` (all OpenAI-compatible API), Ollama → `OllamaChatModel`. Supports overloaded `buildChatModel(ModelConfig, Double temperature)`.
+- **PromptRegistry** (`ai.prompt`): 11 prompt templates as enum constants. Each template resolved via `SystemConfig` overrides with `config.getPrompt(key, defaultTemplate)`.
+- **LlmFailoverService**: Uses `ChatModel.call(new Prompt(new UserMessage(text), options))` instead of RestClient. Failover/retry/metrics preserved.
+- **AgentService**: Uses `ChatModel.call(prompt)` / `ChatModel.stream(prompt).toStream().forEach(...)` directly (not via LlmFailoverService, needs multi-message arrays). Don't pass `ChatOptions` in the `Prompt` — set all options on the model builder via `AiModelFactory`.
+- **Embedding**: Uses `EmbeddingModel.embed(String)` returning `float[]`. Convert to JSON string via `StringJoiner` + for-loop (no `Arrays.stream(float[])` in Java).
+- **OllamaApi**: Use `OllamaApi.builder().baseUrl(url).build()` (not `new OllamaApi(url)`).
+- **MyBatis-Plus 3.5.9**: `PaginationInnerInterceptor` removed — use auto-configuration instead.
+
 ## Testing Notes
 - `ModelApiIntegrationTest` runs real API calls against `agnes-2.0-flash` (~29s for 5 tests). Skipped when env var absent.
 - Frontend tests use `happy-dom` environment, `@vue/test-utils`, and `vitest`.
-- Frontend test count: 83 tests across 19 files.
+- Frontend test count: 90 tests across 19 files.
 - Naive UI hooks (`useDialog`, `useMessage`, `useNotification`) are auto-imported by `unplugin-auto-import` in dev/build but NOT in vitest. The setup file (`__tests__/setup.js`) provides them on `globalThis` for views that use them without explicit import. Views that explicitly `import { useDialog } from 'naive-ui'` (e.g. FlashCardView) need a `vi.mock('naive-ui', ...)` in their test file.
 - Test data SQL (10 knowledge entries) in init script — rerun manually if DB is reset.
 - Auth is disabled in tests via `mindvault.auth.enabled=false` in `src/test/resources/application.properties`.

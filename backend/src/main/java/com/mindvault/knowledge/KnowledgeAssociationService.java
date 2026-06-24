@@ -34,12 +34,12 @@ public class KnowledgeAssociationService {
             return List.of();
         }
 
-        List<Object[]> results = mapper.findSimilarIds(knowledge.getEmbedding(), limit + 1);
+        List<Map<String, Object>> results = mapper.findSimilarIds(knowledge.getEmbedding(), limit + 1);
         Map<Long, Double> similarityMap = new LinkedHashMap<>();
-        for (Object[] row : results) {
-            Long id = ((Number) row[0]).longValue();
+        for (Map<String, Object> row : results) {
+            Long id = ((Number) row.get("id")).longValue();
             if (id.equals(knowledgeId)) continue;
-            Double similarity = ((Number) row[1]).doubleValue();
+            Double similarity = ((Number) row.get("similarity")).doubleValue();
             similarityMap.put(id, similarity);
         }
 
@@ -77,10 +77,10 @@ public class KnowledgeAssociationService {
         for (Knowledge k : all) {
             if (k.getEmbedding() == null || k.getEmbedding().isBlank()) continue;
             totalWithEmbedding++;
-            List<Object[]> similar = mapper.findSimilarIds(k.getEmbedding(), topN);
+            List<Map<String, Object>> similar = mapper.findSimilarIds(k.getEmbedding(), topN);
             int count = 0;
-            for (Object[] row : similar) {
-                Long id = ((Number) row[0]).longValue();
+            for (Map<String, Object> row : similar) {
+                Long id = ((Number) row.get("id")).longValue();
                 if (id.equals(k.getId())) continue;
                 count++;
             }

@@ -1,5 +1,6 @@
 package com.mindvault.knowledge;
 
+import com.mindvault.ai.client.AiModelFactory;
 import com.mindvault.common.service.LlmFailoverService;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.systemconfig.SystemConfigService;
@@ -22,13 +23,14 @@ class SearchEnhanceServiceTest {
     @Mock private KnowledgeService knowledgeService;
     @Mock private ModelConfigService modelConfigService;
     @Mock private LlmFailoverService llmFailoverService;
+    @Mock private AiModelFactory aiModelFactory;
     @Mock private SystemConfigService config;
 
     private SearchEnhanceService service;
 
     @BeforeEach
     void setUp() {
-        service = new SearchEnhanceService(knowledgeService, modelConfigService, llmFailoverService, config);
+        service = new SearchEnhanceService(knowledgeService, modelConfigService, llmFailoverService, aiModelFactory, config);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getString(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.mindvault.common.handler.JsonbStringTypeHandler;
 import java.time.LocalDateTime;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -28,11 +29,11 @@ public class ChatMessage {
     @Schema(description = "内容")
     private String content;
 
-    @TableField("metadata")
+    @TableField(value = "metadata", typeHandler = JsonbStringTypeHandler.class)
     @Schema(description = "元数据")
     private String metadata = "{}";
 
-    @TableField("sources")
+    @TableField(value = "sources", typeHandler = JsonbStringTypeHandler.class)
     @Schema(description = "来源")
     private String sources = "[]";
 

@@ -1,8 +1,8 @@
 package com.mindvault.agent;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mindvault.agent.config.AgentConfig;
-import com.mindvault.agent.config.AgentConfig.LlmEndpoint;
+import com.mindvault.ai.client.AiModelFactory;
+import com.mindvault.ai.prompt.PromptRegistry;
 import com.mindvault.agent.tool.Tool;
 import com.mindvault.common.config.CircuitBreakerConfig;
 import com.mindvault.common.service.MetricsService;
@@ -14,22 +14,21 @@ import io.micrometer.core.instrument.Timer;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.SystemMessage;
+import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 public class AgentService {
@@ -37,7 +36,7 @@ public class AgentService {
     private static final Logger log = LoggerFactory.getLogger(AgentService.class);
 
     private final ModelConfigService modelConfigService;
-    private final AgentConfig agentConfig;
+    private final AiModelFactory aiModelFactory;
     private final List<Tool> tools;
     private final TokenUsageService tokenUsageService;
     private final CircuitBreakerConfig circuitBreaker;
@@ -45,19 +44,18 @@ public class AgentService {
     private final SystemConfigService config;
     private final ObjectMapper objectMapper;
 
-    private volatile List<ModelEndpoint> modelEndpoints = List.of();
     private String systemPrompt;
     private double tokenEstimateRatio;
 
     public AgentService(ModelConfigService modelConfigService,
-                        AgentConfig agentConfig,
+                        AiModelFactory aiModelFactory,
                         List<Tool> tools,
                         TokenUsageService tokenUsageService,
                         CircuitBreakerConfig circuitBreaker,
                         MetricsService metricsService,
                         SystemConfigService config) {
         this.modelConfigService = modelConfigService;
-        this.agentConfig = agentConfig;
+        this.aiModelFactory = aiModelFactory;
         this.tools = tools;
         this.tokenUsageService = tokenUsageService;
         this.circuitBreaker = circuitBreaker;
@@ -68,73 +66,33 @@ public class AgentService {
 
     @PostConstruct
     public void init() {
-        refreshModels();
-        systemPrompt = buildSystemPrompt();
+        String toolDesc = tools.stream()
+                .map(t -> "- " + t.getName() + ": " + t.getDescription())
+                .collect(Collectors.joining("\n"));
+        systemPrompt = PromptRegistry.AGENT_SYSTEM.resolve(config, toolDesc);
         tokenEstimateRatio = config.getDouble("threshold.agent.token-estimate-ratio", 3.0);
     }
 
-    public void refreshModels() {
-        try {
-            List<ModelConfig> models = modelConfigService.getAvailableChatModels();
-            modelEndpoints = models.stream()
-                    .map(mc -> new ModelEndpoint(mc.getId(), mc.getProvider(), agentConfig.buildEndpoint(mc)))
-                    .toList();
-            if (!modelEndpoints.isEmpty()) {
-                ModelEndpoint primary = modelEndpoints.get(0);
-                log.info("AgentService 初始化完成，主模型: {}/{}, 备用模型数: {}",
-                        primary.endpoint.getModelName(), primary.endpoint.getBaseUrl(),
-                        modelEndpoints.size() - 1);
-            } else {
-                log.warn("AgentService 初始化：无可用模型");
-            }
-        } catch (Exception e) {
-            log.warn("AgentService 初始化失败: {}", e.getMessage());
-        }
-    }
-
-    private String buildSystemPrompt() {
-        StringBuilder toolList = new StringBuilder();
-        for (Tool tool : tools) {
-            toolList.append("- ").append(tool.getName()).append(": ").append(tool.getDescription()).append("\n");
-        }
-        String promptTmpl = config.getPrompt("prompt.agent.system-prompt",
-                "你是 MindVault（知忆）AI 助手，一个个人知识库 Agent。\n\n你可以使用以下工具来帮助用户管理知识库：\n%s\n当你需要使用工具时，请按以下格式返回：\n[TOOL_CALL]\nname: 工具名称\nargs: {\"key\": \"value\"}\n[END_TOOL_CALL]\n\n请用中文回复用户。");
-        return String.format(promptTmpl, toolList.toString());
-    }
-
     public String processMessage(String userMessage) {
-        if (modelEndpoints.isEmpty()) {
+        List<ModelConfig> models = modelConfigService.getAvailableChatModels();
+        if (models.isEmpty()) {
             return config.getString("default.agent.no-model-message", "系统未配置主模型，请先在设置中添加并设置主模型。");
         }
 
         try {
-            List<Map<String, String>> messages = new ArrayList<>();
-            Map<String, String> systemMsg = new LinkedHashMap<>();
-            systemMsg.put("role", "system");
-            systemMsg.put("content", systemPrompt);
-            messages.add(systemMsg);
+            List<Message> messages = new ArrayList<>();
+            messages.add(new SystemMessage(systemPrompt));
+            messages.add(new UserMessage(userMessage));
 
-            Map<String, String> userMsg = new LinkedHashMap<>();
-            userMsg.put("role", "user");
-            userMsg.put("content", userMessage);
-            messages.add(userMsg);
-
-            String response = callLlmWithFailover(messages);
+            String response = callLlmWithFailover(models, messages);
             String toolResult = executeToolCall(response);
 
             if (toolResult != null) {
                 String cleanResponse = stripToolCallMarkers(response);
-                Map<String, String> assistantMsg = new LinkedHashMap<>();
-                assistantMsg.put("role", "assistant");
-                assistantMsg.put("content", cleanResponse);
-                messages.add(assistantMsg);
+                messages.add(new AssistantMessage(cleanResponse));
+                messages.add(new UserMessage("工具执行结果: " + toolResult));
 
-                Map<String, String> toolMsg = new LinkedHashMap<>();
-                toolMsg.put("role", "user");
-                toolMsg.put("content", "工具执行结果: " + toolResult);
-                messages.add(toolMsg);
-
-                return callLlmWithFailover(messages);
+                return callLlmWithFailover(models, messages);
             }
 
             return response;
@@ -145,18 +103,19 @@ public class AgentService {
     }
 
     public void processMessageStream(String userMessage, StreamCallback callback) {
-        if (modelEndpoints.isEmpty()) {
+        List<ModelConfig> models = modelConfigService.getAvailableChatModels();
+        if (models.isEmpty()) {
             callback.onError(config.getString("default.agent.no-model-message", "系统未配置主模型，请先在设置中添加并设置主模型。"));
             return;
         }
 
         try {
-            List<Map<String, String>> messages = new ArrayList<>();
-            messages.add(Map.of("role", "system", "content", systemPrompt));
-            messages.add(Map.of("role", "user", "content", userMessage));
+            List<Message> messages = new ArrayList<>();
+            messages.add(new SystemMessage(systemPrompt));
+            messages.add(new UserMessage(userMessage));
 
             StringBuilder fullResponse = new StringBuilder();
-            streamFromLlm(messages, callback, fullResponse);
+            streamFromLlm(models, messages, callback, fullResponse);
 
             ToolCallInfo toolCall = extractToolCall(fullResponse.toString());
             if (toolCall != null) {
@@ -167,9 +126,9 @@ public class AgentService {
                 callback.onToolResult(result);
 
                 String cleanResponse = stripToolCallMarkers(fullResponse.toString());
-                messages.add(Map.of("role", "assistant", "content", cleanResponse));
-                messages.add(Map.of("role", "user", "content", "工具执行结果: " + result));
-                streamFromLlm(messages, callback, new StringBuilder());
+                messages.add(new AssistantMessage(cleanResponse));
+                messages.add(new UserMessage("工具执行结果: " + result));
+                streamFromLlm(models, messages, callback, new StringBuilder());
             }
 
             callback.onComplete();
@@ -179,166 +138,98 @@ public class AgentService {
         }
     }
 
-    private void streamFromLlm(List<Map<String, String>> messages, StreamCallback callback, StringBuilder collector) {
+    private void streamFromLlm(List<ModelConfig> models, List<Message> messages, StreamCallback callback, StringBuilder collector) {
         List<String> errors = new ArrayList<>();
-        for (ModelEndpoint me : modelEndpoints) {
-            if (!circuitBreaker.isAvailable(me.modelId)) {
-                errors.add("模型" + me.modelId + " 熔断中");
+        double temperature = config.getDouble("threshold.agent.default-temperature", 0.7);
+
+        for (ModelConfig mc : models) {
+            if (!circuitBreaker.isAvailable(mc.getId())) {
+                errors.add("模型" + mc.getId() + " 熔断中");
                 continue;
             }
             Timer.Sample sample = metricsService.startLlmCall();
             try {
-                JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory();
-                factory.setReadTimeout(config.getInt("threshold.agent.stream-read-timeout-ms", 120_000));
+                ChatModel chatModel = aiModelFactory.buildChatModel(mc, temperature);
+                Prompt prompt = new Prompt(messages);
 
-                RestClient client = RestClient.builder()
-                        .baseUrl(me.endpoint.getFullUrl())
-                        .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                        .defaultHeader("Authorization", "Bearer " + me.endpoint.getApiKey())
-                        .requestFactory(factory)
-                        .build();
+                chatModel.stream(prompt).toStream().forEach(chunk -> {
+                    String token = chunk.getResult().getOutput().getText();
+                    if (token != null && !token.isEmpty()) {
+                        callback.onToken(token);
+                        collector.append(token);
+                    }
+                });
 
-                Map<String, Object> requestBody = new LinkedHashMap<>();
-                requestBody.put("model", me.endpoint.getModelName());
-                requestBody.put("messages", messages);
-                requestBody.put("temperature", config.getDouble("threshold.agent.default-temperature", 0.7));
-                requestBody.put("stream", true);
-
-                String jsonBody = objectMapper.writeValueAsString(requestBody);
-
-                String promptText = objectMapper.writeValueAsString(messages);
-                int promptTokens = (int) (promptText.length() / tokenEstimateRatio);
-
-                boolean isOllama = me.endpoint.getFullUrl().contains("ollama") || me.endpoint.getFullUrl().contains("11434");
-
-                client.post()
-                        .body(jsonBody)
-                        .exchange((request, response) -> {
-                            InputStream body = response.getBody();
-                            BufferedReader reader = new BufferedReader(new InputStreamReader(body, StandardCharsets.UTF_8));
-                            String line;
-                            while ((line = reader.readLine()) != null) {
-                                if (line.isEmpty()) continue;
-                                String content = parseStreamLine(line, isOllama);
-                                if (content != null) {
-                                    callback.onToken(content);
-                                    collector.append(content);
-                                }
-                            }
-                            return null;
-                        });
-
-                circuitBreaker.recordSuccess(me.modelId);
-                metricsService.recordLlmCallSuccess(sample, me.provider, me.endpoint.getModelName());
-                recordStreamUsage(me, promptTokens, collector.length());
+                circuitBreaker.recordSuccess(mc.getId());
+                metricsService.recordLlmCallSuccess(sample, mc.getProvider(), mc.getModelName());
+                recordStreamUsage(mc, messages, collector.length());
                 return;
             } catch (Exception e) {
-                circuitBreaker.recordFailure(me.modelId);
-                metricsService.recordLlmCallError(me.provider, me.endpoint.getModelName());
-                log.warn("模型 id={} 流式调用失败: {}", me.modelId, e.getMessage());
-                errors.add("模型" + me.modelId + ": " + e.getMessage());
+                circuitBreaker.recordFailure(mc.getId());
+                metricsService.recordLlmCallError(mc.getProvider(), mc.getModelName());
+                log.warn("模型 id={} 流式调用失败: {}", mc.getId(), e.getMessage());
+                errors.add("模型" + mc.getId() + ": " + e.getMessage());
             }
         }
         log.error("所有模型流式调用均失败: {}", String.join("; ", errors));
         throw new RuntimeException("所有模型流式调用均失败");
     }
 
-    private void recordStreamUsage(ModelEndpoint me, int promptTokens, int completionChars) {
+    private void recordStreamUsage(ModelConfig mc, List<Message> messages, int completionChars) {
         try {
+            int promptTokens = estimateTokens(messages);
             int completionTokens = (int) (completionChars / tokenEstimateRatio);
             if (completionTokens == 0) return;
             metricsService.recordTokens(promptTokens, completionTokens);
-            ModelConfig mc = new ModelConfig();
-            mc.setId(me.modelId);
-            mc.setProvider(me.provider);
-            mc.setModelName(me.endpoint.getModelName());
-            mc.setModelType("CHAT");
             tokenUsageService.recordUsage(mc, promptTokens, completionTokens, "CHAT_STREAM", null);
         } catch (Exception e) {
             log.warn("记录流式 Token 用量失败: {}", e.getMessage());
         }
     }
 
-    private String parseStreamLine(String line, boolean isOllama) {
-        if (isOllama) {
-            try {
-                Map<?, ?> data = objectMapper.readValue(line, Map.class);
-                if (data.containsKey("message")) {
-                    Map<?, ?> msg = (Map<?, ?>) data.get("message");
-                    Object content = msg.get("content");
-                    if (content instanceof String s && !s.isEmpty()) return s;
-                }
-                if (data.containsKey("done") && Boolean.TRUE.equals(data.get("done"))) return null;
-            } catch (Exception e) {
-                log.debug("Ollama 流式解析行失败: {}", e.getMessage());
+    private int estimateTokens(List<Message> messages) {
+        int total = 0;
+        for (Message msg : messages) {
+            String text = msg.getText();
+            if (text != null) {
+                total += text.length();
             }
-            return null;
         }
-
-        if (!line.startsWith("data:")) return null;
-        String data = line.substring(5).trim();
-        if (data.equals("[DONE]")) return null;
-
-        try {
-            Map<?, ?> json = objectMapper.readValue(data, Map.class);
-            List<?> choices = (List<?>) json.get("choices");
-            if (choices != null && !choices.isEmpty()) {
-                Map<?, ?> choice = (Map<?, ?>) choices.get(0);
-                Object finishReason = choice.get("finish_reason");
-                if (finishReason instanceof String s && !s.isBlank()) return null;
-                Map<?, ?> delta = (Map<?, ?>) choice.get("delta");
-                if (delta != null && delta.get("content") instanceof String s && !s.isEmpty()) return s;
-            }
-        } catch (Exception e) {
-            log.debug("SSE 流式解析行失败: {}", e.getMessage());
-        }
-        return null;
+        return (int) (total / tokenEstimateRatio);
     }
 
-    private String callLlmWithFailover(List<Map<String, String>> messages) {
-        return callLlmWithRetry(messages, 0);
+    private String callLlmWithFailover(List<ModelConfig> models, List<Message> messages) {
+        return callLlmWithRetry(models, messages, 0);
     }
 
-    private String callLlmWithRetry(List<Map<String, String>> messages, int retryCount) {
+    private String callLlmWithRetry(List<ModelConfig> models, List<Message> messages, int retryCount) {
         List<String> errors = new ArrayList<>();
-        for (ModelEndpoint me : modelEndpoints) {
-            if (!circuitBreaker.isAvailable(me.modelId)) {
-                errors.add("模型" + me.modelId + " 熔断中");
+        double temperature = config.getDouble("threshold.agent.default-temperature", 0.7);
+
+        for (ModelConfig mc : models) {
+            if (!circuitBreaker.isAvailable(mc.getId())) {
+                errors.add("模型" + mc.getId() + " 熔断中");
                 continue;
             }
 
             Timer.Sample sample = metricsService.startLlmCall();
             try {
-                RestClient client = RestClient.builder()
-                        .baseUrl(me.endpoint.getFullUrl())
-                        .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                        .defaultHeader("Authorization", "Bearer " + me.endpoint.getApiKey())
-                        .build();
+                ChatModel chatModel = aiModelFactory.buildChatModel(mc, temperature);
+                Prompt prompt = new Prompt(messages);
+                ChatResponse response = chatModel.call(prompt);
 
-                Map<String, Object> requestBody = new LinkedHashMap<>();
-                requestBody.put("model", me.endpoint.getModelName());
-                requestBody.put("messages", messages);
-                requestBody.put("temperature", config.getDouble("threshold.agent.default-temperature", 0.7));
-
-                String jsonBody = objectMapper.writeValueAsString(requestBody);
-                String responseJson = client.post()
-                        .body(jsonBody)
-                        .retrieve()
-                        .body(String.class);
-
-                Map<?, ?> responseMap = objectMapper.readValue(responseJson, Map.class);
-                String content = extractContent(responseMap);
-                circuitBreaker.recordSuccess(me.modelId);
-                metricsService.recordLlmCallSuccess(sample, me.provider, me.endpoint.getModelName());
-                recordUsage(me, responseMap);
+                String content = response.getResult().getOutput().getText();
+                circuitBreaker.recordSuccess(mc.getId());
+                metricsService.recordLlmCallSuccess(sample, mc.getProvider(), mc.getModelName());
+                recordUsage(mc, response);
                 if (content != null) return content;
 
-                return responseJson;
+                return "";
             } catch (Exception e) {
-                circuitBreaker.recordFailure(me.modelId);
-                metricsService.recordLlmCallError(me.provider, me.endpoint.getModelName());
-                log.warn("模型 id={} 调用失败: {}", me.modelId, e.getMessage());
-                errors.add("模型" + me.modelId + ": " + e.getMessage());
+                circuitBreaker.recordFailure(mc.getId());
+                metricsService.recordLlmCallError(mc.getProvider(), mc.getModelName());
+                log.warn("模型 id={} 调用失败: {}", mc.getId(), e.getMessage());
+                errors.add("模型" + mc.getId() + ": " + e.getMessage());
             }
         }
 
@@ -352,52 +243,27 @@ public class AgentService {
                 Thread.currentThread().interrupt();
                 throw new RuntimeException("线程被中断", e);
             }
-            return callLlmWithRetry(messages, retryCount + 1);
+            return callLlmWithRetry(models, messages, retryCount + 1);
         }
 
         log.error("所有模型均调用失败 (已重试): {}", String.join("; ", errors));
         throw new RuntimeException("所有模型均调用失败");
     }
 
-    @SuppressWarnings("unchecked")
-    private void recordUsage(ModelEndpoint me, Map<?, ?> responseMap) {
+    private void recordUsage(ModelConfig mc, ChatResponse response) {
         try {
-            Map<String, Object> usage = (Map<String, Object>) responseMap.get("usage");
+            var usage = response.getMetadata().getUsage();
             if (usage != null) {
-                int promptTokens = ((Number) usage.getOrDefault("prompt_tokens", 0)).intValue();
-                int completionTokens = ((Number) usage.getOrDefault("completion_tokens", 0)).intValue();
-                metricsService.recordTokens(promptTokens, completionTokens);
-                ModelConfig mc = new ModelConfig();
-                mc.setId(me.modelId);
-                mc.setProvider(me.provider);
-                mc.setModelName(me.endpoint.getModelName());
-                mc.setModelType("CHAT");
-                tokenUsageService.recordUsage(mc, promptTokens, completionTokens, "CHAT", null);
+                int promptTokens = usage.getPromptTokens() != null ? usage.getPromptTokens() : 0;
+                int completionTokens = usage.getCompletionTokens() != null ? usage.getCompletionTokens() : 0;
+                if (promptTokens > 0 || completionTokens > 0) {
+                    metricsService.recordTokens(promptTokens, completionTokens);
+                    tokenUsageService.recordUsage(mc, promptTokens, completionTokens, "CHAT", null);
+                }
             }
         } catch (Exception e) {
             log.warn("记录 Token 用量失败: {}", e.getMessage());
         }
-    }
-
-    private String extractContent(Map<?, ?> responseMap) {
-        if (responseMap.containsKey("choices")) {
-            List<?> choices = (List<?>) responseMap.get("choices");
-            if (!choices.isEmpty()) {
-                Map<?, ?> choice = (Map<?, ?>) choices.get(0);
-                Map<?, ?> message = (Map<?, ?>) choice.get("message");
-                if (message != null && message.get("content") instanceof String s) return s;
-                if (choice.get("text") instanceof String s) return s;
-            }
-        }
-        if (responseMap.containsKey("message")) {
-            Map<?, ?> message = (Map<?, ?>) responseMap.get("message");
-            if (message.get("content") instanceof String s) return s;
-        }
-        if (responseMap.containsKey("response")) {
-            Object resp = responseMap.get("response");
-            if (resp instanceof String s) return s;
-        }
-        return null;
     }
 
     private String executeToolCall(String response) {
@@ -472,6 +338,4 @@ public class AgentService {
         default void onToolCall(String toolName, String argsJson) {}
         default void onToolResult(String resultJson) {}
     }
-
-    private record ModelEndpoint(Long modelId, String provider, LlmEndpoint endpoint) {}
 }

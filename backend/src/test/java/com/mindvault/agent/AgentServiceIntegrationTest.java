@@ -2,9 +2,11 @@ package com.mindvault.agent;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
-import com.mindvault.agent.config.AgentConfig;
 import com.mindvault.agent.tool.Tool;
+import com.mindvault.ai.client.AiModelFactory;
 import com.mindvault.common.config.CircuitBreakerConfig;
+import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import com.mindvault.common.service.MetricsService;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
@@ -17,7 +19,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,7 +39,7 @@ class AgentServiceIntegrationTest {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     @Mock private ModelConfigService modelConfigService;
-    @Mock private AgentConfig agentConfig;
+    @Mock private AiModelFactory aiModelFactory;
     @Mock private TokenUsageService tokenUsageService;
     @Mock private CircuitBreakerConfig circuitBreaker;
     @Mock private MetricsService metricsService;
@@ -70,13 +71,36 @@ class AgentServiceIntegrationTest {
         return mc;
     }
 
-    private AgentConfig.LlmEndpoint createEndpoint(ModelConfig mc) {
-        AgentConfig.LlmEndpoint ep = new AgentConfig.LlmEndpoint();
-        ep.setBaseUrl(mc.getBaseUrl());
-        ep.setApiPath("/chat/completions");
-        ep.setApiKey(mc.getApiKey());
-        ep.setModelName(mc.getModelName());
-        return ep;
+    private String responseBody(String content) {
+        Map<String, Object> msg = new LinkedHashMap<>();
+        msg.put("content", content);
+        Map<String, Object> choice = new LinkedHashMap<>();
+        choice.put("index", 0);
+        choice.put("message", msg);
+        choice.put("finish_reason", "stop");
+        Map<String, Object> root = new LinkedHashMap<>();
+        root.put("id", "chatcmpl-123");
+        root.put("object", "chat.completion");
+        root.put("created", 1677652288);
+        root.put("model", "gpt-4o");
+        root.put("choices", List.of(choice));
+        try { return mapper.writeValueAsString(root); } catch (Exception e) { throw new RuntimeException(e); }
+    }
+
+    private String streamingData(String content, String finishReason) throws Exception {
+        Map<String, Object> delta = new LinkedHashMap<>();
+        delta.put("content", content);
+        Map<String, Object> choice = new LinkedHashMap<>();
+        choice.put("index", 0);
+        choice.put("delta", delta);
+        choice.put("finish_reason", finishReason);
+        Map<String, Object> chunk = new LinkedHashMap<>();
+        chunk.put("id", "chatcmpl-123");
+        chunk.put("object", "chat.completion.chunk");
+        chunk.put("created", 1677652288);
+        chunk.put("model", "gpt-4o");
+        chunk.put("choices", List.of(choice));
+        return "data: " + mapper.writeValueAsString(chunk) + "\n\ndata: [DONE]\n\n";
     }
 
     private AgentService createService(ModelConfig mc, Tool... extraTools) {
@@ -85,11 +109,18 @@ class AgentServiceIntegrationTest {
 
     private AgentService createService(List<ModelConfig> models, Tool... extraTools) {
         when(modelConfigService.getAvailableChatModels()).thenReturn(models);
-        for (ModelConfig mc : models) {
-            when(agentConfig.buildEndpoint(mc)).thenReturn(createEndpoint(mc));
-        }
+        when(aiModelFactory.buildChatModel(any(ModelConfig.class), any())).thenAnswer(invocation -> {
+            ModelConfig cfg = invocation.getArgument(0);
+            return OpenAiChatModel.builder()
+                    .options(OpenAiChatOptions.builder()
+                            .baseUrl(cfg.getBaseUrl())
+                            .apiKey(cfg.getApiKey())
+                            .model(cfg.getModelName())
+                            .build())
+                    .build();
+        });
 List<Tool> tools = extraTools.length > 0 ? List.of(extraTools) : List.of();
-        AgentService s = new AgentService(modelConfigService, agentConfig, tools,
+        AgentService s = new AgentService(modelConfigService, aiModelFactory, tools,
                 tokenUsageService, circuitBreaker, metricsService, config);
         s.init();
         return s;
@@ -102,9 +133,7 @@ List<Tool> tools = extraTools.length > 0 ? List.of(extraTools) : List.of();
 
         wireMock.stubFor(post("/chat/completions")
                 .willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                {"choices":[{"message":{"content":"Hello! How can I help you?"},"finish_reason":"stop"}]}
-                                """)));
+                        .withBody(responseBody("Hello! How can I help you?"))));
 
         assertEquals("Hello! How can I help you?", svc.processMessage("Hi"));
     }
@@ -145,18 +174,14 @@ List<Tool> tools = extraTools.length > 0 ? List.of(extraTools) : List.of();
         wireMock.stubFor(post("/chat/completions")
                 .inScenario("toolCall")
                 .willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                {"choices":[{"message":{"content":"[TOOL_CALL]\\nname: test_tool\\nargs: {\\"key\\": \\"val\\"}\\n[END_TOOL_CALL]"},"finish_reason":"stop"}]}
-                                """))
+                        .withBody(responseBody("[TOOL_CALL]\nname: test_tool\nargs: {\"key\": \"val\"}\n[END_TOOL_CALL]")))
                 .willSetStateTo("toolExecuted"));
 
         wireMock.stubFor(post("/chat/completions")
                 .inScenario("toolCall")
                 .whenScenarioStateIs("toolExecuted")
                 .willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json")
-                        .withBody("""
-                                {"choices":[{"message":{"content":"Tool executed successfully"},"finish_reason":"stop"}]}
-                                """)));
+                        .withBody(responseBody("Tool executed successfully"))));
 
         String result = svc.processMessage("Run the tool");
         assertTrue(result.contains("Tool executed"));
@@ -167,20 +192,10 @@ List<Tool> tools = extraTools.length > 0 ? List.of(extraTools) : List.of();
         ModelConfig mc = createModel(1L, "gpt-4o");
         AgentService svc = createService(mc);
 
-        Map<String, Object> delta = new HashMap<>();
-        delta.put("content", "Hello");
-        delta.put("finish_reason", null);
-        Map<String, Object> choice = new HashMap<>();
-        choice.put("delta", delta);
-        choice.put("finish_reason", null);
-
-        Map<String, Object> chunk = new LinkedHashMap<>();
-        chunk.put("choices", List.of(choice));
-
         wireMock.stubFor(post("/chat/completions")
                 .willReturn(aResponse()
                         .withHeader("Content-Type", "text/event-stream")
-                        .withBody("data: " + mapper.writeValueAsString(chunk) + "\n\ndata: [DONE]\n\n")));
+                        .withBody(streamingData("Hello", null))));
 
         StringBuilder collected = new StringBuilder();
         svc.processMessageStream("Hi", new AgentService.StreamCallback() {
@@ -202,45 +217,19 @@ List<Tool> tools = extraTools.length > 0 ? List.of(extraTools) : List.of();
         };
         AgentService svc = createService(mc, testTool);
 
-        String toolCallContent = "[TOOL_CALL]\nname: test_tool\nargs: {\"key\": \"val\"}\n[END_TOOL_CALL]";
-        Map<String, Object> delta = new HashMap<>();
-        delta.put("content", toolCallContent);
-        delta.put("finish_reason", null);
-        Map<String, Object> choice = new HashMap<>();
-        choice.put("delta", delta);
-        choice.put("finish_reason", null);
-        Map<String, Object> chunkMap = new HashMap<>();
-        chunkMap.put("choices", List.of(choice));
-
-        String toolCallChunk = mapper.writeValueAsString(chunkMap);
-
-        Map<String, Object> finalChoice = new HashMap<>();
-        Map<String, Object> finalMsg = new HashMap<>();
-        finalMsg.put("content", "Done with streaming tool");
-        finalChoice.put("message", finalMsg);
-        finalChoice.put("finish_reason", "stop");
-        Map<String, Object> finalRoot = new HashMap<>();
-        finalRoot.put("choices", List.of(finalChoice));
-
         wireMock.stubFor(post("/chat/completions")
                 .inScenario("streamToolCall")
                 .willReturn(aResponse()
                         .withHeader("Content-Type", "text/event-stream")
-                        .withBody("data: " + toolCallChunk + "\n\ndata: [DONE]\n\n"))
+                        .withBody(streamingData("[TOOL_CALL]\nname: test_tool\nargs: {\"key\": \"val\"}\n[END_TOOL_CALL]", null)))
                 .willSetStateTo("toolExecuted"));
-
-        Map<String, Object> contentDelta = new HashMap<>();
-        contentDelta.put("content", "Done with streaming tool");
-        Map<String, Object> contentChoice = new HashMap<>();
-        contentChoice.put("delta", contentDelta);
-        String finalContentChunk = mapper.writeValueAsString(Map.of("choices", List.of(contentChoice)));
 
         wireMock.stubFor(post("/chat/completions")
                 .inScenario("streamToolCall")
                 .whenScenarioStateIs("toolExecuted")
                 .willReturn(aResponse()
                         .withHeader("Content-Type", "text/event-stream")
-                        .withBody("data: " + finalContentChunk + "\n\ndata: [DONE]\n\n")));
+                        .withBody(streamingData("Done with streaming tool", "stop"))));
 
         StringBuilder collected = new StringBuilder();
         svc.processMessageStream("Run tool", new AgentService.StreamCallback() {
@@ -258,7 +247,7 @@ List<Tool> tools = extraTools.length > 0 ? List.of(extraTools) : List.of();
     void processMessageStream_noModels_returnsError() {
         when(modelConfigService.getAvailableChatModels()).thenReturn(List.of());
 
-        AgentService svc = new AgentService(modelConfigService, agentConfig, List.of(),
+        AgentService svc = new AgentService(modelConfigService, aiModelFactory, List.of(),
                 tokenUsageService, circuitBreaker, metricsService, config);
         svc.init();
 

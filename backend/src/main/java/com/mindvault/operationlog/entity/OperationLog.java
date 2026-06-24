@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+import com.mindvault.common.handler.JsonbStringTypeHandler;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @TableName("operation_log")
@@ -34,7 +35,7 @@ public class OperationLog {
     @Schema(description = "摘要")
     private String summary;
 
-    @TableField("detail")
+    @TableField(value = "detail", typeHandler = JsonbStringTypeHandler.class)
     @Schema(description = "详情")
     private String detail;
 

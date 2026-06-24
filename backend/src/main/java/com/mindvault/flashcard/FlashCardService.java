@@ -2,6 +2,7 @@ package com.mindvault.flashcard;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mindvault.ai.prompt.PromptRegistry;
 import com.mindvault.common.service.LlmFailoverService;
 import com.mindvault.flashcard.entity.FlashCard;
 import com.mindvault.knowledge.KnowledgeService;
@@ -74,12 +75,8 @@ public class FlashCardService {
         int truncateLen = config.getInt("threshold.flashcard.truncate-length", 3000);
         double temperature = config.getDouble("threshold.flashcard.temperature", 0.3);
         int maxTokens = config.getInt("threshold.flashcard.max-tokens", 1000);
-        String promptTmpl = config.getPrompt("prompt.flashcard.generation",
-                "你是一个知识卡片生成助手。请根据以下内容生成3-5个问答式知识卡片。" +
-                "返回JSON数组格式，每个元素包含 question、answer、difficulty 字段。" +
-                "difficulty 取值为 EASY / MEDIUM / HARD。" +
-                "只返回JSON数组，不要额外说明。\n\n标题: %s\n\n内容: %s");
-        String prompt = String.format(promptTmpl, title, LlmFailoverService.truncate(content, truncateLen));
+        String prompt = PromptRegistry.FLASHCARD_GENERATION.resolve(config, title,
+                LlmFailoverService.truncate(content, truncateLen));
 
         String result = llmFailoverService.call(models, new LlmFailoverService.LlmCallOptions(prompt, temperature, maxTokens, false, null));
         if (result == null) return List.of();

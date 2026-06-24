@@ -84,10 +84,11 @@ class KnowledgeAssociationServiceTest {
         Knowledge source = createKnowledge(1L, "Source", embedding);
         when(knowledgeService.getById(1L)).thenReturn(source);
 
-        Object[] row1 = new Object[]{2L, 0.95d};
-        Object[] row2 = new Object[]{3L, 0.85d};
-        Object[] row3 = new Object[]{1L, 1.0d}; // source itself, should be excluded
-        when(mapper.findSimilarIds(embedding, 6)).thenReturn(List.<Object[]>of(row1, row2, row3));
+        when(mapper.findSimilarIds(embedding, 6)).thenReturn(List.of(
+                Map.of("id", 2L, "similarity", 0.95d),
+                Map.of("id", 3L, "similarity", 0.85d),
+                Map.of("id", 1L, "similarity", 1.0d) // source itself, should be excluded
+        ));
 
         Knowledge related1 = createKnowledge(2L, "Related A", null);
         Knowledge related2 = createKnowledge(3L, "Related B", null);
@@ -112,8 +113,7 @@ class KnowledgeAssociationServiceTest {
         Knowledge source = createKnowledge(1L, "Source", embedding);
         when(knowledgeService.getById(1L)).thenReturn(source);
 
-        Object[] row = new Object[]{1L, 1.0d};
-        when(mapper.findSimilarIds(embedding, 6)).thenReturn(List.<Object[]>of(row));
+        when(mapper.findSimilarIds(embedding, 6)).thenReturn(List.of(Map.of("id", 1L, "similarity", 1.0d)));
 
         List<Map<String, Object>> result = service.getRelatedKnowledge(1L, 5);
 
@@ -126,10 +126,11 @@ class KnowledgeAssociationServiceTest {
         Knowledge source = createKnowledge(1L, "Source", embedding);
         when(knowledgeService.getById(1L)).thenReturn(source);
 
-        Object[] row1 = new Object[]{2L, 0.95d};
-        Object[] row2 = new Object[]{3L, 0.85d};
-        Object[] row3 = new Object[]{4L, 0.75d};
-        when(mapper.findSimilarIds(embedding, 3)).thenReturn(List.<Object[]>of(row1, row2, row3));
+        when(mapper.findSimilarIds(embedding, 3)).thenReturn(List.of(
+                Map.of("id", 2L, "similarity", 0.95d),
+                Map.of("id", 3L, "similarity", 0.85d),
+                Map.of("id", 4L, "similarity", 0.75d)
+        ));
 
         Knowledge related1 = createKnowledge(2L, "A", null);
         Knowledge related2 = createKnowledge(3L, "B", null);
@@ -150,9 +151,10 @@ class KnowledgeAssociationServiceTest {
         when(knowledgeService.getById(1L)).thenReturn(source);
 
         // request limit+1 = 3 from mapper
-        Object[] row1 = new Object[]{2L, 0.95d};
-        Object[] row2 = new Object[]{3L, 0.85d};
-        when(mapper.findSimilarIds(embedding, 3)).thenReturn(List.<Object[]>of(row1, row2));
+        when(mapper.findSimilarIds(embedding, 3)).thenReturn(List.of(
+                Map.of("id", 2L, "similarity", 0.95d),
+                Map.of("id", 3L, "similarity", 0.85d)
+        ));
 
         // only 2L is returned by selectBatchIds (3L may have been deleted)
         Knowledge related1 = createKnowledge(2L, "Existing", null);

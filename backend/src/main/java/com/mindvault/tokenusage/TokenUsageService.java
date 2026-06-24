@@ -55,19 +55,19 @@ public class TokenUsageService {
     }
 
     public List<Map<String, Object>> getDailySummary(int days) {
-        List<Object[]> rows = mapper.findDailySummary(days);
+        List<Map<String, Object>> rows = mapper.findDailySummary(days);
         List<Map<String, Object>> result = new ArrayList<>();
-        for (Object[] row : rows) {
+        for (Map<String, Object> row : rows) {
             Map<String, Object> item = new LinkedHashMap<>();
-            item.put("date", row[0]);
-            item.put("provider", row[1]);
-            item.put("modelName", row[2]);
-            item.put("modelType", row[3]);
-            item.put("promptTokens", row[4]);
-            item.put("completionTokens", row[5]);
-            item.put("totalTokens", row[6]);
-            item.put("cost", row[7]);
-            item.put("requestCount", row[8]);
+            item.put("date", row.get("date"));
+            item.put("provider", row.get("provider"));
+            item.put("modelName", row.get("model_name"));
+            item.put("modelType", row.get("model_type"));
+            item.put("promptTokens", row.get("prompt_tokens"));
+            item.put("completionTokens", row.get("completion_tokens"));
+            item.put("totalTokens", row.get("total_tokens"));
+            item.put("cost", row.get("cost"));
+            item.put("requestCount", row.get("request_count"));
             result.add(item);
         }
         return result;

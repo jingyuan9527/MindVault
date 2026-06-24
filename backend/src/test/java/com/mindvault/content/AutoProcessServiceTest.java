@@ -2,6 +2,7 @@ package com.mindvault.content;
 
 import com.mindvault.auto.AutoProcessLogMapper;
 import com.mindvault.auto.entity.AutoProcessLog;
+import com.mindvault.ai.client.AiModelFactory;
 import com.mindvault.common.service.LlmFailoverService;
 import com.mindvault.knowledge.KnowledgeService;
 import com.mindvault.knowledge.entity.Knowledge;
@@ -25,6 +26,7 @@ class AutoProcessServiceTest {
 
     @Mock private ModelConfigService modelConfigService;
     @Mock private LlmFailoverService llmFailoverService;
+    @Mock private AiModelFactory aiModelFactory;
     @Mock private KnowledgeService knowledgeService;
     @Mock private AutoProcessLogMapper logMapper;
     @Mock private SystemConfigService config;
@@ -33,7 +35,7 @@ class AutoProcessServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new AutoProcessService(modelConfigService, llmFailoverService, knowledgeService, logMapper, config);
+        service = new AutoProcessService(modelConfigService, llmFailoverService, aiModelFactory, knowledgeService, logMapper, config);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));

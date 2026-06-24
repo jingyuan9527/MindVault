@@ -1,6 +1,7 @@
 package com.mindvault.dailyreview;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mindvault.ai.prompt.PromptRegistry;
 import com.mindvault.common.service.LlmFailoverService;
 import com.mindvault.dailyreview.entity.DailyReview;
 import com.mindvault.knowledge.KnowledgeMapper;
@@ -124,15 +125,8 @@ public class DailyReviewService {
 
         double temperature = config.getDouble("threshold.daily-review.temperature", 0.3);
         int maxTokens = config.getInt("threshold.daily-review.max-tokens", 1500);
-        String promptTmpl = config.getPrompt("prompt.daily-review.report",
-                "你是一个每日知识复盘助手。请根据以下今日新增知识，生成一份复盘报告。" +
-                "返回JSON格式，包含以下字段：\n" +
-                "1. summary: 一段概括性总结（50-100字）\n" +
-                "2. keyInsights: 关键洞见数组（3-5条）\n" +
-                "3. recommendations: 后续建议数组（2-3条）\n" +
-                "4. categoryBreakdown: 知识分类统计对象\n\n" +
-                "只返回JSON，不要额外说明。\n\n%s");
-        String prompt = String.format(promptTmpl, knowledgeSummary);
+        String prompt = PromptRegistry.DAILY_REVIEW_REPORT.resolve(config, knowledgeSummary);
+
         return llmFailoverService.call(models, new LlmFailoverService.LlmCallOptions(prompt, temperature, maxTokens, true, "DAILY_REVIEW"));
     }
 

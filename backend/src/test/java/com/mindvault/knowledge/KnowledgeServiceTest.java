@@ -2,6 +2,7 @@ package com.mindvault.knowledge;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mindvault.ai.client.AiModelFactory;
 import com.mindvault.common.service.MetricsService;
 import com.mindvault.content.AutoProcessService;
 import com.mindvault.knowledge.dto.ImportPreview;
@@ -33,6 +34,7 @@ class KnowledgeServiceTest {
     @Mock private KnowledgeMapper mapper;
     @Mock private OperationLogService operationLogService;
     @Mock private AutoProcessService autoProcessService;
+    @Mock private AiModelFactory aiModelFactory;
     @Mock private ReviewService reviewService;
     @Mock private MetricsService metricsService;
     @Mock private KnowledgeRelationMapper relationMapper;
@@ -46,7 +48,7 @@ class KnowledgeServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new KnowledgeService(mapper, operationLogService, autoProcessService, reviewService, null, metricsService, relationMapper, config);
+        service = new KnowledgeService(mapper, operationLogService, autoProcessService, reviewService, null, aiModelFactory, metricsService, relationMapper, config);
         objectMapper = new ObjectMapper();
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
@@ -452,8 +454,8 @@ class KnowledgeServiceTest {
     @Test
     void searchSimilar_shouldMapResults() {
         when(mapper.findSimilarIds("[0.1,0.2]", 5)).thenReturn(List.of(
-                new Object[]{1L, 0.95d},
-                new Object[]{2L, 0.85d}
+                Map.of("id", 1L, "similarity", 0.95d),
+                Map.of("id", 2L, "similarity", 0.85d)
         ));
         Knowledge k1 = createSampleKnowledge(1L, "Match1", "c1", "[]");
         Knowledge k2 = createSampleKnowledge(2L, "Match2", "c2", "[]");

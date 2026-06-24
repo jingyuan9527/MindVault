@@ -2,6 +2,7 @@ package com.mindvault.relation;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mindvault.ai.prompt.PromptRegistry;
 import com.mindvault.auto.AutoProcessLogMapper;
 import com.mindvault.auto.entity.AutoProcessLog;
 import com.mindvault.common.service.LlmFailoverService;
@@ -12,6 +13,7 @@ import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.relation.entity.KnowledgeRelation;
 import com.mindvault.systemconfig.SystemConfigService;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -86,11 +88,11 @@ public class RelationService {
         if (k.getEmbedding() != null && !k.getEmbedding().isBlank()) {
             int vectorTopN = config.getInt("threshold.relation.vector-top-n", 10);
             double simMin = config.getDouble("threshold.relation.similarity-min", 0.5);
-            List<Object[]> similar = knowledgeMapper.findSimilarIds(k.getEmbedding(), vectorTopN);
-            for (Object[] row : similar) {
-                Long relatedId = ((Number) row[0]).longValue();
+            List<Map<String, Object>> similar = knowledgeMapper.findSimilarIds(k.getEmbedding(), vectorTopN);
+            for (Map<String, Object> row : similar) {
+                Long relatedId = ((Number) row.get("id")).longValue();
                 if (relatedId.equals(k.getId())) continue;
-                double similarity = ((Number) row[1]).doubleValue();
+                double similarity = ((Number) row.get("similarity")).doubleValue();
                 if (similarity < simMin) continue;
                 saveRelation(k.getId(), relatedId, "COMPLEMENT",
                         BigDecimal.valueOf(similarity), "VECTOR", now);
@@ -148,13 +150,7 @@ public class RelationService {
             int llmMaxTokens = config.getInt("threshold.relation.llm-max-tokens", 500);
             double llmDefaultScore = config.getDouble("threshold.relation.llm-default-score", 0.75);
 
-            String promptTmpl = config.getPrompt("prompt.relation.llm-analysis",
-                    "你是一个知识关联分析助手。新笔记内容如下：\n\n"
-                    + "标题: %s\n内容: %s\n\n以下是已有笔记列表（id + 标题 + 摘要）：\n"
-                    + "%s\n\n请分析新笔记与哪些已有笔记相关，返回JSON数组，每一项包含："
-                    + "{\"id\": 已有笔记ID, \"type\": \"COMPLEMENT|CONTRAST|EXTENSION|REFERENCE\", \"reason\": \"简短原因\"}。"
-                    + "如果都不相关则返回 []. 只返回JSON数组。");
-            String prompt = String.format(promptTmpl, userTitle,
+            String prompt = PromptRegistry.RELATION_LLM.resolve(config, userTitle,
                     LlmFailoverService.truncate(content, contentTruncate),
                     objectMapper.writeValueAsString(candidateSummaries));
 

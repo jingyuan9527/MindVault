@@ -20,7 +20,7 @@ public interface KnowledgeMapper extends BaseMapper<Knowledge> {
             ORDER BY embedding <=> CAST(#{embedding} AS vector)
             LIMIT #{topN}
             """)
-    List<Object[]> findSimilarIds(@Param("embedding") String embedding, @Param("topN") int topN);
+    List<Map<String, Object>> findSimilarIds(@Param("embedding") String embedding, @Param("topN") int topN);
 
     @Select("""
             SELECT id, ROW_NUMBER() OVER (ORDER BY
@@ -34,7 +34,7 @@ public interface KnowledgeMapper extends BaseMapper<Knowledge> {
                OR ai_title ILIKE CONCAT('%', #{query}, '%')
             LIMIT #{limit}
             """)
-    List<Object[]> keywordSearchWithRank(@Param("query") String query, @Param("limit") int limit);
+    List<Map<String, Object>> keywordSearchWithRank(@Param("query") String query, @Param("limit") int limit);
 
     @Select("""
             SELECT * FROM knowledge
