@@ -3,10 +3,10 @@ package com.mindvault.content;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindvault.ai.client.AiModelFactory;
+import com.mindvault.ai.client.AiService;
 import com.mindvault.ai.prompt.PromptRegistry;
 import com.mindvault.auto.AutoProcessLogMapper;
 import com.mindvault.auto.entity.AutoProcessLog;
-import com.mindvault.common.service.LlmFailoverService;
 import com.mindvault.knowledge.KnowledgeService;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
@@ -21,7 +21,6 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.StringJoiner;
-import java.util.stream.Collectors;
 
 @Service
 public class AutoProcessService {
@@ -29,7 +28,7 @@ public class AutoProcessService {
     private static final Logger log = LoggerFactory.getLogger(AutoProcessService.class);
 
     private final ModelConfigService modelConfigService;
-    private final LlmFailoverService llmFailoverService;
+    private final AiService aiService;
     private final AiModelFactory aiModelFactory;
     private final KnowledgeService knowledgeService;
     private final AutoProcessLogMapper logMapper;
@@ -37,13 +36,13 @@ public class AutoProcessService {
     private final ObjectMapper objectMapper;
 
     public AutoProcessService(ModelConfigService modelConfigService,
-                              LlmFailoverService llmFailoverService,
+                              AiService aiService,
                               AiModelFactory aiModelFactory,
                               @Lazy KnowledgeService knowledgeService,
                               AutoProcessLogMapper logMapper,
                               SystemConfigService config) {
         this.modelConfigService = modelConfigService;
-        this.llmFailoverService = llmFailoverService;
+        this.aiService = aiService;
         this.aiModelFactory = aiModelFactory;
         this.knowledgeService = knowledgeService;
         this.logMapper = logMapper;
@@ -57,16 +56,17 @@ public class AutoProcessService {
     }
 
     public void autoProcess(Long knowledgeId, String userTitle, String content) {
-        List<ModelConfig> models = modelConfigService.getAvailableChatModels();
-        if (models.isEmpty()) {
+        try {
+            modelConfigService.getPrimaryChatModel();
+        } catch (Exception e) {
             log.warn("未配置主模型，跳过自动处理: knowledgeId={}", knowledgeId);
             return;
         }
 
         LocalDateTime startedAt = LocalDateTime.now();
-        String aiTitle = generateAiTitle(userTitle, content, models);
-        String tagsJson = generateTags(userTitle, content, models);
-        String summary = generateSummary(userTitle, content, models);
+        String aiTitle = generateAiTitle(userTitle, content);
+        String tagsJson = generateTags(userTitle, content);
+        String summary = generateSummary(userTitle, content);
 
         if (aiTitle != null || tagsJson != null || summary != null) {
             try {
@@ -94,39 +94,39 @@ public class AutoProcessService {
         generateEmbedding(knowledgeId, userTitle, content);
     }
 
-    private String generateAiTitle(String userTitle, String content, List<ModelConfig> models) {
+    private String generateAiTitle(String userTitle, String content) {
         try {
             int truncateLen = config.getInt("threshold.auto.truncate-length", 2000);
             double temperature = config.getDouble("threshold.auto.llm-temperature", 0.3);
             int maxTokens = config.getInt("threshold.auto.title-max-tokens", 100);
-            String prompt = PromptRegistry.AUTO_TITLE.resolve(config, userTitle, LlmFailoverService.truncate(content, truncateLen));
-            return llmFailoverService.call(models, new LlmFailoverService.LlmCallOptions(prompt, temperature, maxTokens, false, null));
+            String prompt = PromptRegistry.AUTO_TITLE.resolve(config, userTitle, AiService.truncate(content, truncateLen));
+            return aiService.call(prompt, temperature, maxTokens);
         } catch (Exception e) {
             log.warn("生成 AI 标题失败: {}", e.getMessage());
         }
         return null;
     }
 
-    private String generateSummary(String userTitle, String content, List<ModelConfig> models) {
+    private String generateSummary(String userTitle, String content) {
         try {
             int truncateLen = config.getInt("threshold.auto.truncate-length", 2000);
             double temperature = config.getDouble("threshold.auto.llm-temperature", 0.3);
             int maxTokens = config.getInt("threshold.auto.summary-max-tokens", 300);
-            String prompt = PromptRegistry.AUTO_SUMMARY.resolve(config, userTitle, LlmFailoverService.truncate(content, truncateLen));
-            return llmFailoverService.call(models, new LlmFailoverService.LlmCallOptions(prompt, temperature, maxTokens, false, null));
+            String prompt = PromptRegistry.AUTO_SUMMARY.resolve(config, userTitle, AiService.truncate(content, truncateLen));
+            return aiService.call(prompt, temperature, maxTokens);
         } catch (Exception e) {
             log.warn("生成摘要失败: {}", e.getMessage());
         }
         return null;
     }
 
-    private String generateTags(String userTitle, String content, List<ModelConfig> models) {
+    private String generateTags(String userTitle, String content) {
         try {
             int truncateLen = config.getInt("threshold.auto.truncate-length", 2000);
             double temperature = config.getDouble("threshold.auto.llm-temperature", 0.3);
             int maxTokens = config.getInt("threshold.auto.tags-max-tokens", 300);
-            String prompt = PromptRegistry.AUTO_TAGS.resolve(config, userTitle, LlmFailoverService.truncate(content, truncateLen));
-            String result = llmFailoverService.call(models, new LlmFailoverService.LlmCallOptions(prompt, temperature, maxTokens, false, null));
+            String prompt = PromptRegistry.AUTO_TAGS.resolve(config, userTitle, AiService.truncate(content, truncateLen));
+            String result = aiService.call(prompt, temperature, maxTokens);
             if (result != null) {
                 String cleaned = result.trim();
                 if (cleaned.startsWith("[") && cleaned.endsWith("]")) {

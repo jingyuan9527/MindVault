@@ -2,13 +2,12 @@ package com.mindvault.flashcard;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mindvault.ai.client.AiService;
 import com.mindvault.ai.prompt.PromptRegistry;
-import com.mindvault.common.service.LlmFailoverService;
 import com.mindvault.flashcard.entity.FlashCard;
 import com.mindvault.knowledge.KnowledgeService;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
-import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.systemconfig.SystemConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,19 +23,19 @@ public class FlashCardService {
     private static final Logger log = LoggerFactory.getLogger(FlashCardService.class);
 
     private final ModelConfigService modelConfigService;
-    private final LlmFailoverService llmFailoverService;
+    private final AiService aiService;
     private final KnowledgeService knowledgeService;
     private final FlashCardMapper mapper;
     private final SystemConfigService config;
     private final ObjectMapper objectMapper;
 
     public FlashCardService(ModelConfigService modelConfigService,
-                            LlmFailoverService llmFailoverService,
+                            AiService aiService,
                             KnowledgeService knowledgeService,
                             FlashCardMapper mapper,
                             SystemConfigService config) {
         this.modelConfigService = modelConfigService;
-        this.llmFailoverService = llmFailoverService;
+        this.aiService = aiService;
         this.knowledgeService = knowledgeService;
         this.mapper = mapper;
         this.config = config;
@@ -69,16 +68,19 @@ public class FlashCardService {
     }
 
     private List<Map<String, String>> callLlmForCards(String title, String content) {
-        List<ModelConfig> models = modelConfigService.getAvailableChatModels();
-        if (models.isEmpty()) return List.of();
+        try {
+            modelConfigService.getPrimaryChatModel();
+        } catch (Exception e) {
+            return List.of();
+        }
 
         int truncateLen = config.getInt("threshold.flashcard.truncate-length", 3000);
         double temperature = config.getDouble("threshold.flashcard.temperature", 0.3);
         int maxTokens = config.getInt("threshold.flashcard.max-tokens", 1000);
         String prompt = PromptRegistry.FLASHCARD_GENERATION.resolve(config, title,
-                LlmFailoverService.truncate(content, truncateLen));
+                AiService.truncate(content, truncateLen));
 
-        String result = llmFailoverService.call(models, new LlmFailoverService.LlmCallOptions(prompt, temperature, maxTokens, false, null));
+        String result = aiService.call(prompt, temperature, maxTokens);
         if (result == null) return List.of();
 
         try {

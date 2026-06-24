@@ -4,12 +4,12 @@ import com.mindvault.knowledge.KnowledgeService;
 import com.mindvault.knowledge.entity.Knowledge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.tool.annotation.Tool;
+import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 
-import java.util.Map;
-
 @Component
-public class AddKnowledgeTool implements Tool {
+public class AddKnowledgeTool {
 
     private static final Logger log = LoggerFactory.getLogger(AddKnowledgeTool.class);
 
@@ -19,20 +19,10 @@ public class AddKnowledgeTool implements Tool {
         this.knowledgeService = knowledgeService;
     }
 
-    @Override
-    public String getName() {
-        return "add_knowledge";
-    }
-
-    @Override
-    public String getDescription() {
-        return "向个人知识库中添加一条新的知识条目，包含标题和内容。参数: title(标题), content(内容)";
-    }
-
-    @Override
-    public String execute(Map<String, Object> args) {
-        String title = (String) args.get("title");
-        String content = (String) args.get("content");
+    @Tool(name = "add_knowledge", description = "向个人知识库中添加一条新的知识条目，包含标题和内容")
+    public String addKnowledge(
+            @ToolParam(description = "标题") String title,
+            @ToolParam(description = "内容") String content) {
         log.info("Agent 调用 add_knowledge: title={}", title);
 
         Knowledge knowledge = new Knowledge();

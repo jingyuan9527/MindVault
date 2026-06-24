@@ -9,7 +9,7 @@ export const chatApi = {
 
   sendMessageStream: (sessionId, content, callbacks) => {
     const controller = new AbortController()
-    const { onToken, onDone, onError, onSources, onBlocked, onToolCall, onToolResult } = callbacks
+    const { onToken, onDone, onError, onSources, onBlocked } = callbacks
 
     const token = localStorage.getItem('mindvault_token')
     const headers = { 'Content-Type': 'application/json' }
@@ -49,11 +49,6 @@ export const chatApi = {
           else if (eventType === 'done') onDone()
           else if (eventType === 'error') onError(eventData)
           else if (eventType === 'blocked' && onBlocked) onBlocked(eventData)
-          else if (eventType === 'tool_call' && onToolCall) onToolCall(JSON.parse(eventData))
-          else if (eventType === 'tool_result' && onToolResult) {
-            try { onToolResult(JSON.parse(eventData)) }
-            catch { onToolResult([]) }
-          }
           else if (eventType === 'sources' && onSources) onSources(JSON.parse(eventData))
         }
       }

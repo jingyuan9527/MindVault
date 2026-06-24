@@ -1,6 +1,6 @@
 package com.mindvault.flashcard;
 
-import com.mindvault.common.service.LlmFailoverService;
+import com.mindvault.ai.client.AiService;
 import com.mindvault.flashcard.entity.FlashCard;
 import com.mindvault.knowledge.KnowledgeService;
 import com.mindvault.model.ModelConfigService;
@@ -22,7 +22,7 @@ import static org.mockito.Mockito.*;
 class FlashCardServiceTest {
 
     @Mock private ModelConfigService modelConfigService;
-    @Mock private LlmFailoverService llmFailoverService;
+    @Mock private AiService aiService;
     @Mock private KnowledgeService knowledgeService;
     @Mock private FlashCardMapper mapper;
     @Mock private SystemConfigService config;
@@ -31,7 +31,7 @@ class FlashCardServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new FlashCardService(modelConfigService, llmFailoverService, knowledgeService, mapper, config);
+        service = new FlashCardService(modelConfigService, aiService, knowledgeService, mapper, config);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));

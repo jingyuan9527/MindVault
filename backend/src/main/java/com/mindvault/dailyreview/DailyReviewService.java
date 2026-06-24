@@ -1,13 +1,12 @@
 package com.mindvault.dailyreview;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mindvault.ai.client.AiService;
 import com.mindvault.ai.prompt.PromptRegistry;
-import com.mindvault.common.service.LlmFailoverService;
 import com.mindvault.dailyreview.entity.DailyReview;
 import com.mindvault.knowledge.KnowledgeMapper;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
-import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.systemconfig.SystemConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,19 +25,19 @@ public class DailyReviewService {
     private static final Logger log = LoggerFactory.getLogger(DailyReviewService.class);
 
     private final ModelConfigService modelConfigService;
-    private final LlmFailoverService llmFailoverService;
+    private final AiService aiService;
     private final KnowledgeMapper knowledgeMapper;
     private final DailyReviewMapper mapper;
     private final SystemConfigService config;
     private final ObjectMapper objectMapper;
 
     public DailyReviewService(ModelConfigService modelConfigService,
-                              LlmFailoverService llmFailoverService,
+                              AiService aiService,
                               KnowledgeMapper knowledgeMapper,
                               DailyReviewMapper mapper,
                               SystemConfigService config) {
         this.modelConfigService = modelConfigService;
-        this.llmFailoverService = llmFailoverService;
+        this.aiService = aiService;
         this.knowledgeMapper = knowledgeMapper;
         this.mapper = mapper;
         this.config = config;
@@ -120,14 +119,17 @@ public class DailyReviewService {
     }
 
     private String callLlmForReport(String knowledgeSummary) {
-        List<ModelConfig> models = modelConfigService.getAvailableChatModels();
-        if (models.isEmpty()) return null;
+        try {
+            modelConfigService.getPrimaryChatModel();
+        } catch (Exception e) {
+            return null;
+        }
 
         double temperature = config.getDouble("threshold.daily-review.temperature", 0.3);
         int maxTokens = config.getInt("threshold.daily-review.max-tokens", 1500);
         String prompt = PromptRegistry.DAILY_REVIEW_REPORT.resolve(config, knowledgeSummary);
 
-        return llmFailoverService.call(models, new LlmFailoverService.LlmCallOptions(prompt, temperature, maxTokens, true, "DAILY_REVIEW"));
+        return aiService.call(prompt, temperature, maxTokens);
     }
 
     private Map<String, Object> parseReportJson(String json) {

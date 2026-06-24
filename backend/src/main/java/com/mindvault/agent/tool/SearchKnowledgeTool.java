@@ -6,15 +6,16 @@ import com.mindvault.knowledge.SearchEnhanceService;
 import com.mindvault.systemconfig.SystemConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.tool.annotation.Tool;
+import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Component
-public class SearchKnowledgeTool implements Tool {
+public class SearchKnowledgeTool {
 
     private static final Logger log = LoggerFactory.getLogger(SearchKnowledgeTool.class);
 
@@ -32,33 +33,23 @@ public class SearchKnowledgeTool implements Tool {
         this.objectMapper = new ObjectMapper();
     }
 
-    @Override
-    public String getName() {
-        return "search_knowledge";
-    }
-
-    @Override
-    public String getDescription() {
-        return "在个人知识库中**语义搜索**与查询最相关的内容，返回匹配的知识条目（含标题、摘要和相似度）。适用于用户询问某个概念、话题时检索关联笔记辅助回答。参数: query(搜索关键词), limit(最多返回数量，默认3)";
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public String execute(Map<String, Object> args) {
-        String query = (String) args.get("query");
+    @Tool(name = "search_knowledge", description = "在个人知识库中语义搜索与查询最相关的内容，返回匹配的知识条目（含标题、摘要和相似度）。适用于用户询问某个概念、话题时检索关联笔记辅助回答。")
+    public String searchKnowledge(
+            @ToolParam(description = "搜索关键词") String query,
+            @ToolParam(description = "最多返回数量", required = false) Integer limit) {
         int defaultLimit = config.getInt("tool.search-knowledge.default-limit", 3);
         int maxLimit = config.getInt("tool.search-knowledge.max-limit", 10);
-        int limit = args.containsKey("limit") ? Math.min(((Number) args.get("limit")).intValue(), maxLimit) : defaultLimit;
+        int n = limit != null ? Math.min(limit, maxLimit) : defaultLimit;
 
-        log.info("Agent 调用 search_knowledge: query={}, limit={}", query, limit);
+        log.info("Agent 调用 search_knowledge: query={}, limit={}", query, n);
 
         try {
             String method = config.getString("tool.search-knowledge.search-method", "rewrite");
             List<Map<String, Object>> results;
             results = switch (method) {
-                case "hyde" -> searchEnhanceService.hydeSearch(query, limit);
-                case "rewrite" -> searchEnhanceService.searchWithRewrite(query, limit);
-                default -> knowledgeService.hybridSearch(query, limit);
+                case "hyde" -> searchEnhanceService.hydeSearch(query, n);
+                case "rewrite" -> searchEnhanceService.searchWithRewrite(query, n);
+                default -> knowledgeService.hybridSearch(query, n);
             };
 
             if (results.isEmpty()) {
@@ -83,7 +74,7 @@ public class SearchKnowledgeTool implements Tool {
         } catch (Exception e) {
             log.warn("语义搜索失败，降级到混合搜索: {}", e.getMessage());
             try {
-                List<Map<String, Object>> results = knowledgeService.hybridSearch(query, limit);
+                List<Map<String, Object>> results = knowledgeService.hybridSearch(query, n);
                 if (results.isEmpty()) return "[]";
                 List<Map<String, Object>> formatted = results.stream().map(k -> {
                     Map<String, Object> item = new LinkedHashMap<>();

@@ -1,6 +1,6 @@
 package com.mindvault.dailyreview;
 
-import com.mindvault.common.service.LlmFailoverService;
+import com.mindvault.ai.client.AiService;
 import com.mindvault.dailyreview.entity.DailyReview;
 import com.mindvault.knowledge.KnowledgeMapper;
 import com.mindvault.knowledge.entity.Knowledge;
@@ -27,7 +27,7 @@ import static org.mockito.Mockito.*;
 class DailyReviewServiceTest {
 
     @Mock private ModelConfigService modelConfigService;
-    @Mock private LlmFailoverService llmFailoverService;
+    @Mock private AiService aiService;
     @Mock private KnowledgeMapper knowledgeMapper;
     @Mock private DailyReviewMapper mapper;
     @Mock private SystemConfigService config;
@@ -38,7 +38,7 @@ class DailyReviewServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new DailyReviewService(modelConfigService, llmFailoverService, knowledgeMapper, mapper, config);
+        service = new DailyReviewService(modelConfigService, aiService, knowledgeMapper, mapper, config);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));

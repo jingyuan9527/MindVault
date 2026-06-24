@@ -7,7 +7,7 @@ import java.util.function.Function;
 public enum PromptRegistry {
 
     AGENT_SYSTEM("prompt.agent.system-prompt",
-            "你是 MindVault（知忆）AI 助手，一个个人知识库 Agent。\n\n你可以使用以下工具来帮助用户管理知识库：\n%s\n\n当你需要使用工具时，请按以下格式返回：\n[TOOL_CALL]\nname: 工具名称\nargs: {\"key\": \"value\"}\n[END_TOOL_CALL]\n\n请用中文回复用户。"),
+            "你是 MindVault（知忆）AI 助手，一个个人知识库 Agent。\n\n你可以使用以下工具来帮助用户管理知识库：\n%s\n\n请用中文回复用户。"),
 
     AUTO_TITLE("prompt.auto.title-generation",
             "请根据以下内容生成一个简洁准确的中文标题（10-20字），只返回标题内容，不要额外说明。\n\n原始标题: %s\n\n内容: %s"),

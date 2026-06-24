@@ -3,8 +3,8 @@ package com.mindvault.knowledge;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindvault.ai.client.AiModelFactory;
+import com.mindvault.ai.client.AiService;
 import com.mindvault.ai.prompt.PromptRegistry;
-import com.mindvault.common.service.LlmFailoverService;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
@@ -24,19 +24,19 @@ public class SearchEnhanceService {
 
     private final KnowledgeService knowledgeService;
     private final ModelConfigService modelConfigService;
-    private final LlmFailoverService llmFailoverService;
+    private final AiService aiService;
     private final AiModelFactory aiModelFactory;
     private final SystemConfigService config;
     private final ObjectMapper objectMapper;
 
     public SearchEnhanceService(KnowledgeService knowledgeService,
                                 ModelConfigService modelConfigService,
-                                LlmFailoverService llmFailoverService,
+                                AiService aiService,
                                 AiModelFactory aiModelFactory,
                                 SystemConfigService config) {
         this.knowledgeService = knowledgeService;
         this.modelConfigService = modelConfigService;
-        this.llmFailoverService = llmFailoverService;
+        this.aiService = aiService;
         this.aiModelFactory = aiModelFactory;
         this.config = config;
         this.objectMapper = new ObjectMapper();
@@ -75,25 +75,31 @@ public class SearchEnhanceService {
     }
 
     private String rewriteQuery(String query) {
-        List<ModelConfig> chatModels = modelConfigService.getAvailableChatModels();
-        if (chatModels.isEmpty()) return null;
+        try {
+            modelConfigService.getPrimaryChatModel();
+        } catch (Exception e) {
+            return null;
+        }
 
         String prompt = PromptRegistry.SEARCH_QUERY_REWRITE.resolve(config, query);
         double temperature = config.getDouble("threshold.search.rewrite-temperature", 0.2);
         int maxTokens = config.getInt("threshold.search.rewrite-max-tokens", 100);
 
-        return llmFailoverService.call(chatModels, new LlmFailoverService.LlmCallOptions(prompt, temperature, maxTokens, false, null));
+        return aiService.call(prompt, temperature, maxTokens);
     }
 
     private String generateHypotheticalDocument(String query) {
-        List<ModelConfig> chatModels = modelConfigService.getAvailableChatModels();
-        if (chatModels.isEmpty()) return null;
+        try {
+            modelConfigService.getPrimaryChatModel();
+        } catch (Exception e) {
+            return null;
+        }
 
         String prompt = PromptRegistry.SEARCH_HYDE.resolve(config, query);
         double temperature = config.getDouble("threshold.search.hyde-temperature", 0.3);
         int maxTokens = config.getInt("threshold.search.hyde-max-tokens", 500);
 
-        return llmFailoverService.call(chatModels, new LlmFailoverService.LlmCallOptions(prompt, temperature, maxTokens, false, null));
+        return aiService.call(prompt, temperature, maxTokens);
     }
 
     private String generateEmbeddingForText(String text, ModelConfig embModel) {
@@ -116,8 +122,11 @@ public class SearchEnhanceService {
     public List<Map<String, Object>> rerankResults(String query, List<Map<String, Object>> results, int topN) {
         if (results == null || results.size() <= 1) return results;
 
-        List<ModelConfig> chatModels = modelConfigService.getAvailableChatModels();
-        if (chatModels.isEmpty()) return results;
+        try {
+            modelConfigService.getPrimaryChatModel();
+        } catch (Exception e) {
+            return results;
+        }
 
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < results.size(); i++) {
@@ -138,7 +147,7 @@ public class SearchEnhanceService {
         try {
             double rerankTemp = config.getDouble("threshold.search.rerank-temperature", 0.1);
             int rerankMaxTokens = config.getInt("threshold.search.rerank-max-tokens", 200);
-            String content = llmFailoverService.call(chatModels, new LlmFailoverService.LlmCallOptions(prompt, rerankTemp, rerankMaxTokens, false, null));
+            String content = aiService.call(prompt, rerankTemp, rerankMaxTokens);
 
             if (content != null) {
                 String cleaned = content.trim();

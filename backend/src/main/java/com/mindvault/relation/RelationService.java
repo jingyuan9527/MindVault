@@ -2,18 +2,16 @@ package com.mindvault.relation;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mindvault.ai.client.AiService;
 import com.mindvault.ai.prompt.PromptRegistry;
 import com.mindvault.auto.AutoProcessLogMapper;
 import com.mindvault.auto.entity.AutoProcessLog;
-import com.mindvault.common.service.LlmFailoverService;
 import com.mindvault.knowledge.KnowledgeMapper;
 import com.mindvault.knowledge.KnowledgeService;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
-import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.relation.entity.KnowledgeRelation;
 import com.mindvault.systemconfig.SystemConfigService;
-import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -33,7 +31,7 @@ public class RelationService {
     private final KnowledgeRelationMapper relationMapper;
     private final KnowledgeService knowledgeService;
     private final ModelConfigService modelConfigService;
-    private final LlmFailoverService llmFailoverService;
+    private final AiService aiService;
     private final AutoProcessLogMapper logMapper;
     private final SystemConfigService config;
     private final ObjectMapper objectMapper;
@@ -42,14 +40,14 @@ public class RelationService {
                            KnowledgeRelationMapper relationMapper,
                            KnowledgeService knowledgeService,
                            ModelConfigService modelConfigService,
-                           LlmFailoverService llmFailoverService,
+                           AiService aiService,
                            AutoProcessLogMapper logMapper,
                            SystemConfigService config) {
         this.knowledgeMapper = knowledgeMapper;
         this.relationMapper = relationMapper;
         this.knowledgeService = knowledgeService;
         this.modelConfigService = modelConfigService;
-        this.llmFailoverService = llmFailoverService;
+        this.aiService = aiService;
         this.logMapper = logMapper;
         this.config = config;
         this.objectMapper = new ObjectMapper();
@@ -126,8 +124,11 @@ public class RelationService {
         }
 
         // 3. LLM analysis (LLM)
-        List<ModelConfig> models = modelConfigService.getAvailableChatModels();
-        if (models.isEmpty()) return;
+        try {
+            modelConfigService.getPrimaryChatModel();
+        } catch (Exception e) {
+            return;
+        }
 
         try {
             int llmCandidateLimit = config.getInt("threshold.relation.llm-candidate-limit", 10);
@@ -151,11 +152,10 @@ public class RelationService {
             double llmDefaultScore = config.getDouble("threshold.relation.llm-default-score", 0.75);
 
             String prompt = PromptRegistry.RELATION_LLM.resolve(config, userTitle,
-                    LlmFailoverService.truncate(content, contentTruncate),
+                    AiService.truncate(content, contentTruncate),
                     objectMapper.writeValueAsString(candidateSummaries));
 
-            String result = llmFailoverService.call(models,
-                    new LlmFailoverService.LlmCallOptions(prompt, llmTemp, llmMaxTokens, false, null));
+            String result = aiService.call(prompt, llmTemp, llmMaxTokens);
 
             if (result != null) {
                 String cleaned = result.trim();

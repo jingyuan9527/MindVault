@@ -1,12 +1,11 @@
 package com.mindvault.relation;
 
+import com.mindvault.ai.client.AiService;
 import com.mindvault.auto.AutoProcessLogMapper;
-import com.mindvault.common.service.LlmFailoverService;
 import com.mindvault.knowledge.KnowledgeMapper;
 import com.mindvault.knowledge.KnowledgeService;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
-import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.relation.entity.KnowledgeRelation;
 import com.mindvault.systemconfig.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,7 +31,7 @@ class RelationServiceTest {
     @Mock private KnowledgeRelationMapper relationMapper;
     @Mock private KnowledgeService knowledgeService;
     @Mock private ModelConfigService modelConfigService;
-    @Mock private LlmFailoverService llmFailoverService;
+    @Mock private AiService aiService;
     @Mock private AutoProcessLogMapper logMapper;
     @Mock private SystemConfigService config;
 
@@ -41,7 +40,7 @@ class RelationServiceTest {
     @BeforeEach
     void setUp() {
         service = new RelationService(knowledgeMapper, relationMapper, knowledgeService,
-                modelConfigService, llmFailoverService, logMapper, config);
+                modelConfigService, aiService, logMapper, config);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));
@@ -181,13 +180,10 @@ class RelationServiceTest {
         candidate.setTitle("Candidate");
         candidate.setContent("Related content");
 
-        ModelConfig model = new ModelConfig();
-        model.setId(1L);
-
         when(knowledgeMapper.findByAutoProcessStatus("COMPLETED", 50)).thenReturn(Collections.singletonList(candidate));
-        when(modelConfigService.getAvailableChatModels()).thenReturn(Collections.singletonList(model));
+        when(modelConfigService.getPrimaryChatModel()).thenReturn(new com.mindvault.model.entity.ModelConfig());
         when(knowledgeService.displayTitle(candidate)).thenReturn("Candidate");
-        when(llmFailoverService.call(anyList(), any()))
+        when(aiService.call(anyString(), anyDouble(), anyInt()))
                 .thenReturn("[{\"id\": 2, \"type\": \"EXTENSION\", \"reason\": \"related\"}]");
 
         service.processKnowledgeRelations(k);
@@ -216,13 +212,10 @@ class RelationServiceTest {
         candidate.setTitle("Candidate");
         candidate.setContent("Content");
 
-        ModelConfig model = new ModelConfig();
-        model.setId(1L);
-
         when(knowledgeMapper.findByAutoProcessStatus("COMPLETED", 50)).thenReturn(Collections.singletonList(candidate));
-        when(modelConfigService.getAvailableChatModels()).thenReturn(Collections.singletonList(model));
+        when(modelConfigService.getPrimaryChatModel()).thenReturn(new com.mindvault.model.entity.ModelConfig());
         when(knowledgeService.displayTitle(candidate)).thenReturn("Candidate");
-        when(llmFailoverService.call(anyList(), any())).thenThrow(new RuntimeException("API error"));
+        when(aiService.call(anyString(), anyDouble(), anyInt())).thenReturn(null);
 
         service.processKnowledgeRelations(k);
 

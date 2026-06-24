@@ -44,17 +44,9 @@
       <MessageBubble v-for="msg in store.messages" :key="msg.id"
         :message="msg.content" :isUser="msg.role === 'USER'"
         :blocked="msg.blocked"
-        :time="formatTime(msg.createdAt)" :sources="msg.sources"
-        :toolResults="msg.toolResults || []" />
+        :time="formatTime(msg.createdAt)" :sources="msg.sources" />
       <div v-if="store.isLoading">
         <ThinkingIndicator />
-        <div v-if="store.streamingToolCall" class="flex items-center gap-2 px-4 py-2">
-          <div class="w-3 h-3 rounded-full border-2 border-t-transparent animate-spin"
-            :style="{ borderColor: 'var(--color-sage)', borderTopColor: 'transparent' }" />
-          <span class="text-xs" style="color: var(--color-text-secondary)">
-            正在搜索知识库：{{ store.streamingToolCall.args?.query || '' }}
-          </span>
-        </div>
       </div>
     </div>
 

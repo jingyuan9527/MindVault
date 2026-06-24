@@ -3,7 +3,7 @@ package com.mindvault.content;
 import com.mindvault.auto.AutoProcessLogMapper;
 import com.mindvault.auto.entity.AutoProcessLog;
 import com.mindvault.ai.client.AiModelFactory;
-import com.mindvault.common.service.LlmFailoverService;
+import com.mindvault.ai.client.AiService;
 import com.mindvault.knowledge.KnowledgeService;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
@@ -25,7 +25,7 @@ import java.util.List;
 class AutoProcessServiceTest {
 
     @Mock private ModelConfigService modelConfigService;
-    @Mock private LlmFailoverService llmFailoverService;
+    @Mock private AiService aiService;
     @Mock private AiModelFactory aiModelFactory;
     @Mock private KnowledgeService knowledgeService;
     @Mock private AutoProcessLogMapper logMapper;
@@ -35,7 +35,7 @@ class AutoProcessServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new AutoProcessService(modelConfigService, llmFailoverService, aiModelFactory, knowledgeService, logMapper, config);
+        service = new AutoProcessService(modelConfigService, aiService, aiModelFactory, knowledgeService, logMapper, config);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));
@@ -46,7 +46,7 @@ class AutoProcessServiceTest {
 
     @Test
     void autoProcess_noModels_shouldSkip() {
-        when(modelConfigService.getAvailableChatModels()).thenReturn(List.of());
+        when(modelConfigService.getPrimaryChatModel()).thenThrow(new RuntimeException("no model"));
 
         service.autoProcess(1L, "Test Title", "Test content");
 
@@ -57,8 +57,8 @@ class AutoProcessServiceTest {
     void autoProcess_shouldGenerateAiTitleAndTags() {
         ModelConfig model = new ModelConfig();
         model.setModelName("gpt-4o");
-        when(modelConfigService.getAvailableChatModels()).thenReturn(List.of(model));
-        when(llmFailoverService.call(anyList(), any()))
+        when(modelConfigService.getPrimaryChatModel()).thenReturn(model);
+        when(aiService.call(anyString(), anyDouble(), anyInt()))
                 .thenReturn("AI Title")
                 .thenReturn("[\"tag1\", \"tag2\"]")
                 .thenReturn("A summary here");
@@ -77,8 +77,8 @@ class AutoProcessServiceTest {
     void autoProcess_shouldHandleLlmFailure() {
         ModelConfig model = new ModelConfig();
         model.setModelName("gpt-4o");
-        when(modelConfigService.getAvailableChatModels()).thenReturn(List.of(model));
-        when(llmFailoverService.call(anyList(), any())).thenReturn(null);
+        when(modelConfigService.getPrimaryChatModel()).thenReturn(model);
+        when(aiService.call(anyString(), anyDouble(), anyInt())).thenReturn(null);
 
         service.autoProcess(1L, "User Title", "Content");
 
@@ -89,8 +89,8 @@ class AutoProcessServiceTest {
     void autoProcess_summaryOnly_shouldUpdateSummary() {
         ModelConfig model = new ModelConfig();
         model.setModelName("gpt-4o");
-        when(modelConfigService.getAvailableChatModels()).thenReturn(List.of(model));
-        when(llmFailoverService.call(anyList(), any()))
+        when(modelConfigService.getPrimaryChatModel()).thenReturn(model);
+        when(aiService.call(anyString(), anyDouble(), anyInt()))
                 .thenReturn(null)
                 .thenReturn(null)
                 .thenReturn("Generated summary");
@@ -110,9 +110,9 @@ class AutoProcessServiceTest {
     void autoProcess_noEmbeddingModels_shouldSkipEmbedding() {
         ModelConfig model = new ModelConfig();
         model.setModelName("gpt-4o");
-        when(modelConfigService.getAvailableChatModels()).thenReturn(List.of(model));
+        when(modelConfigService.getPrimaryChatModel()).thenReturn(model);
         when(modelConfigService.getAvailableEmbeddingModels()).thenReturn(List.of());
-        when(llmFailoverService.call(anyList(), any()))
+        when(aiService.call(anyString(), anyDouble(), anyInt()))
                 .thenReturn("AI Title")
                 .thenReturn("[\"tag1\"]")
                 .thenReturn("Summary");
@@ -131,9 +131,9 @@ class AutoProcessServiceTest {
     void autoProcess_shouldSaveLogOnSuccess() {
         ModelConfig model = new ModelConfig();
         model.setModelName("gpt-4o");
-        when(modelConfigService.getAvailableChatModels()).thenReturn(List.of(model));
+        when(modelConfigService.getPrimaryChatModel()).thenReturn(model);
         when(modelConfigService.getAvailableEmbeddingModels()).thenReturn(List.of());
-        when(llmFailoverService.call(anyList(), any()))
+        when(aiService.call(anyString(), anyDouble(), anyInt()))
                 .thenReturn("AI Title")
                 .thenReturn("[\"tag1\"]")
                 .thenReturn("Summary");
@@ -147,4 +147,4 @@ class AutoProcessServiceTest {
         verify(logMapper, atLeastOnce()).insert((AutoProcessLog) any());
     }
 
-    }
+}

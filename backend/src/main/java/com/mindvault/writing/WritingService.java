@@ -1,12 +1,11 @@
 package com.mindvault.writing;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mindvault.ai.client.AiService;
 import com.mindvault.ai.prompt.PromptRegistry;
-import com.mindvault.common.service.LlmFailoverService;
 import com.mindvault.knowledge.KnowledgeMapper;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
-import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.systemconfig.SystemConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,25 +19,26 @@ public class WritingService {
     private static final Logger log = LoggerFactory.getLogger(WritingService.class);
 
     private final ModelConfigService modelConfigService;
-    private final LlmFailoverService llmFailoverService;
+    private final AiService aiService;
     private final KnowledgeMapper knowledgeMapper;
     private final SystemConfigService config;
     private final ObjectMapper objectMapper;
 
     public WritingService(ModelConfigService modelConfigService,
-                          LlmFailoverService llmFailoverService,
+                          AiService aiService,
                           KnowledgeMapper knowledgeMapper,
                           SystemConfigService config) {
         this.modelConfigService = modelConfigService;
-        this.llmFailoverService = llmFailoverService;
+        this.aiService = aiService;
         this.knowledgeMapper = knowledgeMapper;
         this.config = config;
         this.objectMapper = new ObjectMapper();
     }
 
     public String generateArticle(String topic, String style, String keywords) {
-        List<ModelConfig> models = modelConfigService.getAvailableChatModels();
-        if (models.isEmpty()) {
+        try {
+            modelConfigService.getPrimaryChatModel();
+        } catch (Exception e) {
             return config.getString("default.writing.no-model-message", "系统未配置可用模型，请先在设置中添加并启用模型。");
         }
 
@@ -52,7 +52,7 @@ public class WritingService {
                 if (k.getSummary() != null) {
                     knowledgeContext.append("[摘要]: ").append(k.getSummary()).append("\n");
                 }
-                knowledgeContext.append("[内容]: ").append(LlmFailoverService.truncate(k.getContent(), contentTruncate)).append("\n\n");
+                knowledgeContext.append("[内容]: ").append(AiService.truncate(k.getContent(), contentTruncate)).append("\n\n");
             }
         }
 
@@ -68,7 +68,7 @@ public class WritingService {
                 : "（知识库中没有直接相关的参考内容，请基于你的知识进行创作）\n\n";
         String prompt = PromptRegistry.WRITING_ARTICLE.resolve(config, styleGuide, kwGuide, topic, knowledgePart);
 
-        String result = llmFailoverService.call(models, new LlmFailoverService.LlmCallOptions(prompt, temperature, maxTokens, true, "WRITING"));
+        String result = aiService.call(prompt, temperature, maxTokens);
         return result != null ? result : config.getString("default.writing.fallback-message", "文章生成失败，请稍后重试。");
     }
 

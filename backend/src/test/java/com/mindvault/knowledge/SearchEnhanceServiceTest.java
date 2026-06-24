@@ -1,7 +1,7 @@
 package com.mindvault.knowledge;
 
 import com.mindvault.ai.client.AiModelFactory;
-import com.mindvault.common.service.LlmFailoverService;
+import com.mindvault.ai.client.AiService;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.systemconfig.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,7 +22,7 @@ class SearchEnhanceServiceTest {
 
     @Mock private KnowledgeService knowledgeService;
     @Mock private ModelConfigService modelConfigService;
-    @Mock private LlmFailoverService llmFailoverService;
+    @Mock private AiService aiService;
     @Mock private AiModelFactory aiModelFactory;
     @Mock private SystemConfigService config;
 
@@ -30,7 +30,7 @@ class SearchEnhanceServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new SearchEnhanceService(knowledgeService, modelConfigService, llmFailoverService, aiModelFactory, config);
+        service = new SearchEnhanceService(knowledgeService, modelConfigService, aiService, aiModelFactory, config);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getString(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
@@ -39,7 +39,7 @@ class SearchEnhanceServiceTest {
 
     @Test
     void searchWithRewrite_shouldFallbackToHybridWhenNoModels() {
-        when(modelConfigService.getAvailableChatModels()).thenReturn(List.of());
+        when(modelConfigService.getPrimaryChatModel()).thenThrow(new RuntimeException("no model"));
 
         List<Map<String, Object>> expected = List.of(Map.of("title", "fallback"));
         when(knowledgeService.hybridSearch("test", 5)).thenReturn(expected);
@@ -51,8 +51,8 @@ class SearchEnhanceServiceTest {
 
     @Test
     void searchWithRewrite_shouldFallbackToHybridWhenRewriteFails() {
-        when(modelConfigService.getAvailableChatModels()).thenReturn(List.of(new com.mindvault.model.entity.ModelConfig()));
-        when(llmFailoverService.call(anyList(), any())).thenReturn(null);
+        when(modelConfigService.getPrimaryChatModel()).thenReturn(new com.mindvault.model.entity.ModelConfig());
+        when(aiService.call(anyString(), anyDouble(), anyInt())).thenReturn(null);
 
         List<Map<String, Object>> expected = List.of(Map.of("title", "fallback"));
         when(knowledgeService.hybridSearch("test", 5)).thenReturn(expected);
@@ -63,8 +63,22 @@ class SearchEnhanceServiceTest {
     }
 
     @Test
-    void hydeSearch_shouldFallbackToHybridWhenNoModels() {
-        when(modelConfigService.getAvailableChatModels()).thenReturn(List.of());
+    void hydeSearch_shouldFallbackToHybridWhenNoChatModel() {
+        when(modelConfigService.getPrimaryChatModel()).thenThrow(new RuntimeException("no model"));
+
+        List<Map<String, Object>> expected = List.of(Map.of("title", "fallback"));
+        when(knowledgeService.hybridSearch("test", 5)).thenReturn(expected);
+
+        List<Map<String, Object>> result = service.hydeSearch("test", 5);
+
+        assertEquals(expected, result);
+    }
+
+    @Test
+    void hydeSearch_shouldFallbackToHybridWhenNoEmbeddingModel() {
+        when(modelConfigService.getPrimaryChatModel()).thenReturn(new com.mindvault.model.entity.ModelConfig());
+        when(aiService.call(anyString(), anyDouble(), anyInt())).thenReturn("hypothetical doc");
+        when(modelConfigService.getAvailableEmbeddingModels()).thenReturn(List.of());
 
         List<Map<String, Object>> expected = List.of(Map.of("title", "fallback"));
         when(knowledgeService.hybridSearch("test", 5)).thenReturn(expected);
@@ -89,7 +103,7 @@ class SearchEnhanceServiceTest {
 
     @Test
     void rerankResults_shouldReturnOriginalWhenNoModels() {
-        when(modelConfigService.getAvailableChatModels()).thenReturn(List.of());
+        when(modelConfigService.getPrimaryChatModel()).thenThrow(new RuntimeException("no model"));
         List<Map<String, Object>> input = List.of(
                 Map.of("title", "A"),
                 Map.of("title", "B")
@@ -103,7 +117,7 @@ class SearchEnhanceServiceTest {
 
     @Test
     void rerankResults_shouldLimitToTopN() {
-        when(modelConfigService.getAvailableChatModels()).thenReturn(List.of());
+        when(modelConfigService.getPrimaryChatModel()).thenThrow(new RuntimeException("no model"));
         List<Map<String, Object>> input = List.of(
                 Map.of("title", "A"),
                 Map.of("title", "B"),

@@ -26,24 +26,6 @@
         </p>
       </div>
 
-      <!-- Tool results as knowledge cards -->
-      <div v-if="toolResults.length" class="mt-3 space-y-1.5 px-1">
-        <p class="text-xs font-medium" style="color: var(--color-text-secondary)">关联笔记</p>
-        <div v-for="r in toolResults" :key="r.id"
-          class="flex items-center gap-2 p-2.5 rounded-lg cursor-pointer transition-colors hover:opacity-80"
-          :style="{ backgroundColor: 'var(--color-bg)', border: '1px solid var(--color-border)' }"
-          @click="openKnowledge(r.id)"
-        >
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium truncate" style="color: var(--color-text)">{{ r.title }}</p>
-            <p class="text-xs truncate mt-0.5" style="color: var(--color-text-secondary)">{{ r.summary }}</p>
-          </div>
-          <span class="text-xs shrink-0 font-medium" style="color: var(--color-sage)">
-            {{ scoreLabel(r.score) }}
-          </span>
-        </div>
-      </div>
-
       <!-- Knowledge source links -->
       <div v-if="sourcesList.length" class="mt-2 flex flex-wrap gap-1.5 px-1">
         <n-a v-for="s in sourcesList" :key="s.id" :href="s.url || '#'" target="_blank"
@@ -62,17 +44,13 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useRouter } from 'vue-router'
-
-const router = useRouter()
 
 const props = defineProps({
   message: String,
   isUser: Boolean,
   blocked: Boolean,
   time: String,
-  sources: { type: String, default: '[]' },
-  toolResults: { type: Array, default: () => [] }
+  sources: { type: String, default: '[]' }
 })
 
 const alignClass = computed(() => props.blocked ? 'justify-center' : (props.isUser ? 'justify-end' : 'justify-start'))
@@ -89,17 +67,4 @@ const sourcesList = computed(() => {
   catch { return [] }
 })
 
-function scoreLabel(score) {
-  if (score == null) return ''
-  const pct = Math.round(score * 100)
-  return pct + '%'
-}
-
-function openKnowledge(id) {
-  router.push('/')
-  setTimeout(() => {
-    const event = new CustomEvent('open-knowledge', { detail: { id } })
-    window.dispatchEvent(event)
-  }, 100)
-}
 </script>

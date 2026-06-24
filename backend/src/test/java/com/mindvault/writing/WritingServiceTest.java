@@ -1,6 +1,6 @@
 package com.mindvault.writing;
 
-import com.mindvault.common.service.LlmFailoverService;
+import com.mindvault.ai.client.AiService;
 import com.mindvault.knowledge.KnowledgeMapper;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
@@ -23,7 +23,7 @@ import static org.mockito.Mockito.*;
 class WritingServiceTest {
 
     @Mock private ModelConfigService modelConfigService;
-    @Mock private LlmFailoverService llmFailoverService;
+    @Mock private AiService aiService;
     @Mock private KnowledgeMapper knowledgeMapper;
     @Mock private SystemConfigService config;
 
@@ -31,7 +31,7 @@ class WritingServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new WritingService(modelConfigService, llmFailoverService, knowledgeMapper, config);
+        service = new WritingService(modelConfigService, aiService, knowledgeMapper, config);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));
@@ -52,6 +52,8 @@ class WritingServiceTest {
 
     @Test
     void generateArticle_noModels_shouldReturnErrorMessage() {
+        when(modelConfigService.getPrimaryChatModel()).thenThrow(new RuntimeException("no model"));
+
         String result = service.generateArticle("AI", "formal", "machine learning");
 
         assertEquals("系统未配置可用模型，请先在设置中添加并启用模型。", result);
@@ -96,7 +98,7 @@ class WritingServiceTest {
         mc.setModelName("deepseek-chat");
         mc.setApiKey("test-key");
         mc.setIsEnabled(true);
-        when(modelConfigService.getAvailableChatModels()).thenReturn(List.of(mc));
-        when(llmFailoverService.call(anyList(), any())).thenReturn("生成的测试文章内容。");
+        when(modelConfigService.getPrimaryChatModel()).thenReturn(mc);
+        when(aiService.call(anyString(), anyDouble(), anyInt())).thenReturn("生成的测试文章内容。");
     }
 }

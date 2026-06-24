@@ -183,28 +183,9 @@ public class ChatService {
                     }
 
                     @Override
-                    public void onToolCall(String toolName, String argsJson) {
-                        try {
-                            emitter.send(SseEmitter.event().name("tool_call")
-                                    .data("{\"name\":\"" + toolName + "\",\"args\":" + argsJson + "}"));
-                        } catch (IOException e) {
-                            log.warn("发送 tool_call 事件失败: {}", e.getMessage());
-                        }
-                    }
-
-                    @Override
-                    public void onToolResult(String resultJson) {
-                        try {
-                            emitter.send(SseEmitter.event().name("tool_result").data(resultJson));
-                        } catch (IOException e) {
-                            log.warn("发送 tool_result 事件失败: {}", e.getMessage());
-                        }
-                    }
-
-                    @Override
                     public void onComplete() {
                         try {
-                            String reply = agentService.stripToolCallMarkers(fullReply.toString());
+                            String reply = fullReply.toString();
                             agentMsg.setContent(reply);
                             agentMsg.setCreatedAt(LocalDateTime.now());
                             String sourceJson = extractSources(reply);
