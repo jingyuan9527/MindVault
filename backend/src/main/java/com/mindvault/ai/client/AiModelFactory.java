@@ -21,6 +21,10 @@ public class AiModelFactory {
 
     private static final Logger log = LoggerFactory.getLogger(AiModelFactory.class);
 
+    public static final String ALIYUN_DEFAULT_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
+    public static final String DEEPSEEK_DEFAULT_BASE_URL = "https://api.deepseek.com/v1";
+    public static final String OPENAI_DEFAULT_BASE_URL = "https://api.openai.com/v1";
+
     public ChatModel buildChatModel(ModelConfig config) {
         return buildChatModel(config, null);
     }
@@ -82,18 +86,18 @@ public class AiModelFactory {
 
     private String resolveChatBaseUrl(String provider, String baseUrl) {
         return switch (provider) {
-            case "ALIYUN" -> (baseUrl != null ? baseUrl : "https://dashscope.aliyuncs.com/compatible-mode/v1");
-            case "DEEPSEEK" -> (baseUrl != null ? baseUrl : "https://api.deepseek.com/v1");
-            case "OPENAI" -> (baseUrl != null ? baseUrl : "https://api.openai.com/v1");
+            case "ALIYUN" -> baseUrl != null ? baseUrl : ALIYUN_DEFAULT_BASE_URL;
+            case "DEEPSEEK" -> baseUrl != null ? baseUrl : DEEPSEEK_DEFAULT_BASE_URL;
+            case "OPENAI" -> baseUrl != null ? baseUrl : OPENAI_DEFAULT_BASE_URL;
             default -> baseUrl;
         };
     }
 
     private String resolveEmbeddingBaseUrl(String provider, String baseUrl) {
         return switch (provider) {
-            case "ALIYUN" -> (baseUrl != null ? baseUrl : "https://dashscope.aliyuncs.com/compatible-mode/v1");
-            case "DEEPSEEK" -> (baseUrl != null ? baseUrl : "https://api.deepseek.com/v1");
-            case "OPENAI" -> (baseUrl != null ? baseUrl : "https://api.openai.com/v1");
+            case "ALIYUN" -> baseUrl != null ? baseUrl : ALIYUN_DEFAULT_BASE_URL;
+            case "DEEPSEEK" -> baseUrl != null ? baseUrl : DEEPSEEK_DEFAULT_BASE_URL;
+            case "OPENAI" -> baseUrl != null ? baseUrl : OPENAI_DEFAULT_BASE_URL;
             default -> baseUrl;
         };
     }

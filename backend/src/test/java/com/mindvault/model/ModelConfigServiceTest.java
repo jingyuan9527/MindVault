@@ -1,5 +1,6 @@
 package com.mindvault.model;
 
+import com.mindvault.ai.client.AiModelFactory;
 import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.operationlog.OperationLogService;
 import org.junit.jupiter.api.BeforeEach;
@@ -9,6 +10,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.ai.chat.model.ChatModel;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,6 +29,9 @@ class ModelConfigServiceTest {
     @Mock
     private OperationLogService operationLogService;
 
+    @Mock
+    private AiModelFactory aiModelFactory;
+
     private ModelConfigService service;
 
     @Captor
@@ -34,7 +39,7 @@ class ModelConfigServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ModelConfigService(mapper, operationLogService);
+        service = new ModelConfigService(mapper, operationLogService, aiModelFactory);
     }
 
     private ModelConfig createConfig(Long id, String provider, String modelName, String modelType, Boolean isPrimary) {
@@ -191,10 +196,26 @@ class ModelConfigServiceTest {
         ModelConfig config = createConfig(1L, "UNSUPPORTED", "some-model", "CHAT", false);
         config.setApiKey("sk-test");
         when(mapper.selectById(1L)).thenReturn(config);
+        when(aiModelFactory.buildChatModel(config)).thenThrow(new RuntimeException("Unsupported provider"));
 
         boolean result = service.testConnection(1L);
 
         assertFalse(result);
+    }
+
+    @Test
+    void testConnection_shouldReturnTrueWhenSucceeds() {
+        ModelConfig config = createConfig(1L, "OPENAI", "gpt-4", "CHAT", false);
+        config.setApiKey("sk-test");
+        ChatModel chatModel = mock(ChatModel.class);
+        when(mapper.selectById(1L)).thenReturn(config);
+        when(aiModelFactory.buildChatModel(config)).thenReturn(chatModel);
+        when(chatModel.call("Hi")).thenReturn("response");
+
+        boolean result = service.testConnection(1L);
+
+        assertTrue(result);
+        verify(operationLogService).log(eq("MODEL"), eq("TEST"), eq(1L), contains("成功"));
     }
 
     @Test

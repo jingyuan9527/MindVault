@@ -1,10 +1,16 @@
 package com.mindvault.model;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mindvault.ai.client.AiModelFactory;
 import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.operationlog.OperationLogService;
+import com.openai.client.OpenAIClient;
+import com.openai.client.OpenAIClientImpl;
+import com.openai.core.ClientOptions;
+import com.openai.models.models.Model;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.ollama.api.OllamaApi;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -13,6 +19,7 @@ import org.springframework.web.client.RestClient;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class ModelConfigService {
@@ -21,12 +28,14 @@ public class ModelConfigService {
 
     private final ModelConfigMapper mapper;
     private final OperationLogService operationLogService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final AiModelFactory aiModelFactory;
 
     public ModelConfigService(ModelConfigMapper mapper,
-                              OperationLogService operationLogService) {
+                              OperationLogService operationLogService,
+                              AiModelFactory aiModelFactory) {
         this.mapper = mapper;
         this.operationLogService = operationLogService;
+        this.aiModelFactory = aiModelFactory;
     }
 
     @Transactional
@@ -98,58 +107,74 @@ public class ModelConfigService {
     }
 
     public List<String> fetchAvailableModels(String provider, String apiKey, String baseUrl) {
-        String modelUrl = resolveListModelsUrl(provider, baseUrl);
-        if (modelUrl == null) return List.of();
-
+        String upper = provider.toUpperCase();
         try {
-            RestClient.Builder builder = RestClient.builder().baseUrl(modelUrl)
-                    .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
-            if (apiKey != null && !apiKey.isBlank()) {
-                builder.defaultHeader("Authorization", "Bearer " + apiKey);
-            }
-
-            String responseJson = builder.build().get()
-                    .retrieve()
-                    .body(String.class);
-
-            return parseModelList(provider, responseJson);
+            return switch (upper) {
+                case "OLLAMA" -> fetchOllamaModels(baseUrl);
+                case "ANTHROPIC" -> fetchAnthropicModels(apiKey, baseUrl);
+                default -> fetchOpenAiCompatibleModels(upper, apiKey, baseUrl);
+            };
         } catch (Exception e) {
             log.warn("拉取模型列表失败: provider={}, error={}", provider, e.getMessage());
             return List.of();
         }
     }
 
-    private String resolveListModelsUrl(String provider, String baseUrl) {
-        return switch (provider.toUpperCase()) {
-            case "ALIYUN" -> "https://dashscope.aliyuncs.com/compatible-mode/v1/models";
-            case "DEEPSEEK" -> (baseUrl != null ? baseUrl : "https://api.deepseek.com") + "/v1/models";
-            case "OPENAI" -> (baseUrl != null ? baseUrl : "https://api.openai.com") + "/v1/models";
-            case "ANTHROPIC" -> (baseUrl != null ? baseUrl : "https://api.anthropic.com") + "/v1/models";
-            case "OLLAMA" -> (baseUrl != null ? baseUrl : "http://localhost:11434") + "/api/tags";
-            default -> null;
-        };
+    private List<String> fetchOllamaModels(String baseUrl) {
+        String url = baseUrl != null ? baseUrl : "http://localhost:11434";
+        OllamaApi api = OllamaApi.builder().baseUrl(url).build();
+        return api.listModels().models().stream()
+                .map(OllamaApi.Model::name)
+                .collect(Collectors.toList());
     }
 
     @SuppressWarnings("unchecked")
-    private List<String> parseModelList(String provider, String json) {
+    private List<String> fetchAnthropicModels(String apiKey, String baseUrl) {
+        String modelUrl = (baseUrl != null ? baseUrl : "https://api.anthropic.com") + "/v1/models";
+        String json = RestClient.builder()
+                .baseUrl(modelUrl)
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .defaultHeader("x-api-key", apiKey)
+                .defaultHeader("anthropic-version", "2023-06-01")
+                .build()
+                .get()
+                .retrieve()
+                .body(String.class);
         List<String> models = new ArrayList<>();
         try {
-            Map<String, Object> root = objectMapper.readValue(json, Map.class);
+            com.fasterxml.jackson.databind.ObjectMapper localMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            Map<String, Object> root = localMapper.readValue(json, Map.class);
             if (root.containsKey("data")) {
                 List<Map<String, Object>> data = (List<Map<String, Object>>) root.get("data");
                 for (Map<String, Object> item : data) {
                     if (item.get("id") instanceof String id) models.add(id);
                 }
-            } else if (root.containsKey("models")) {
-                List<Map<String, Object>> data = (List<Map<String, Object>>) root.get("models");
-                for (Map<String, Object> item : data) {
-                    if (item.get("name") instanceof String name) models.add(name);
-                }
             }
         } catch (Exception e) {
-            log.warn("解析模型列表 JSON 失败: {}", e.getMessage());
+            log.warn("解析 Anthropic 模型列表 JSON 失败: {}", e.getMessage());
         }
         return models;
+    }
+
+    private List<String> fetchOpenAiCompatibleModels(String provider, String apiKey, String baseUrl) {
+        String url = resolveBaseUrl(provider, baseUrl);
+        ClientOptions options = ClientOptions.Companion.builder()
+                .baseUrl(url)
+                .apiKey(apiKey)
+                .build();
+        OpenAIClient client = new OpenAIClientImpl(options);
+        return client.models().list().data().stream()
+                .map(Model::id)
+                .collect(Collectors.toList());
+    }
+
+    private static String resolveBaseUrl(String provider, String baseUrl) {
+        return switch (provider) {
+            case "ALIYUN" -> baseUrl != null ? baseUrl : AiModelFactory.ALIYUN_DEFAULT_BASE_URL;
+            case "DEEPSEEK" -> baseUrl != null ? baseUrl : AiModelFactory.DEEPSEEK_DEFAULT_BASE_URL;
+            case "OPENAI" -> baseUrl != null ? baseUrl : AiModelFactory.OPENAI_DEFAULT_BASE_URL;
+            default -> baseUrl;
+        };
     }
 
     @Transactional
@@ -171,78 +196,19 @@ public class ModelConfigService {
             return false;
         }
 
-        String fullUrl = buildTestUrl(config);
-        if (fullUrl == null) {
-            log.warn("测试模型连接失败: 不支持的 provider={}, id={}", config.getProvider(), id);
-            return false;
-        }
-
         try {
-            RestClient.Builder builder = RestClient.builder()
-                    .baseUrl(fullUrl)
-                    .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
-
-            if ("ANTHROPIC".equalsIgnoreCase(config.getProvider())) {
-                builder.defaultHeader("x-api-key", config.getApiKey());
-                builder.defaultHeader("anthropic-version", "2023-06-01");
-            } else {
-                builder.defaultHeader("Authorization", "Bearer " + config.getApiKey());
-            }
-
-            Map<String, Object> requestBody = buildTestRequestBody(config);
-            String jsonBody = objectMapper.writeValueAsString(requestBody);
-
-            String responseJson = builder.build().post()
-                    .body(jsonBody)
-                    .retrieve()
-                    .body(String.class);
-
-            Map<?, ?> responseMap = objectMapper.readValue(responseJson, Map.class);
-            boolean ok = responseMap != null && (
-                    responseMap.containsKey("choices") ||
-                    responseMap.containsKey("content") ||
-                    responseMap.containsKey("message") ||
-                    responseMap.containsKey("response"));
-
-            log.info("测试模型连接: id={}, provider={}, model={}, result={}",
-                    id, config.getProvider(), config.getModelName(), ok ? "OK" : "FAIL");
+            ChatModel chatModel = aiModelFactory.buildChatModel(config);
+            chatModel.call("Hi");
+            log.info("测试模型连接成功: id={}, provider={}, model={}",
+                    id, config.getProvider(), config.getModelName());
             operationLogService.log("MODEL", "TEST", id,
-                    "测试模型 " + config.getProvider() + "/" + config.getModelName() + ": " + (ok ? "成功" : "失败"));
-            return ok;
+                    "测试模型 " + config.getProvider() + "/" + config.getModelName() + ": 成功");
+            return true;
         } catch (Exception e) {
             log.warn("测试模型连接失败: id={}, error={}", id, e.getMessage());
             operationLogService.log("MODEL", "TEST", id,
                     "测试模型 " + config.getProvider() + "/" + config.getModelName() + ": " + e.getMessage());
             return false;
         }
-    }
-
-    private String buildTestUrl(ModelConfig config) {
-        return switch (config.getProvider().toUpperCase()) {
-            case "ALIYUN" -> "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
-            case "DEEPSEEK" -> (config.getBaseUrl() != null ? config.getBaseUrl() : "https://api.deepseek.com/v1") + "/chat/completions";
-            case "OPENAI" -> (config.getBaseUrl() != null ? config.getBaseUrl() : "https://api.openai.com/v1") + "/chat/completions";
-            case "ANTHROPIC" -> (config.getBaseUrl() != null ? config.getBaseUrl() : "https://api.anthropic.com") + "/v1/messages";
-            case "OLLAMA" -> (config.getBaseUrl() != null ? config.getBaseUrl() : "http://localhost:11434") + "/api/chat";
-            default -> null;
-        };
-    }
-
-    private Map<String, Object> buildTestRequestBody(ModelConfig config) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        if ("ANTHROPIC".equalsIgnoreCase(config.getProvider())) {
-            body.put("model", config.getModelName());
-            body.put("max_tokens", 10);
-            body.put("messages", List.of(Map.of("role", "user", "content", "Hi")));
-        } else if ("OLLAMA".equalsIgnoreCase(config.getProvider())) {
-            body.put("model", config.getModelName());
-            body.put("messages", List.of(Map.of("role", "user", "content", "Hi")));
-            body.put("stream", false);
-        } else {
-            body.put("model", config.getModelName());
-            body.put("messages", List.of(Map.of("role", "user", "content", "Hi")));
-            body.put("max_tokens", 10);
-        }
-        return body;
     }
 }
