@@ -170,7 +170,7 @@
       <p v-else class="text-sm py-4" style="color: var(--color-text-secondary)">暂无 API Token</p>
     </section>
 
-    <n-modal v-model:show="showTokenForm" preset="card" style="max-width: 420px" :bordered="false" title="创建 API Token">
+    <n-modal v-model:show="showTokenForm" preset="card" class="opaque-modal" style="max-width: 420px; background-color: var(--color-bg) !important;" :bordered="false" title="创建 API Token">
       <n-space vertical size="medium">
         <n-input v-model:value="tokenForm.name" placeholder="如 web-clipper" />
         <n-input-number v-model:value="tokenForm.expireDays" :min="1" :max="365" placeholder="有效期（天）" />
@@ -183,7 +183,7 @@
       </template>
     </n-modal>
 
-    <n-modal v-model:show="newTokenValueShow" preset="card" style="max-width: 480px" :bordered="false" title="Token 已创建">
+    <n-modal v-model:show="newTokenValueShow" preset="card" class="opaque-modal" style="max-width: 480px; background-color: var(--color-bg) !important;" :bordered="false" title="Token 已创建">
       <p class="text-sm mb-4" style="color: var(--color-accent)">请立即复制保存，关闭后将无法再次查看</p>
       <n-input :value="newTokenValue" readonly>
         <template #suffix>
@@ -197,7 +197,7 @@
       </template>
     </n-modal>
 
-    <n-modal v-model:show="showAddForm" preset="card" style="max-width: 400px" :bordered="false" title="添加模型">
+    <n-modal v-model:show="showAddForm" preset="card" class="opaque-modal" style="max-width: 400px; background-color: var(--color-bg) !important;" :bordered="false" title="添加模型">
       <n-space vertical size="medium">
         <n-select v-model:value="form.provider" :options="providerOptions" @update:value="onProviderChange" />
         <n-input v-model:value="form.apiKey" type="password" placeholder="sk-..." />
@@ -539,5 +539,9 @@ onMounted(() => {
   display: flex; align-items: center; justify-content: center;
   color: white; flex-shrink: 0;
   background: var(--gradient-brand);
+}
+
+.opaque-modal :deep(.n-card) {
+  background-color: var(--color-bg) !important;
 }
 </style>

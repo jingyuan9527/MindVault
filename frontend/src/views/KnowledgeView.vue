@@ -148,7 +148,7 @@
       <!-- 卡片视图 -->
       <div v-else-if="viewMode === 'card'" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4 p-4 md:p-5 stagger-enter">
         <div v-for="note in filteredItems" :key="note.id" class="relative">
-          <div class="absolute top-3 left-0 z-10" @click.stop>
+          <div class="absolute top-3 left-3 z-10" @click.stop>
             <n-checkbox :checked="selectedIds.includes(note.id)" @update:checked="toggleSelect(note.id)" size="small" />
           </div>
           <NoteCard :note="note" @click="openDetail(note)" @delete="deleteNote" />
@@ -165,7 +165,7 @@
       <!-- 网格视图 -->
       <div v-else class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-3 p-4 md:p-5 stagger-enter">
         <div v-for="note in filteredItems" :key="note.id" class="relative">
-          <div class="absolute top-2 left-0 z-10" @click.stop>
+          <div class="absolute top-2 left-3 z-10" @click.stop>
             <n-checkbox :checked="selectedIds.includes(note.id)" @update:checked="toggleSelect(note.id)" size="small" />
           </div>
           <n-card size="small" hoverable class="cursor-pointer" :segmented="{ action: 'soft' }" @click="openDetail(note)">
@@ -187,7 +187,7 @@
     </div>
 
     <!-- 详情 / 编辑 Modal -->
-    <n-modal v-model:show="showDetail" preset="card" style="max-width: 600px; max-height: 80vh;" :bordered="false" size="large" @after-leave="closeDetail">
+    <n-modal v-model:show="showDetail" preset="card" class="opaque-modal" style="max-width: 600px; max-height: 80vh; background-color: var(--color-bg) !important;" :bordered="false" size="large" @after-leave="closeDetail">
       <template v-if="!isEditing && detailNote">
               <div class="flex items-start justify-between mb-1">
                 <h3 class="font-display text-xl font-bold" style="color: var(--color-text)">{{ detailNote.aiTitle || detailNote.title }}</h3>
@@ -261,7 +261,7 @@
     </n-modal>
 
     <!-- 新建笔记 Modal -->
-    <n-modal v-model:show="showAddForm" preset="card" style="max-width: 520px" :bordered="false" title="新建笔记" @after-leave="closeAddForm">
+    <n-modal v-model:show="showAddForm" preset="card" class="opaque-modal" style="max-width: 520px; background-color: var(--color-bg) !important;" :bordered="false" title="新建笔记" @after-leave="closeAddForm">
       <n-tabs v-model:value="addTab" type="line" animated>
         <n-tab-pane v-for="tab in addTabs" :key="tab.key" :name="tab.key" :tab="tab.label">
           <n-space v-if="tab.key === 'text'" vertical size="medium">
@@ -290,7 +290,7 @@
     </n-modal>
 
     <!-- 批量打标签 Modal -->
-    <n-modal v-model:show="showBatchTag" preset="card" style="max-width: 400px" :bordered="false" title="批量打标签">
+    <n-modal v-model:show="showBatchTag" preset="card" class="opaque-modal" style="max-width: 400px; background-color: var(--color-bg) !important;" :bordered="false" title="批量打标签">
       <p class="text-xs mb-3" style="color: var(--color-text-secondary)">为选中的 {{ selectedIds.length }} 条知识添加标签</p>
       <n-input v-model:value="batchTagInput" placeholder="输入标签名" @keyup.enter="doBatchTag" />
       <template #footer>
@@ -695,5 +695,9 @@ watch(() => route.query, (query) => {
   display: flex; align-items: center; justify-content: center;
   color: white; flex-shrink: 0;
   background: var(--gradient-brand);
+}
+
+.opaque-modal :deep(.n-card) {
+  background-color: var(--color-bg) !important;
 }
 </style>

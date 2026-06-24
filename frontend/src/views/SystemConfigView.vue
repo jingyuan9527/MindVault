@@ -126,7 +126,7 @@
     </div>
 
     <!-- Edit modal -->
-    <n-modal v-model:show="editingShow" preset="card" style="max-width: 600px" :bordered="false" title="编辑配置">
+    <n-modal v-model:show="editingShow" preset="card" class="opaque-modal" style="max-width: 600px; background-color: var(--color-bg) !important;" :bordered="false" title="编辑配置">
       <code class="text-xs block mb-4" style="color: var(--color-accent)">{{ editing?.configKey }}</code>
       <n-space vertical size="medium">
         <n-input v-model:value="editValue" type="textarea" :rows="6" placeholder="值" />
@@ -483,5 +483,9 @@ onMounted(loadConfigs)
   display: flex; align-items: center; justify-content: center;
   color: white; flex-shrink: 0;
   background: var(--gradient-brand);
+}
+
+.opaque-modal :deep(.n-card) {
+  background-color: var(--color-bg) !important;
 }
 </style>

@@ -9,7 +9,7 @@ export const THEMES = [
 ]
 
 export const useThemeStore = defineStore('theme', () => {
-  const isDark = ref(true)
+  const isDark = ref(false)
   const currentTheme = ref('amber-earth')
 
   const naiveTheme = computed(() => isDark.value ? darkTheme : null)
@@ -25,7 +25,7 @@ export const useThemeStore = defineStore('theme', () => {
     if (savedDark !== null) {
       isDark.value = savedDark === 'true'
     } else {
-      isDark.value = true
+      isDark.value = false
     }
     applyTheme()
   }
