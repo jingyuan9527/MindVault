@@ -10,5 +10,10 @@ import java.lang.annotation.Target;
 public @interface OperationLog {
     String module() default "";
     String action() default "";
-    String description() default "";
+    String actionType() default "OTHER";
+    Class<?> entityType() default Void.class;
+    String summary() default "";
+    String entityIdExpr() default "";
+    boolean recordSnapshot() default false;
+    boolean recordArgs() default false;
 }

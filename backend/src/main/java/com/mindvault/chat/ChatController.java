@@ -2,6 +2,7 @@ package com.mindvault.chat;
 
 import com.mindvault.chat.entity.ChatMessage;
 import com.mindvault.chat.entity.ChatSession;
+import com.mindvault.common.annotation.OperationLog;
 import com.mindvault.common.dto.ApiResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +30,7 @@ public class ChatController {
         this.chatService = chatService;
     }
 
+    @OperationLog(module = "对话", action = "创建会话", actionType = "CREATE")
     @Operation(summary = "创建会话", description = "创建一个新的聊天会话")
     @PostMapping("/sessions")
     public ApiResponse<ChatSession> createSession() {
@@ -47,6 +49,7 @@ public class ChatController {
         return ApiResponse.success(chatService.getMessages(id));
     }
 
+    @OperationLog(module = "对话", action = "发送消息", actionType = "OTHER")
     @Operation(summary = "发送消息", description = "向指定会话发送消息并获取 AI 回复")
     @PostMapping("/sessions/{id}/messages")
     public ApiResponse<ChatMessage> sendMessage(
@@ -59,6 +62,7 @@ public class ChatController {
         return ApiResponse.success(chatService.sendMessage(id, content));
     }
 
+    @OperationLog(module = "对话", action = "流式发送消息", actionType = "OTHER")
     @Operation(summary = "流式发送消息", description = "向指定会话发送消息并通过 SSE 流式获取 AI 回复")
     @PostMapping(value = "/sessions/{id}/messages/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter sendMessageStream(

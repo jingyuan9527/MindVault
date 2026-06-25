@@ -9,6 +9,7 @@ import com.mindvault.auth.entity.ApiToken;
 import com.mindvault.auth.entity.User;
 import com.mindvault.auth.service.ApiTokenService;
 import com.mindvault.auth.service.UserService;
+import com.mindvault.common.annotation.OperationLog;
 import com.mindvault.common.dto.ApiResponse;
 import com.mindvault.common.annotation.RateLimit;
 import io.swagger.v3.oas.annotations.Operation;
@@ -37,6 +38,7 @@ public class AuthController {
         this.sessionManager = sessionManager;
     }
 
+    @OperationLog(module = "认证", action = "用户登录", actionType = "OTHER")
     @RateLimit(capacity = 5, duration = 60, key = "login")
     @Operation(summary = "登录", description = "用户名密码登录，返回会话令牌")
     @PostMapping("/login")
@@ -55,6 +57,7 @@ public class AuthController {
         return ApiResponse.success(data);
     }
 
+    @OperationLog(module = "认证", action = "用户登出", actionType = "OTHER")
     @Operation(summary = "退出登录", description = "清除会话令牌")
     @PostMapping("/logout")
     public ApiResponse<Void> logout(@RequestHeader("Authorization") String authHeader) {
@@ -83,6 +86,7 @@ public class AuthController {
         return ApiResponse.success(data);
     }
 
+    @OperationLog(module = "认证", action = "修改密码", actionType = "UPDATE", entityType = User.class)
     @Operation(summary = "修改密码", description = "修改当前登录用户的密码")
     @PutMapping("/password")
     public ApiResponse<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
@@ -97,6 +101,7 @@ public class AuthController {
         return ApiResponse.success(null);
     }
 
+    @OperationLog(module = "认证", action = "创建 API Token", actionType = "CREATE")
     @Operation(summary = "创建 API Token", description = "创建新的 API 访问令牌")
     @PostMapping("/tokens")
     public ApiResponse<Map<String, Object>> createToken(@Valid @RequestBody CreateTokenRequest request) {
@@ -133,6 +138,7 @@ public class AuthController {
         return ApiResponse.success(result);
     }
 
+    @OperationLog(module = "认证", action = "删除 API Token", actionType = "DELETE")
     @Operation(summary = "删除 API Token", description = "删除指定 ID 的 API 令牌")
     @DeleteMapping("/tokens/{id}")
     public ApiResponse<Void> deleteToken(@PathVariable Long id) {

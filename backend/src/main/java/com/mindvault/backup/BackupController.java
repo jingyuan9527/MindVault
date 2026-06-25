@@ -27,7 +27,7 @@ public class BackupController {
     }
 
     @RateLimit(capacity = 2, duration = 3600, key = "create-backup")
-    @OperationLog(module = "backup", action = "create", description = "创建数据库备份")
+    @OperationLog(module = "备份", action = "创建备份", actionType = "OTHER")
     @Operation(summary = "创建备份", description = "创建当前数据库的完整备份")
     @PostMapping
     public ApiResponse<Map<String, String>> createBackup() {

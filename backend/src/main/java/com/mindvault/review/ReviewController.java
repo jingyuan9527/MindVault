@@ -1,5 +1,6 @@
 package com.mindvault.review;
 
+import com.mindvault.common.annotation.OperationLog;
 import com.mindvault.common.dto.ApiResponse;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,6 +35,7 @@ public class ReviewController {
         return ApiResponse.success(Map.of("count", reviewService.getDueReviewCount()));
     }
 
+    @OperationLog(module = "复习", action = "安排复习", actionType = "CREATE")
     @Operation(summary = "安排复习", description = "为指定知识创建或更新复习计划")
     @PostMapping("/{knowledgeId}/schedule")
     public ApiResponse<?> scheduleReview(@Parameter(description = "知识 ID") @PathVariable Long knowledgeId) {
@@ -41,6 +43,7 @@ public class ReviewController {
                 reviewService.scheduleReview(knowledgeId).getNextReviewAt()));
     }
 
+    @OperationLog(module = "复习", action = "执行复习", actionType = "UPDATE")
     @Operation(summary = "执行复习", description = "提交复习反馈（质量评分），更新下次复习时间")
     @PostMapping("/{knowledgeId}/perform")
     public ApiResponse<?> performReview(

@@ -3,6 +3,7 @@ package com.mindvault.auth.controller;
 import com.mindvault.auth.config.UserContext;
 import com.mindvault.auth.entity.User;
 import com.mindvault.auth.service.UserService;
+import com.mindvault.common.annotation.OperationLog;
 import com.mindvault.common.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -44,6 +45,7 @@ public class UserAdminController {
         return ApiResponse.success(result);
     }
 
+    @OperationLog(module = "用户管理", action = "启用/禁用用户", actionType = "UPDATE", entityType = User.class, recordSnapshot = true)
     @Operation(summary = "启用/禁用用户", description = "设置用户启用状态（仅管理员）")
     @PutMapping("/{id}/enabled")
     public ApiResponse<Void> setEnabled(@PathVariable Long id, @RequestBody Map<String, Boolean> body) {

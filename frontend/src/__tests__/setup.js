@@ -12,7 +12,7 @@ const NAIVE_COMPONENTS = [
   'NTime', 'NBadge', 'NIcon', 'NList', 'NListItem', 'NRadioGroup',
   'NRadio', 'NRadioButton', 'NGrid', 'NGi', 'NStatistic', 'NAlert', 'NSkeleton',
   'NScrollbar', 'NCheckbox', 'NSwitch', 'NDynamicTags', 'NStep', 'NSteps',
-  'NTabs', 'NTabPane', 'NUpload', 'NPopover', 'NTooltip', 'NDrawer',
+  'NTabs', 'NTabPane', 'NUpload', 'NPopover', 'NTooltip', 'NDrawer', 'NDrawerContent',
   'NResult', 'NCode', 'NThing', 'NText', 'NDescriptions', 'NDescriptionsItem',
   'NDatePicker', 'NInputNumber', 'NButtonGroup', 'NDivider', 'NA'
 ]

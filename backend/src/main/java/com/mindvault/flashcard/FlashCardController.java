@@ -1,5 +1,6 @@
 package com.mindvault.flashcard;
 
+import com.mindvault.common.annotation.OperationLog;
 import com.mindvault.common.dto.ApiResponse;
 import com.mindvault.flashcard.entity.FlashCard;
 import org.springframework.web.bind.annotation.*;
@@ -33,12 +34,14 @@ public class FlashCardController {
         return ApiResponse.success(flashCardService.listByKnowledge(knowledgeId));
     }
 
+    @OperationLog(module = "闪卡", action = "生成闪卡", actionType = "CREATE")
     @Operation(summary = "生成闪卡", description = "基于指定知识的内容自动生成闪卡")
     @PostMapping("/generate/{knowledgeId}")
     public ApiResponse<List<FlashCard>> generate(@Parameter(description = "知识 ID") @PathVariable Long knowledgeId) {
         return ApiResponse.success(flashCardService.generateCards(knowledgeId));
     }
 
+    @OperationLog(module = "闪卡", action = "删除闪卡", actionType = "DELETE")
     @Operation(summary = "删除闪卡", description = "删除指定 ID 的闪卡")
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@Parameter(description = "闪卡 ID") @PathVariable Long id) {

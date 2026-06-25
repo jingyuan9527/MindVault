@@ -1,5 +1,6 @@
 package com.mindvault.dailyreview;
 
+import com.mindvault.common.annotation.OperationLog;
 import com.mindvault.common.dto.ApiResponse;
 import com.mindvault.dailyreview.entity.DailyReview;
 import org.springframework.web.bind.annotation.*;
@@ -43,6 +44,7 @@ public class DailyReviewController {
         return ApiResponse.success(dailyReviewService.getRecentReports(limit));
     }
 
+    @OperationLog(module = "每日回顾", action = "生成回顾报告", actionType = "CREATE")
     @Operation(summary = "生成回顾报告", description = "为指定日期或今日生成每日回顾报告")
     @PostMapping("/generate")
     public ApiResponse<DailyReview> generate(@Parameter(description = "日期（yyyy-MM-dd），为空则使用今日") @RequestParam(required = false) String date) {

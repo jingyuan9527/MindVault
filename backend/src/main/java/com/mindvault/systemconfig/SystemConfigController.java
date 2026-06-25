@@ -1,5 +1,6 @@
 package com.mindvault.systemconfig;
 
+import com.mindvault.common.annotation.OperationLog;
 import com.mindvault.common.dto.ApiResponse;
 import com.mindvault.systemconfig.entity.SystemConfig;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,6 +32,7 @@ public class SystemConfigController {
         return ApiResponse.success(configService.getString(key, null));
     }
 
+    @OperationLog(module = "系统配置", action = "更新配置", actionType = "UPDATE")
     @Operation(summary = "更新配置", description = "创建或更新配置项")
     @PutMapping("/{key}")
     public ApiResponse<Void> setConfig(@PathVariable String key, @RequestBody SystemConfig config) {
@@ -38,6 +40,7 @@ public class SystemConfigController {
         return ApiResponse.success(null);
     }
 
+    @OperationLog(module = "系统配置", action = "删除配置", actionType = "DELETE")
     @Operation(summary = "删除配置", description = "删除指定配置项")
     @DeleteMapping("/{key}")
     public ApiResponse<Void> deleteConfig(@PathVariable String key) {
@@ -45,6 +48,7 @@ public class SystemConfigController {
         return ApiResponse.success(null);
     }
 
+    @OperationLog(module = "系统配置", action = "刷新缓存", actionType = "OTHER")
     @Operation(summary = "刷新缓存", description = "手动刷新配置缓存（从 DB 重新加载）")
     @PostMapping("/refresh")
     public ApiResponse<Void> refresh() {

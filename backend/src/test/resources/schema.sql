@@ -59,6 +59,26 @@ CREATE TABLE IF NOT EXISTS system_config (
     config_key VARCHAR(255) NOT NULL UNIQUE,
     config_value TEXT NOT NULL DEFAULT '',
     description VARCHAR(500) DEFAULT '',
-    value_type VARCHAR(50) NOT NULL DEFAULT 'string',
+    value_type VARCHAR(50) NOT NULL DEFAULT 'updated_at',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS operation_log (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    module VARCHAR(32) NOT NULL,
+    action VARCHAR(32) NOT NULL,
+    action_type VARCHAR(10) NOT NULL DEFAULT 'OTHER',
+    entity_id VARCHAR(64),
+    summary VARCHAR(500) NOT NULL DEFAULT '',
+    detail TEXT,
+    before_snapshot TEXT,
+    after_snapshot TEXT,
+    operator VARCHAR(64) NOT NULL DEFAULT 'system',
+    operator_id BIGINT,
+    ip_address VARCHAR(45),
+    result VARCHAR(10) NOT NULL DEFAULT 'SUCCESS',
+    error_message TEXT,
+    duration_ms INTEGER NOT NULL DEFAULT 0,
+    remark VARCHAR(255),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

@@ -1,5 +1,6 @@
 package com.mindvault.model;
 
+import com.mindvault.common.annotation.OperationLog;
 import com.mindvault.common.annotation.RateLimit;
 import com.mindvault.common.dto.ApiResponse;
 import com.mindvault.model.entity.ModelConfig;
@@ -24,6 +25,7 @@ public class ModelConfigController {
         this.modelConfigService = modelConfigService;
     }
 
+    @OperationLog(module = "模型配置", action = "新增模型", actionType = "CREATE", entityType = ModelConfig.class)
     @Operation(summary = "新增模型配置", description = "添加一个新的 LLM 模型配置")
     @PostMapping
     public ApiResponse<ModelConfig> addConfig(@Valid @RequestBody ModelConfig config) {
@@ -36,19 +38,22 @@ public class ModelConfigController {
         return ApiResponse.success(modelConfigService.listAll());
     }
 
+    @OperationLog(module = "模型配置", action = "设为默认模型", actionType = "UPDATE", entityType = ModelConfig.class, recordSnapshot = true)
     @Operation(summary = "设置默认模型", description = "将指定模型设为主要使用的模型")
     @PatchMapping("/{id}/primary")
     public ApiResponse<ModelConfig> setPrimary(@Parameter(description = "模型配置 ID") @PathVariable Long id) {
         return ApiResponse.success(modelConfigService.setPrimary(id));
     }
 
-@Operation(summary = "更新模型优先级", description = "更新指定模型的优先级排序")
+@OperationLog(module = "模型配置", action = "更新优先级", actionType = "UPDATE", entityType = ModelConfig.class)
+    @Operation(summary = "更新模型优先级", description = "更新指定模型的优先级排序")
     @PatchMapping("/{id}/priority")
     public ApiResponse<ModelConfig> updatePriority(@Parameter(description = "模型配置 ID") @PathVariable Long id,
                                                     @RequestBody Integer priority) {
         return ApiResponse.success(modelConfigService.updatePriority(id, priority));
     }
 
+    @OperationLog(module = "模型配置", action = "删除模型", actionType = "DELETE", entityType = ModelConfig.class, recordSnapshot = true)
     @Operation(summary = "删除模型配置", description = "删除指定 ID 的模型配置")
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteConfig(@Parameter(description = "模型配置 ID") @PathVariable Long id) {
@@ -67,6 +72,7 @@ public class ModelConfigController {
         return ApiResponse.success(models);
     }
 
+    @OperationLog(module = "模型配置", action = "测试连接", actionType = "OTHER")
     @Operation(summary = "测试连接", description = "测试指定模型的 API 连接是否正常")
     @PostMapping("/{id}/test")
     public ApiResponse<Boolean> testConnection(@Parameter(description = "模型配置 ID") @PathVariable Long id) {

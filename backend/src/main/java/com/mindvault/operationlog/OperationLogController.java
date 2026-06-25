@@ -1,10 +1,9 @@
 package com.mindvault.operationlog;
 
 import com.mindvault.common.dto.ApiResponse;
+import com.mindvault.common.dto.PageResult;
 import com.mindvault.operationlog.entity.OperationLog;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -21,13 +20,22 @@ public class OperationLogController {
         this.operationLogService = operationLogService;
     }
 
-    @Operation(summary = "操作日志列表", description = "获取操作日志列表，可按模块筛选")
+    @Operation(summary = "操作日志列表", description = "分页获取操作日志列表，可按模块筛选")
     @GetMapping
-    public ApiResponse<List<OperationLog>> list(
-            @Parameter(description = "模块名称（可选）") @RequestParam(required = false) String module) {
-        if (module != null) {
-            return ApiResponse.success(operationLogService.listByModule(module));
+    public ApiResponse<PageResult<OperationLog>> list(
+            @Parameter(description = "模块名称（可选）") @RequestParam(required = false) String module,
+            @Parameter(description = "页码，从 0 开始") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "每页条数") @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.success(operationLogService.listPage(module, page, size));
+    }
+
+    @Operation(summary = "操作日志详情", description = "获取单条操作日志的完整信息，含前后快照")
+    @GetMapping("/{id}")
+    public ApiResponse<OperationLog> detail(@Parameter(description = "日志 ID") @PathVariable Long id) {
+        OperationLog log = operationLogService.getDetail(id);
+        if (log == null) {
+            return ApiResponse.error(404, "日志不存在");
         }
-        return ApiResponse.success(operationLogService.listAll());
+        return ApiResponse.success(log);
     }
 }

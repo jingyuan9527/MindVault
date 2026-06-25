@@ -46,7 +46,7 @@ public class KnowledgeController {
         this.autoProcessLogMapper = autoProcessLogMapper;
     }
 
-    @OperationLog(module = "knowledge", action = "create", description = "新增知识")
+    @OperationLog(module = "知识库", action = "新增知识", actionType = "CREATE", entityType = Knowledge.class, recordSnapshot = true)
     @Operation(summary = "新增知识", description = "创建一条新的知识笔记")
     @PostMapping
     public ApiResponse<Knowledge> addKnowledge(@Valid @RequestBody Knowledge knowledge) {
@@ -71,7 +71,7 @@ public class KnowledgeController {
         return ApiResponse.success(knowledgeService.getById(id));
     }
 
-    @OperationLog(module = "knowledge", action = "update", description = "更新知识")
+    @OperationLog(module = "知识库", action = "更新知识", actionType = "UPDATE", entityType = Knowledge.class, recordSnapshot = true)
     @Operation(summary = "更新知识", description = "更新指定 ID 的知识内容")
     @PutMapping("/{id}")
     public ApiResponse<Knowledge> updateKnowledge(@Parameter(description = "知识 ID") @PathVariable Long id,
@@ -120,7 +120,7 @@ public class KnowledgeController {
         return ApiResponse.success(associationService.getRelatedKnowledge(id, limit));
     }
 
-    @OperationLog(module = "knowledge", action = "ai_tag", description = "AI 批量打标签")
+    @OperationLog(module = "知识库", action = "AI 批量打标签", actionType = "UPDATE", entityType = Knowledge.class)
     @Operation(summary = "AI 批量打标签", description = "选中多条知识，AI 根据内容生成标签并追加到 user_tags")
     @PostMapping("/batch/ai-tag")
     public ApiResponse<Map<String, Object>> batchAiTag(@RequestBody List<Long> ids) {
@@ -131,7 +131,7 @@ public class KnowledgeController {
         return ApiResponse.success(result);
     }
 
-    @OperationLog(module = "knowledge", action = "delete", description = "删除知识")
+    @OperationLog(module = "知识库", action = "删除知识", actionType = "DELETE", entityType = Knowledge.class, recordSnapshot = true)
     @Operation(summary = "删除知识", description = "删除指定 ID 的知识及其关联的复习计划")
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteKnowledge(@Parameter(description = "知识 ID") @PathVariable Long id) {
@@ -139,7 +139,7 @@ public class KnowledgeController {
         return ApiResponse.success(null);
     }
 
-    @OperationLog(module = "knowledge", action = "reprocess", description = "重新 AI 处理")
+    @OperationLog(module = "知识库", action = "重新 AI 处理", actionType = "UPDATE", entityType = Knowledge.class)
     @Operation(summary = "重新 AI 处理", description = "重置 AI 字段并重新执行自动处理流水线")
     @PostMapping("/{id}/reprocess")
     public ApiResponse<Void> reprocessKnowledge(@Parameter(description = "知识 ID") @PathVariable Long id) {
@@ -231,6 +231,7 @@ public class KnowledgeController {
         return ApiResponse.success(preview);
     }
 
+    @OperationLog(module = "知识库", action = "导入知识", actionType = "CREATE")
     @Operation(summary = "导入 JSON", description = "导入 JSON 格式的知识数据，支持冲突策略（skip/overwrite）")
     @PostMapping("/import")
     public ApiResponse<Map<String, Object>> importJson(
@@ -243,6 +244,7 @@ public class KnowledgeController {
         return ApiResponse.success(result);
     }
 
+    @OperationLog(module = "知识库", action = "批量删除", actionType = "DELETE", entityType = Knowledge.class)
     @Operation(summary = "批量删除", description = "根据 ID 列表批量删除知识")
     @PostMapping("/batch/delete")
     public ApiResponse<Void> batchDelete(@RequestBody List<Long> ids) {

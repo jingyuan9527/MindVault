@@ -1,5 +1,6 @@
 package com.mindvault.writing;
 
+import com.mindvault.common.annotation.OperationLog;
 import com.mindvault.common.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -18,6 +19,7 @@ public class WritingController {
         this.writingService = writingService;
     }
 
+    @OperationLog(module = "写作助手", action = "生成文章", actionType = "CREATE")
     @Operation(summary = "生成文章", description = "根据主题、风格、关键词生成 AI 文章")
     @PostMapping("/generate")
     public ApiResponse<String> generate(@RequestBody Map<String, String> request) {
