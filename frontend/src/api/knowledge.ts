@@ -2,7 +2,7 @@ import client from './client'
 
 export const knowledgeApi = {
   add: (data) => client.post('/knowledge', data),
-  list: (page = 0, size = 20) => client.get(`/knowledge?page=${page}&size=${size}`),
+  list: (params) => client.get('/knowledge', { params }),
   getById: (id) => client.get(`/knowledge/${id}`),
   search: (q) => client.get(`/knowledge/search?q=${encodeURIComponent(q)}`),
   update: (id, data) => client.put(`/knowledge/${id}`, data),
@@ -29,6 +29,7 @@ export const knowledgeApi = {
   batchDelete: (ids) => client.post('/knowledge/batch/delete', ids),
   batchTag: (ids, tag) => client.post('/knowledge/batch/tag', { ids, tag }),
   batchExport: (ids) => client.post('/knowledge/batch/export', ids, { responseType: 'blob' }),
+  batchAiTag: (ids) => client.post('/knowledge/batch/ai-tag', ids),
   reprocess: (id) => client.post(`/knowledge/${id}/reprocess`),
   getProcessLogs: (id) => client.get(`/knowledge/${id}/process-logs`)
 }

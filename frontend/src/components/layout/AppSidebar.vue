@@ -30,7 +30,7 @@
       <div class="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto px-1">
         <router-link
 v-for="tag in tags" :key="tag.name"
-          :to="{ path: '/', query: { tag: tag.name } }"
+          :to="{ path: '/', query: { tags: tag.name } }"
           class="px-2 py-0.5 rounded-full text-xs transition-all duration-150 whitespace-nowrap"
           :style="{
             background: 'var(--color-accent-light)',

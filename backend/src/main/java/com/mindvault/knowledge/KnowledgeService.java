@@ -3,9 +3,13 @@ package com.mindvault.knowledge;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindvault.ai.client.AiModelFactory;
+import com.mindvault.ai.client.AiService;
+import com.mindvault.ai.prompt.PromptRegistry;
 import com.mindvault.common.service.MetricsService;
 import com.mindvault.content.AutoProcessService;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+
+import com.mindvault.common.dto.PageResult;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
@@ -42,6 +46,7 @@ public class KnowledgeService {
     private final ReviewService reviewService;
     private final ModelConfigService modelConfigService;
     private final AiModelFactory aiModelFactory;
+    private final AiService aiService;
     private final MetricsService metricsService;
     private final KnowledgeRelationMapper relationMapper;
     private final SystemConfigService config;
@@ -53,6 +58,7 @@ public class KnowledgeService {
                             ReviewService reviewService,
                             ModelConfigService modelConfigService,
                             AiModelFactory aiModelFactory,
+                            AiService aiService,
                             MetricsService metricsService,
                             KnowledgeRelationMapper relationMapper,
                             SystemConfigService config) {
@@ -62,6 +68,7 @@ public class KnowledgeService {
         this.reviewService = reviewService;
         this.modelConfigService = modelConfigService;
         this.aiModelFactory = aiModelFactory;
+        this.aiService = aiService;
         this.metricsService = metricsService;
         this.relationMapper = relationMapper;
         this.config = config;
@@ -95,9 +102,45 @@ public class KnowledgeService {
         return knowledge;
     }
 
-    public List<Knowledge> listAll(int page, int size) {
-        Page<Knowledge> mpPage = mapper.selectPage(new Page<>(page + 1, size), null);
-        return mpPage.getRecords();
+    public PageResult<Knowledge> listAll(int page, int size, String keyword, List<String> tags,
+                                          String sortBy, String sortOrder) {
+        QueryWrapper<Knowledge> qw = new QueryWrapper<>();
+
+        if (keyword != null && !keyword.isBlank()) {
+            qw.and(w -> w.like("title", keyword)
+                    .or().like("ai_title", keyword)
+                    .or().like("content", keyword));
+        }
+
+        if (tags != null && !tags.isEmpty()) {
+            for (String tag : tags) {
+                String tagJson = "[\"" + tag + "\"]";
+                qw.and(w -> w.apply("tags::jsonb @> {0}::jsonb", tagJson)
+                        .or().apply("user_tags::jsonb @> {0}::jsonb", tagJson));
+            }
+        }
+
+        long total = mapper.selectCount(qw);
+
+        String column = switch (sortBy != null ? sortBy : "createdAt") {
+            case "updatedAt" -> "updated_at";
+            case "title" -> "title";
+            default -> "created_at";
+        };
+        qw.orderBy(true, "asc".equalsIgnoreCase(sortOrder), column);
+        int offset = page * size;
+        qw.last("LIMIT " + size + " OFFSET " + offset);
+        List<Knowledge> records = mapper.selectList(qw);
+        int totalPages = size > 0 ? (int) Math.ceil((double) total / size) : 0;
+        return new PageResult<>(records, total, page, size, totalPages);
+    }
+
+    public List<Knowledge> listAllSimple(int page, int size) {
+        int offset = page * size;
+        QueryWrapper<Knowledge> qw = new QueryWrapper<>();
+        qw.orderBy(true, false, "created_at");
+        qw.last("LIMIT " + size + " OFFSET " + offset);
+        return mapper.selectList(qw);
     }
 
     public Knowledge getById(Long id) {
@@ -374,6 +417,44 @@ public class KnowledgeService {
                         "批量添加标签「" + tag + "」");
             }
         }
+    }
+
+    public int batchAiTag(List<Long> ids) {
+        int success = 0;
+        int truncateLen = config.getInt("threshold.auto.truncate-length", 2000);
+        double temperature = config.getDouble("threshold.auto.llm-temperature", 0.3);
+        int maxTokens = config.getInt("threshold.auto.tags-max-tokens", 300);
+        for (Long id : ids) {
+            try {
+                Knowledge k = mapper.selectById(id);
+                if (k == null) continue;
+                String displayTitle = displayTitle(k);
+                String content = k.getContent();
+                if (content == null || content.isBlank()) continue;
+                String prompt = PromptRegistry.AUTO_TAGS.resolve(config, displayTitle, AiService.truncate(content, truncateLen));
+                String result = aiService.call(prompt, temperature, maxTokens);
+                if (result == null) continue;
+                String cleaned = result.trim();
+                if (!cleaned.startsWith("[") || !cleaned.endsWith("]")) continue;
+                List<String> aiTags = objectMapper.readValue(cleaned, new TypeReference<>() {});
+                List<String> existingTags = new ArrayList<>();
+                if (k.getUserTags() != null && !k.getUserTags().equals("[]")) {
+                    existingTags = objectMapper.readValue(k.getUserTags(), new TypeReference<>() {});
+                }
+                Set<String> merged = new LinkedHashSet<>(existingTags);
+                merged.addAll(aiTags);
+                k.setUserTags(objectMapper.writeValueAsString(new ArrayList<>(merged)));
+                k.setUpdatedAt(LocalDateTime.now());
+                mapper.updateById(k);
+                success++;
+                log.info("AI 批量打标签: id={}, tags={}", id, cleaned);
+                operationLogService.log("KNOWLEDGE", "AI_TAG", id,
+                        "AI 批量添加标签: " + String.join(", ", aiTags));
+            } catch (Exception e) {
+                log.warn("AI 批量打标签失败: id={}, error={}", id, e.getMessage());
+            }
+        }
+        return success;
     }
 
     public String batchExport(List<Long> ids) {

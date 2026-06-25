@@ -72,7 +72,7 @@ const selectedKnowledgeId = ref(null)
 const flipped = ref([])
 const error = ref('')
 
-const knowledgeOptions = computed(() => store.items.map(k => ({ label: k.title, value: k.id })))
+const knowledgeOptions = computed(() => store.items.map(k => ({ label: k.aiTitle || k.title, value: k.id })))
 
 function diffLabel(d) {
   if (d === 'EASY') return '简单'
@@ -88,7 +88,7 @@ async function generateCards() { if (!selectedKnowledgeId.value) return; generat
 
 function confirmDelete(id, idx) { dialog.warning({ title: '删除卡片', content: '确定删除此卡片？', positiveText: '确定', negativeText: '取消', onPositiveClick: async () => { await flashcardApi.delete(id); cards.value.splice(idx, 1); flipped.value.splice(idx, 1) } }) }
 
-onMounted(() => { store.loadItems(); loadCards() })
+onMounted(() => { store.fetchItems({ size: 9999 }); loadCards() })
 </script>
 
 <style scoped>

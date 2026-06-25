@@ -3,7 +3,9 @@ package com.mindvault.knowledge;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindvault.ai.client.AiModelFactory;
+import com.mindvault.ai.client.AiService;
 import com.mindvault.common.service.MetricsService;
+import com.mindvault.model.ModelConfigService;
 import com.mindvault.content.AutoProcessService;
 import com.mindvault.knowledge.dto.ImportPreview;
 import com.mindvault.knowledge.entity.Knowledge;
@@ -34,7 +36,9 @@ class KnowledgeServiceTest {
     @Mock private KnowledgeMapper mapper;
     @Mock private OperationLogService operationLogService;
     @Mock private AutoProcessService autoProcessService;
+    @Mock private ModelConfigService modelConfigService;
     @Mock private AiModelFactory aiModelFactory;
+    @Mock private AiService aiService;
     @Mock private ReviewService reviewService;
     @Mock private MetricsService metricsService;
     @Mock private KnowledgeRelationMapper relationMapper;
@@ -48,7 +52,7 @@ class KnowledgeServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new KnowledgeService(mapper, operationLogService, autoProcessService, reviewService, null, aiModelFactory, metricsService, relationMapper, config);
+        service = new KnowledgeService(mapper, operationLogService, autoProcessService, reviewService, modelConfigService, aiModelFactory, aiService, metricsService, relationMapper, config);
         objectMapper = new ObjectMapper();
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));

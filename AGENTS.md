@@ -97,7 +97,7 @@ The pipeline processes each knowledge entry in three automated rounds:
 - **AgentService**: Uses `ChatModel.call(prompt)` / `ChatModel.stream(prompt).toStream().forEach(...)` directly (not via LlmFailoverService, needs multi-message arrays). Don't pass `ChatOptions` in the `Prompt` — set all options on the model builder via `AiModelFactory`.
 - **Embedding**: Uses `EmbeddingModel.embed(String)` returning `float[]`. Convert to JSON string via `StringJoiner` + for-loop (no `Arrays.stream(float[])` in Java).
 - **OllamaApi**: Use `OllamaApi.builder().baseUrl(url).build()` (not `new OllamaApi(url)`).
-- **MyBatis-Plus 3.5.9**: `PaginationInnerInterceptor` removed — use auto-configuration instead.
+- **MyBatis-Plus 3.5.9**: `PaginationInnerInterceptor` removed entirely — implement manual pagination (count + LIMIT/OFFSET) in service layer instead. `selectPage` does NOT auto-execute count query. Remove empty `MybatisPlusInterceptor` bean if no other inner interceptors are needed.
 
 ## Testing Notes
 - `ModelApiIntegrationTest` runs real API calls against `agnes-2.0-flash` (~29s for 5 tests). Skipped when env var absent.

@@ -5,7 +5,7 @@ import KnowledgeView from '@/views/KnowledgeView.vue'
 
 vi.mock('@/api/knowledge', () => ({
   knowledgeApi: {
-    list: vi.fn().mockResolvedValue({ data: { data: [] } }),
+    list: vi.fn().mockResolvedValue({ data: { data: { records: [], total: 0 } } }),
     getTags: vi.fn().mockResolvedValue({ data: { data: [] } }),
     add: vi.fn(),
     update: vi.fn(),
@@ -29,6 +29,7 @@ vi.mock('@/api/knowledge', () => ({
 
 vi.mock('vue-router', () => ({
   useRoute: () => ({ query: {} }),
+  useRouter: () => ({ replace: vi.fn() }),
 }))
 
 describe('KnowledgeView', () => {

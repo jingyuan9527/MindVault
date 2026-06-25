@@ -30,8 +30,8 @@ describe('knowledgeApi', () => {
   })
 
   it('list calls GET /knowledge with query params', () => {
-    knowledgeApi.list(0, 20)
-    expect(api.get).toHaveBeenCalledWith('/knowledge?page=0&size=20')
+    knowledgeApi.list({ page: 0, size: 20 })
+    expect(api.get).toHaveBeenCalledWith('/knowledge', { params: { page: 0, size: 20 } })
   })
 
   it('getById calls GET /knowledge/:id', () => {

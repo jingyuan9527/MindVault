@@ -2,6 +2,7 @@ package com.mindvault.knowledge;
 
 import com.mindvault.common.annotation.OperationLog;
 import com.mindvault.common.dto.ApiResponse;
+import com.mindvault.common.dto.PageResult;
 import com.mindvault.content.ContentParserService;
 import com.mindvault.knowledge.entity.Knowledge;
 import jakarta.validation.Valid;
@@ -52,12 +53,16 @@ public class KnowledgeController {
         return ApiResponse.success(knowledgeService.addKnowledge(knowledge));
     }
 
-    @Operation(summary = "知识列表", description = "分页获取知识列表，按创建时间倒序")
+    @Operation(summary = "知识列表", description = "分页获取知识列表，支持关键字搜索、标签筛选、排序")
     @GetMapping
-    public ApiResponse<List<Knowledge>> listAll(
+    public ApiResponse<PageResult<Knowledge>> listAll(
             @Parameter(description = "页码，从 0 开始") @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "每页条数") @RequestParam(defaultValue = "20") int size) {
-        return ApiResponse.success(knowledgeService.listAll(page, size));
+            @Parameter(description = "每页条数") @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "搜索关键词") @RequestParam(required = false) String keyword,
+            @Parameter(description = "标签筛选（可重复）") @RequestParam(required = false) List<String> tags,
+            @Parameter(description = "排序字段: createdAt/updatedAt/title/relevance") @RequestParam(defaultValue = "createdAt") String sortBy,
+            @Parameter(description = "排序方向: asc/desc") @RequestParam(defaultValue = "desc") String sortOrder) {
+        return ApiResponse.success(knowledgeService.listAll(page, size, keyword, tags, sortBy, sortOrder));
     }
 
     @Operation(summary = "知识详情", description = "根据 ID 获取单条知识")
@@ -113,6 +118,17 @@ public class KnowledgeController {
             @Parameter(description = "知识 ID") @PathVariable Long id,
             @Parameter(description = "返回条数") @RequestParam(defaultValue = "5") int limit) {
         return ApiResponse.success(associationService.getRelatedKnowledge(id, limit));
+    }
+
+    @OperationLog(module = "knowledge", action = "ai_tag", description = "AI 批量打标签")
+    @Operation(summary = "AI 批量打标签", description = "选中多条知识，AI 根据内容生成标签并追加到 user_tags")
+    @PostMapping("/batch/ai-tag")
+    public ApiResponse<Map<String, Object>> batchAiTag(@RequestBody List<Long> ids) {
+        int count = knowledgeService.batchAiTag(ids);
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", count);
+        result.put("total", ids.size());
+        return ApiResponse.success(result);
     }
 
     @OperationLog(module = "knowledge", action = "delete", description = "删除知识")

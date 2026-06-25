@@ -3,6 +3,7 @@ package com.mindvault.knowledge;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindvault.auto.AutoProcessLogMapper;
 import com.mindvault.content.ContentParserService;
+import com.mindvault.common.dto.PageResult;
 import com.mindvault.knowledge.dto.ImportPreview;
 import com.mindvault.knowledge.dto.ImportPreview.ConflictItem;
 import com.mindvault.knowledge.entity.Knowledge;
@@ -64,11 +65,17 @@ class KnowledgeControllerTest {
 
     @Test
     void getKnowledgeList_shouldReturnPaginated() throws Exception {
-        when(knowledgeService.listAll(0, 20)).thenReturn(List.of(createSampleKnowledge(1L)));
+        Knowledge sample = createSampleKnowledge(1L);
+        PageResult<Knowledge> pageResult = new PageResult<>(
+                List.of(sample), 1L, 0, 20, 1
+        );
+        when(knowledgeService.listAll(eq(0), eq(20), isNull(), isNull(), eq("createdAt"), eq("desc")))
+                .thenReturn(pageResult);
 
         mockMvc.perform(get("/api/v1/knowledge"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].title").value("Test 1"));
+                .andExpect(jsonPath("$.data.records[0].title").value("Test 1"))
+                .andExpect(jsonPath("$.data.total").value(1));
     }
 
     @Test
