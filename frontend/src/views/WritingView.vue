@@ -20,7 +20,7 @@
           <n-form-item label="写作主题" class="flex-1 w-full sm:w-auto" style="margin-bottom: 0">
             <n-input v-model:value="formData.topic" placeholder="输入文章主题，如「Spring Boot 最佳实践」" size="large" />
           </n-form-item>
-          <n-button type="primary" :loading="generating" :disabled="!formData.topic.trim()" @click="generate" class="generate-writing-btn shrink-0">
+          <n-button type="primary" :loading="generating" :disabled="!formData.topic.trim()" class="generate-writing-btn shrink-0" @click="generate">
             <template #icon>
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
             </template>

@@ -36,11 +36,13 @@
           <div class="flex items-start justify-between gap-2">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap mb-1">
-                <span class="text-xs px-2 py-0.5 rounded-full font-medium"
+                <span
+class="text-xs px-2 py-0.5 rounded-full font-medium"
                   :style="{ backgroundColor: moduleColor(cfg) + '20', color: moduleColor(cfg) }">
                   {{ configModule(cfg) }}
                 </span>
-                <span class="text-xs px-1.5 py-0.5 rounded"
+                <span
+class="text-xs px-1.5 py-0.5 rounded"
                   :style="{ backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' }">
                   {{ cfg.valueType }}
                 </span>
@@ -54,7 +56,8 @@
               <n-button text size="tiny" type="error" @click="deleteConfig(cfg)">删除</n-button>
             </div>
           </div>
-          <div class="text-sm break-all whitespace-pre-wrap max-h-24 overflow-y-auto rounded p-2 mt-2"
+          <div
+class="text-sm break-all whitespace-pre-wrap max-h-24 overflow-y-auto rounded p-2 mt-2"
             :style="{ color: 'var(--color-text)', backgroundColor: 'var(--color-bg)' }">
             {{ displayValue(cfg) }}
           </div>
@@ -63,7 +66,7 @@
 
       <!-- Pagination -->
       <div v-if="totalPages > 1" class="flex items-center justify-center mt-4">
-        <n-pagination :page="currentPage" :page-count="totalPages" @update:page="currentPage = $event" size="small" />
+        <n-pagination :page="currentPage" :page-count="totalPages" size="small" @update:page="currentPage = $event" />
       </div>
 
       <p v-else-if="!paginatedConfigs.length" class="text-sm py-8 text-center" style="color: var(--color-text-secondary)">暂无匹配的配置项</p>
@@ -80,7 +83,8 @@
             <div>
               <div class="flex items-center gap-2 mb-0.5">
                 <h4 class="text-sm font-medium" style="color: var(--color-text)">{{ task.label }}</h4>
-                <span class="text-xs px-2 py-0.5 rounded-full font-medium"
+                <span
+class="text-xs px-2 py-0.5 rounded-full font-medium"
                   :style="task.enabled ? { backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' } : { backgroundColor: '#f0eeeb', color: 'var(--color-text-secondary)' }">
                   {{ task.enabled ? '运行中' : '已停止' }}
                 </span>

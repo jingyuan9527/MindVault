@@ -1,9 +1,10 @@
 <template>
-  <div class="flex items-center px-5 py-3 cursor-pointer transition-colors duration-150 hover:opacity-80 hover-sage-bg"
+  <div
+class="flex items-center px-5 py-3 cursor-pointer transition-colors duration-150 hover:opacity-80 hover-sage-bg"
     style="border-bottom: 1px solid var(--color-border)"
     @click="$emit('click', note)">
     <div class="flex items-center shrink-0 mr-8" @click.stop>
-      <n-checkbox :checked="selected" @update:checked="$emit('toggle-select', note.id)" size="small" />
+      <n-checkbox :checked="selected" size="small" @update:checked="$emit('toggle-select', note.id)" />
     </div>
     <div class="flex-1 min-w-0">
       <p class="text-sm font-medium truncate" style="color: var(--color-text)">{{ note.aiTitle || note.title }}</p>
@@ -12,7 +13,7 @@
         <ContentRenderer :content="note.summary || note.content" preview />
       </div>
     </div>
-    <div class="flex flex-wrap gap-1 mx-3 max-w-[200px]" v-if="mergedTags.length">
+    <div v-if="mergedTags.length" class="flex flex-wrap gap-1 mx-3 max-w-[200px]">
       <router-link v-for="tag in mergedTags.slice(0, 3)" :key="tag" :to="{ path: '/', query: { tag } }" @click.stop><n-tag size="tiny" type="primary" :bordered="false">#{{ tag }}</n-tag></router-link>
       <span v-if="mergedTags.length > 3" class="text-xs" style="color: var(--color-text-secondary)">+{{ mergedTags.length - 3 }}</span>
     </div>

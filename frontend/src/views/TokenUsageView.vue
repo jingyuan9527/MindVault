@@ -32,7 +32,8 @@
             <div class="chart-bars">
               <div v-for="row in groupedData" :key="row.date" class="chart-bar-col">
                 <div class="chart-bar-stack">
-                  <div v-for="seg in row.segments" :key="seg.provider"
+                  <div
+v-for="seg in row.segments" :key="seg.provider"
                     class="chart-bar-seg"
                     :style="{ height: seg.pct + '%', backgroundColor: providerColor(seg.provider), minHeight: seg.pct > 0 ? '2px' : '0' }"
                     :title="`${seg.provider}: ${(seg.totalTokens / 1000).toFixed(1)}K`">

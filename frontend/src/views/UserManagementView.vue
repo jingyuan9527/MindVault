@@ -17,7 +17,7 @@
         <div class="user-avatar" :style="{ backgroundColor: userColor(u.username) }">{{ initials(u.username) }}</div>
         <div class="user-info">
           <p class="user-name">{{ u.username }}</p>
-          <p class="user-display" v-if="u.displayName && u.displayName !== u.username">{{ u.displayName }}</p>
+          <p v-if="u.displayName && u.displayName !== u.username" class="user-display">{{ u.displayName }}</p>
         </div>
         <div class="user-badges">
           <span class="user-role" :class="u.role === 'ADMIN' ? 'role-admin' : 'role-user'">{{ u.role }}</span>

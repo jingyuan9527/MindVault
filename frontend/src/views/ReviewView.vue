@@ -21,7 +21,7 @@
     </div>
 
     <div class="flex-1 overflow-y-auto p-4 md:p-5">
-      <n-alert v-if="error" type="error" :show-icon="true" closable @close="error = ''" class="mb-4">
+      <n-alert v-if="error" type="error" :show-icon="true" closable class="mb-4" @close="error = ''">
         <template #action><n-button text type="warning" @click="loadDue">重试</n-button></template>{{ error }}
       </n-alert>
 
@@ -44,7 +44,8 @@
 
       <div v-else class="max-w-2xl mx-auto">
         <div class="review-progress-strip">
-          <div class="progress-dot" v-for="(_, i) in dueItems.length" :key="i"
+          <div
+v-for="(_, i) in dueItems.length" :key="i" class="progress-dot"
             :class="{ active: i === reviewIndex, done: i < reviewIndex }"></div>
         </div>
 
@@ -54,7 +55,7 @@
               <h3 class="font-display text-lg font-bold">{{ currentReview.title }}</h3>
               <span class="text-xs px-2 py-0.5 rounded-full" style="background-color: var(--color-sage-light); color: var(--color-sage)">{{ reviewIndex + 1 }} / {{ dueItems.length }}</span>
             </div>
-            <div class="flex flex-wrap gap-1 mt-2" v-if="currentReviewTags.length">
+            <div v-if="currentReviewTags.length" class="flex flex-wrap gap-1 mt-2">
               <n-tag v-for="tag in currentReviewTags" :key="tag" size="tiny" type="primary" :bordered="false">#{{ tag }}</n-tag>
             </div>
           </div>
@@ -77,8 +78,9 @@
           <div class="review-card-actions">
             <p class="text-sm font-medium mb-3">这次记住了吗？</p>
             <div class="quality-grid">
-              <n-button v-for="opt in qualityOptions" :key="opt.value" @click="submitReview(opt.value)"
-                :class="['quality-btn', 'q-' + opt.value]">{{ opt.label }}</n-button>
+              <n-button
+v-for="opt in qualityOptions" :key="opt.value" :class="['quality-btn', 'q-' + opt.value]"
+                @click="submitReview(opt.value)">{{ opt.label }}</n-button>
             </div>
           </div>
         </div>

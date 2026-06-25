@@ -20,7 +20,7 @@
         <p class="brand-desc">智能管理知识，自动发现关联，让学习与思考事半功倍</p>
       </div>
       <div class="login-card">
-        <n-form @submit.prevent="handleLogin" label-placement="top" :model="formData">
+        <n-form label-placement="top" :model="formData" @submit.prevent="handleLogin">
           <n-form-item label="用户名" path="username">
             <n-input v-model:value="formData.username" type="text" autocomplete="username" placeholder="请输入用户名" size="large">
               <template #prefix>

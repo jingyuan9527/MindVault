@@ -5,9 +5,10 @@
         <p class="text-xs font-medium" style="color: var(--color-text-secondary)">历史回顾</p>
       </div>
       <div class="flex-1 overflow-y-auto p-2 space-y-1">
-        <div v-for="r in recentReports" :key="r.id"
+        <div
+v-for="r in recentReports" :key="r.id"
           class="history-item" :class="{ active: selectedDate === r.reportDate }"
-          @click="loadByDate(r.reportDate)" @keydown.enter="loadByDate(r.reportDate)" tabindex="0" role="button">
+          tabindex="0" role="button" @click="loadByDate(r.reportDate)" @keydown.enter="loadByDate(r.reportDate)">
           <p class="text-xs font-medium">{{ r.reportDate }}</p>
           <p class="text-xs mt-0.5 opacity-70">{{ r.totalCount || 0 }} 条知识</p>
         </div>
@@ -30,7 +31,7 @@
         </div>
         <div class="flex items-center gap-3">
           <n-date-picker v-model:formatted-value="dateInput" type="date" size="small" class="w-36" />
-          <n-button type="primary" :loading="generating" @click="generateReport" class="generate-daily-btn">
+          <n-button type="primary" :loading="generating" class="generate-daily-btn" @click="generateReport">
             {{ generating ? '生成中...' : '生成复盘' }}
           </n-button>
         </div>

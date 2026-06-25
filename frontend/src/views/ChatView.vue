@@ -19,11 +19,11 @@
        </n-button>
     </div>
 
-    <div class="flex-1 overflow-y-auto p-4 space-y-4" ref="messageContainer">
+    <div ref="messageContainer" class="flex-1 overflow-y-auto p-4 space-y-4">
       <div v-if="error" class="flex flex-col items-center justify-center h-full">
         <div class="error-icon">!</div>
         <p class="text-sm mt-2" style="color: #ef4444">{{ error }}</p>
-        <n-button text size="tiny" type="primary" @click="retry" class="mt-2">重试</n-button>
+        <n-button text size="tiny" type="primary" class="mt-2" @click="retry">重试</n-button>
       </div>
 
       <div v-else-if="!store.messages.length" class="flex flex-col items-center justify-center h-full px-4">
@@ -41,8 +41,9 @@
         </div>
       </div>
 
-      <MessageBubble v-for="msg in store.messages" :key="msg.id"
-        :message="msg.content" :isUser="msg.role === 'USER'"
+      <MessageBubble
+v-for="msg in store.messages" :key="msg.id"
+        :message="msg.content" :is-user="msg.role === 'USER'"
         :blocked="msg.blocked"
         :time="formatTime(msg.createdAt)" :sources="msg.sources" />
       <div v-if="store.isLoading">

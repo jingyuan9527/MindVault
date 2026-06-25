@@ -12,8 +12,8 @@
       <n-button
         type="primary"
         :disabled="!text.trim() || disabled"
-        @click="handleSend"
         class="shrink-0"
+        @click="handleSend"
       >
         发送
       </n-button>

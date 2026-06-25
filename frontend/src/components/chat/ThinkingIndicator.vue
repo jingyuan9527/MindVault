@@ -1,6 +1,7 @@
 <template>
   <div class="flex justify-start">
-    <div class="rounded-xl rounded-bl-sm px-4 py-3"
+    <div
+class="rounded-xl rounded-bl-sm px-4 py-3"
       :style="{ backgroundColor: '#eeebe7' }">
       <div class="flex items-center gap-2">
         <div class="flex gap-1">

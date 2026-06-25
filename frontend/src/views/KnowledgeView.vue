@@ -10,13 +10,14 @@
           </div>
           <h2 class="font-display text-xl">知识库</h2>
           <div class="flex items-center gap-1 p-0.5 rounded-lg" style="background-color: var(--color-bg)">
-            <span v-for="v in viewModes" :key="v.key"
-              :title="v.label" @click="viewMode = v.key"
-              class="cursor-pointer px-1" v-html="v.icon" />
+            <span
+v-for="v in viewModes" :key="v.key"
+              :title="v.label" class="cursor-pointer px-1"
+              @click="viewMode = v.key" v-html="v.icon" />
           </div>
         </div>
         <div class="flex items-center gap-1.5">
-          <n-button secondary size="small" class="hidden sm:inline-flex items-center gap-1" @click="openAddForm('url')" title="解析网页">
+          <n-button secondary size="small" class="hidden sm:inline-flex items-center gap-1" title="解析网页" @click="openAddForm('url')">
             <template #icon>
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
@@ -24,7 +25,7 @@
             </template>
             <span class="hidden md:inline">解析URL</span>
           </n-button>
-          <n-button secondary size="small" class="hidden sm:inline-flex items-center gap-1" @click="openAddForm('pdf')" title="解析PDF">
+          <n-button secondary size="small" class="hidden sm:inline-flex items-center gap-1" title="解析PDF" @click="openAddForm('pdf')">
             <template #icon>
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
@@ -32,7 +33,7 @@
             </template>
             <span class="hidden md:inline">解析PDF</span>
           </n-button>
-          <div class="relative" ref="moreMenuRef">
+          <div ref="moreMenuRef" class="relative">
             <n-button secondary size="small" class="sm:hidden" @click="showMoreMenu = !showMoreMenu">
               <template #icon>
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -41,7 +42,8 @@
               </template>
             </n-button>
             <transition name="fade">
-              <div v-if="showMoreMenu"
+              <div
+v-if="showMoreMenu"
                 class="absolute right-0 top-full mt-1 w-36 rounded-lg shadow-lg z-20 py-1"
                 :style="{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }">
                 <n-button text size="small" class="w-full !justify-start px-3" @click="openAddForm('url'); showMoreMenu = false">
@@ -80,7 +82,7 @@
           </svg>
         </template>
       </n-input>
-      <div class="flex flex-wrap gap-2 mt-3" v-if="activeTags.length">
+      <div v-if="activeTags.length" class="flex flex-wrap gap-2 mt-3">
         <n-tag v-for="tag in activeTags" :key="tag" closable size="small" type="primary" :bordered="false" @close="removeTag(tag)">
           #{{ tag }}
         </n-tag>
@@ -90,7 +92,8 @@
       </div>
     </div>
 
-    <div v-if="selectedIds.length" class="px-3 md:px-5 py-2 flex items-center gap-2 md:gap-3 shrink-0 flex-wrap"
+    <div
+v-if="selectedIds.length" class="px-3 md:px-5 py-2 flex items-center gap-2 md:gap-3 shrink-0 flex-wrap"
       style="background-color: var(--color-sage-light); border-bottom: 1px solid var(--color-border)">
       <span class="text-xs md:text-sm font-medium" style="color: var(--color-sage)">已选 {{ selectedIds.length }} 项</span>
       <n-button quaternary size="tiny" type="error" @click="batchDelete">
@@ -149,7 +152,7 @@
       <div v-else-if="viewMode === 'card'" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4 p-4 md:p-5 stagger-enter">
         <div v-for="note in filteredItems" :key="note.id" class="relative">
           <div class="absolute top-3 left-3 z-10" @click.stop>
-            <n-checkbox :checked="selectedIds.includes(note.id)" @update:checked="toggleSelect(note.id)" size="small" />
+            <n-checkbox :checked="selectedIds.includes(note.id)" size="small" @update:checked="toggleSelect(note.id)" />
           </div>
           <NoteCard :note="note" @click="openDetail(note)" @delete="deleteNote" />
         </div>
@@ -157,7 +160,8 @@
 
       <!-- 列表视图 -->
       <div v-else-if="viewMode === 'list'">
-        <NoteListItem v-for="note in filteredItems" :key="note.id"
+        <NoteListItem
+v-for="note in filteredItems" :key="note.id"
           :note="note" :selected="selectedIds.includes(note.id)"
           @click="openDetail(note)" @toggle-select="toggleSelect" />
       </div>
@@ -166,14 +170,14 @@
       <div v-else class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-3 p-4 md:p-5 stagger-enter">
         <div v-for="note in filteredItems" :key="note.id" class="relative">
           <div class="absolute top-2 left-3 z-10" @click.stop>
-            <n-checkbox :checked="selectedIds.includes(note.id)" @update:checked="toggleSelect(note.id)" size="small" />
+            <n-checkbox :checked="selectedIds.includes(note.id)" size="small" @update:checked="toggleSelect(note.id)" />
           </div>
           <n-card size="small" hoverable class="cursor-pointer" :segmented="{ action: 'soft' }" @click="openDetail(note)">
             <p class="text-sm font-medium truncate">{{ note.aiTitle || note.title }}</p>
             <div class="text-xs mt-1 leading-relaxed" style="color: var(--color-warm-gray)">
               <ContentRenderer :content="note.summary || note.content" preview class="line-clamp-2" />
             </div>
-            <div class="flex flex-wrap gap-1 mt-2" v-if="gridTags(note).length">
+            <div v-if="gridTags(note).length" class="flex flex-wrap gap-1 mt-2">
               <n-tag v-for="tag in gridTags(note).slice(0, 2)" :key="tag" size="tiny" type="primary" :bordered="false">#{{ tag }}</n-tag>
             </div>
             <template #action>
@@ -206,7 +210,7 @@
                 </div>
               </div>
               <p v-if="detailNote.aiTitle && detailNote.title" class="text-xs mb-2" style="color: var(--color-text-secondary)">原标题: {{ detailNote.title }}</p>
-              <n-space size="small" class="mb-4" v-if="mergedDetailTags.length">
+              <n-space v-if="mergedDetailTags.length" size="small" class="mb-4">
                 <n-tag v-for="tag in mergedDetailTags" :key="tag" size="tiny" type="primary" :bordered="false">#{{ tag }}</n-tag>
               </n-space>
               <div class="text-sm leading-relaxed" style="color: var(--color-warm-gray)">
@@ -223,7 +227,8 @@
               <div v-if="relatedItems.length" class="mt-4 pt-4" style="border-top: 1px solid var(--color-border)">
                 <p class="text-xs font-medium mb-2" style="color: var(--color-text-secondary)">相关笔记</p>
                 <n-space vertical size="small">
-                  <div v-for="item in relatedItems" :key="item.id"
+                  <div
+v-for="item in relatedItems" :key="item.id"
                     class="px-3 py-2 rounded-lg cursor-pointer transition-colors duration-150 text-sm hover-sage-bg"
                     style="background-color: var(--color-bg)">
                     <p class="font-medium" style="color: var(--color-text)">{{ item.title }}</p>
@@ -274,7 +279,7 @@
             <n-alert v-if="urlError" type="warning" :show-icon="true" closable @close="urlError = ''">{{ urlError }}</n-alert>
           </n-space>
           <n-space v-if="tab.key === 'pdf'" vertical size="medium">
-            <input type="file" accept=".pdf" @change="onPdfSelected" ref="pdfInput" class="hidden" />
+            <input ref="pdfInput" type="file" accept=".pdf" class="hidden" @change="onPdfSelected" />
             <n-button @click="pdfInput?.click()">选择 PDF 文件</n-button>
             <p v-if="pdfFileName" class="text-sm" style="color: var(--color-sage)">已选择: {{ pdfFileName }}</p>
             <n-alert v-if="pdfError" type="warning" :show-icon="true" closable @close="pdfError = ''">{{ pdfError }}</n-alert>

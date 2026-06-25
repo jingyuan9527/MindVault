@@ -24,22 +24,25 @@
       </template>
 
       <!-- Desktop NDataTable -->
-      <div class="hidden md:block" v-if="models.length">
+      <div v-if="models.length" class="hidden md:block">
         <n-data-table :columns="modelColumns" :data="models" :bordered="false" :single-line="false" size="small" />
       </div>
 
       <!-- Mobile cards -->
-      <div class="md:hidden space-y-3" v-if="models.length">
-        <div v-for="(m, idx) in models" :key="m.id"
+      <div v-if="models.length" class="md:hidden space-y-3">
+        <div
+v-for="(m, idx) in models" :key="m.id"
           class="p-3 rounded-lg"
           :style="{ backgroundColor: 'var(--color-bg)' }">
           <div class="flex items-start justify-between mb-2">
             <div>
               <span class="text-sm font-medium" style="color: var(--color-text)">{{ m.provider }}</span>
-              <span v-if="m.isPrimary" class="ml-2 px-1.5 py-0.5 text-xs rounded"
+              <span
+v-if="m.isPrimary" class="ml-2 px-1.5 py-0.5 text-xs rounded"
                 :style="{ backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' }">主模型</span>
             </div>
-            <span class="px-2 py-0.5 text-xs rounded shrink-0"
+            <span
+class="px-2 py-0.5 text-xs rounded shrink-0"
               :style="m.isEnabled ? { backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' } : { backgroundColor: '#f0eeeb', color: 'var(--color-text-secondary)' }">
               {{ m.isEnabled ? '启用' : '禁用' }}
             </span>
@@ -69,15 +72,17 @@
           </div>
           <div>
             <p class="text-sm mb-2" style="color: var(--color-text-secondary)">导出 Markdown（按标签分类）</p>
-            <n-button size="small" :loading="exportingMd" @click="exportMarkdown"
-              :style="{ backgroundColor: 'var(--color-sage)', borderColor: 'var(--color-sage)' }"
-              class="!text-white hover:opacity-90">导出 Markdown</n-button>
+            <n-button
+size="small" :loading="exportingMd" :style="{ backgroundColor: 'var(--color-sage)', borderColor: 'var(--color-sage)' }"
+              class="!text-white hover:opacity-90"
+              @click="exportMarkdown">导出 Markdown</n-button>
           </div>
           <div>
             <p class="text-sm mb-2" style="color: var(--color-text-secondary)">导出 CSV（表格分析）</p>
-            <n-button size="small" :loading="exportingCsv" @click="exportCsv"
-              :style="{ backgroundColor: 'var(--color-warm-gray)', borderColor: 'var(--color-warm-gray)' }"
-              class="!text-white hover:opacity-90">导出 CSV</n-button>
+            <n-button
+size="small" :loading="exportingCsv" :style="{ backgroundColor: 'var(--color-warm-gray)', borderColor: 'var(--color-warm-gray)' }"
+              class="!text-white hover:opacity-90"
+              @click="exportCsv">导出 CSV</n-button>
           </div>
         </div>
         <div style="border-top: 1px solid var(--color-border); padding-top: 1rem">
@@ -89,7 +94,8 @@
               <n-radio value="overwrite">覆盖</n-radio>
             </n-radio-group>
           </div>
-          <div class="border-2 border-dashed rounded-lg p-6 text-center transition-colors duration-150 cursor-pointer"
+          <div
+class="border-2 border-dashed rounded-lg p-6 text-center transition-colors duration-150 cursor-pointer"
             :style="{ borderColor: dragOver ? 'var(--color-sage)' : 'var(--color-border)', backgroundColor: dragOver ? 'var(--color-sage-light)' : 'transparent' }"
             @dragover.prevent="dragOver = true"
             @dragleave="dragOver = false"
@@ -102,7 +108,7 @@
               {{ dragOver ? '释放文件开始导入' : '拖拽 JSON 文件到此处，或点击选择' }}
             </p>
           </div>
-          <input type="file" accept=".json" @change="handleFileSelect" ref="fileInputRef" class="hidden" />
+          <input ref="fileInputRef" type="file" accept=".json" class="hidden" @change="handleFileSelect" />
 
           <div v-if="importProgress" class="mt-3">
             <div class="flex items-center justify-between mb-1">
@@ -110,7 +116,8 @@
               <span class="text-xs font-medium" style="color: var(--color-sage)">{{ importProgress }}%</span>
             </div>
             <div class="w-full h-2 rounded-full" style="background-color: var(--color-border)">
-              <div class="h-full rounded-full transition-all duration-300"
+              <div
+class="h-full rounded-full transition-all duration-300"
                 :style="{ width: importProgress + '%', backgroundColor: 'var(--color-sage)' }"></div>
             </div>
           </div>
@@ -127,7 +134,8 @@
               <n-button quaternary size="tiny" @click="cancelImport">取消</n-button>
             </div>
           </div>
-          <p v-if="importResult" class="text-sm mt-2 fade-in-enter"
+          <p
+v-if="importResult" class="text-sm mt-2 fade-in-enter"
             :style="{ color: importResult.success ? 'var(--color-sage)' : 'var(--color-accent)' }">
             {{ importResult.message }}
           </p>
@@ -136,10 +144,12 @@
     </section>
 
     <section class="card p-4 md:p-6 mt-4 md:mt-6">
-      <router-link to="/backups"
+      <router-link
+to="/backups"
         class="flex items-center justify-between group">
         <h3 class="font-display text-base md:text-lg" style="color: var(--color-text)">数据备份</h3>
-        <span class="text-sm transition-colors duration-150 hover-accent"
+        <span
+class="text-sm transition-colors duration-150 hover-accent"
           style="color: var(--color-text-secondary)">
           管理备份 →
         </span>
@@ -152,14 +162,16 @@
         <n-button type="primary" size="small" @click="showTokenForm = true">+ 创建 Token</n-button>
       </div>
       <div v-if="tokens.length" class="space-y-2">
-        <div v-for="t in tokens" :key="t.id"
+        <div
+v-for="t in tokens" :key="t.id"
           class="flex items-center justify-between px-4 py-2.5 rounded-lg transition-colors duration-150 hover-sage-bg"
           style="background-color: var(--color-bg)">
           <div class="flex-1 min-w-0">
             <span class="text-sm font-medium" style="color: var(--color-text)">{{ t.name }}</span>
             <span class="text-xs ml-2" style="color: var(--color-warm-gray)">创建于 {{ t.createdAt?.slice(0, 10) }}</span>
             <span v-if="t.lastUsedAt" class="text-xs ml-2" style="color: var(--color-warm-gray)">最后使用 {{ t.lastUsedAt?.slice(0, 10) }}</span>
-            <span v-if="t.expiresAt" class="text-xs ml-2"
+            <span
+v-if="t.expiresAt" class="text-xs ml-2"
               :style="{ color: new Date(t.expiresAt) < new Date() ? 'var(--color-accent)' : 'var(--color-sage)' }">
               {{ new Date(t.expiresAt) < new Date() ? '已过期' : '有效期至 ' + t.expiresAt?.slice(0, 10) }}
             </span>
@@ -203,9 +215,10 @@
         <n-input v-model:value="form.apiKey" type="password" placeholder="sk-..." />
         <n-input v-model:value="form.baseUrl" placeholder="https://api.openai.com/v1" />
         <div>
-          <n-button size="tiny" :disabled="!form.apiKey" :loading="fetching" @click="fetchModels"
-            :style="{ backgroundColor: 'var(--color-sage-light)', borderColor: 'var(--color-sage-light)', color: 'var(--color-sage)' }"
-            class="mb-2">从远端拉取模型列表</n-button>
+          <n-button
+size="tiny" :disabled="!form.apiKey" :loading="fetching" :style="{ backgroundColor: 'var(--color-sage-light)', borderColor: 'var(--color-sage-light)', color: 'var(--color-sage)' }"
+            class="mb-2"
+            @click="fetchModels">从远端拉取模型列表</n-button>
           <n-select v-if="fetchedModelList.length" v-model:value="form.modelName" :options="fetchedModelOptions" placeholder="请选择一个模型" />
           <n-input v-else v-model:value="form.modelName" placeholder="如 qwen-turbo（或先拉取列表）" />
         </div>

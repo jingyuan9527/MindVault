@@ -6,7 +6,7 @@
         <h1 class="font-display text-xl font-bold sidebar-brand">MindVault</h1>
         <p class="text-xs mt-0.5" style="color: var(--color-text-secondary)">知忆 · AI增强第二大脑</p>
       </div>
-      <n-button text class="lg:hidden !text-secondary" @click="$emit('close')" aria-label="关闭菜单">
+      <n-button text class="lg:hidden !text-secondary" aria-label="关闭菜单" @click="$emit('close')">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
@@ -28,7 +28,8 @@
     <div class="px-4 py-3 shrink-0" style="border-top: 1px solid var(--color-border)">
       <p class="text-xs font-medium mb-2 px-1" style="color: var(--color-text-secondary)">标签云</p>
       <div class="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto px-1">
-        <router-link v-for="tag in tags" :key="tag.name"
+        <router-link
+v-for="tag in tags" :key="tag.name"
           :to="{ path: '/', query: { tag: tag.name } }"
           class="px-2 py-0.5 rounded-full text-xs transition-all duration-150 whitespace-nowrap"
           :style="{
@@ -47,12 +48,13 @@
     <!-- Footer -->
     <div class="mt-auto px-4 py-3 shrink-0" style="border-top: 1px solid var(--color-border)">
       <div class="flex items-center justify-center gap-2 mb-2">
-        <button v-for="t in THEMES" :key="t.id"
+        <button
+v-for="t in THEMES" :key="t.id"
           class="theme-dot"
           :class="{ active: themeStore.currentTheme === t.id }"
           :style="{ '--dot-clr': dotColors[t.id] }"
-          @click="themeStore.setTheme(t.id)"
           :title="t.label"
+          @click="themeStore.setTheme(t.id)"
         />
       </div>
       <div class="flex items-center justify-between">

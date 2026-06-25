@@ -2,7 +2,8 @@
   <div class="flex" :class="alignClass">
     <div class="max-w-[75%]">
       <!-- System/blocked message -->
-      <div v-if="blocked"
+      <div
+v-if="blocked"
         class="rounded-xl px-4 py-2.5"
         :style="{ backgroundColor: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }"
       >
@@ -15,7 +16,8 @@
       </div>
 
       <!-- User or assistant message -->
-      <div v-else
+      <div
+v-else
         class="rounded-xl px-4 py-2.5"
         :class="isUser ? 'rounded-br-sm' : 'rounded-bl-sm'"
         :style="bubbleStyle"
@@ -28,7 +30,8 @@
 
       <!-- Knowledge source links -->
       <div v-if="sourcesList.length" class="mt-2 flex flex-wrap gap-1.5 px-1">
-        <n-a v-for="s in sourcesList" :key="s.id" :href="s.url || '#'" target="_blank"
+        <n-a
+v-for="s in sourcesList" :key="s.id" :href="s.url || '#'" target="_blank"
           :style="{ backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)', padding: '2px 8px', borderRadius: '4px', fontSize: '12px', textDecoration: 'none' }">
           <template #prefix>
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

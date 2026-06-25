@@ -14,14 +14,14 @@
       </div>
       <div class="flex flex-col sm:flex-row gap-2">
         <n-select v-model:value="selectedKnowledgeId" :options="knowledgeOptions" placeholder="选择知识生成卡片" clearable class="flex-1" />
-        <n-button type="primary" :loading="generating" :disabled="!selectedKnowledgeId" @click="generateCards" class="generate-btn">
+        <n-button type="primary" :loading="generating" :disabled="!selectedKnowledgeId" class="generate-btn" @click="generateCards">
           {{ generating ? '生成中...' : '生成卡片' }}
         </n-button>
       </div>
     </div>
 
     <div class="flex-1 overflow-y-auto p-4 md:p-5">
-      <n-alert v-if="error" type="error" :show-icon="true" closable @close="error = ''" class="mb-4">
+      <n-alert v-if="error" type="error" :show-icon="true" closable class="mb-4" @close="error = ''">
         <template #action><n-button text type="warning" @click="loadCards">重试</n-button></template>{{ error }}
       </n-alert>
 
@@ -32,7 +32,7 @@
       </n-empty>
 
       <div v-else class="max-w-2xl mx-auto space-y-6">
-        <div v-for="(card, idx) in cards" :key="card.id" class="flashcard-container" @click="flipCard(idx)" @keydown.enter="flipCard(idx)" @keydown.space.prevent="flipCard(idx)" tabindex="0" role="button" :aria-label="'翻转第' + (idx + 1) + '张卡片'">
+        <div v-for="(card, idx) in cards" :key="card.id" class="flashcard-container" tabindex="0" role="button" :aria-label="'翻转第' + (idx + 1) + '张卡片'" @click="flipCard(idx)" @keydown.enter="flipCard(idx)" @keydown.space.prevent="flipCard(idx)">
           <div class="flashcard-inner" :class="{ flipped: flipped[idx] }">
             <div class="flashcard-front">
               <div class="card-label">问题</div>
