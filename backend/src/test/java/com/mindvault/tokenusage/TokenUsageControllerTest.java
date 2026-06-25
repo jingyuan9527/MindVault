@@ -44,6 +44,29 @@ class TokenUsageControllerTest {
     }
 
     @Test
+    void getBySourceSummary_shouldReturnList() throws Exception {
+        when(tokenUsageService.getBySourceSummary(30)).thenReturn(List.of(
+                Map.of("request_source", "CHAT", "total_tokens", 1000L, "cost", 0.01, "request_count", 5),
+                Map.of("request_source", "AUTO_PROCESS", "total_tokens", 500L, "cost", 0.005, "request_count", 3)
+        ));
+
+        mockMvc.perform(get("/api/v1/token-usage/by-source"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].request_source").value("CHAT"))
+                .andExpect(jsonPath("$.data[1].request_source").value("AUTO_PROCESS"))
+                .andExpect(jsonPath("$.data[0].total_tokens").value(1000));
+    }
+
+    @Test
+    void getBySourceSummary_shouldRespectDaysParam() throws Exception {
+        when(tokenUsageService.getBySourceSummary(7)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/token-usage/by-source?days=7"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray());
+    }
+
+    @Test
     void getTotalStats_shouldReturnStats() throws Exception {
         when(tokenUsageService.getTotalStats(any(), any())).thenReturn(
                 Map.of("totalTokens", 1000L, "totalCost", 0.05, "requestCount", 10)

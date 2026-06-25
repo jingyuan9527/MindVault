@@ -36,4 +36,18 @@ public interface TokenUsageMapper extends BaseMapper<TokenUsage> {
             WHERE created_at >= #{start} AND created_at < #{end}
             """)
     Map<String, Object> findTotalTokensAndCost(@Param("start") LocalDate start, @Param("end") LocalDate end);
+
+    @Select(value = """
+            SELECT request_source,
+                   COALESCE(SUM(prompt_tokens), 0) AS prompt_tokens,
+                   COALESCE(SUM(completion_tokens), 0) AS completion_tokens,
+                   COALESCE(SUM(total_tokens), 0) AS total_tokens,
+                   COALESCE(SUM(cost), 0) AS cost,
+                   COUNT(*) AS request_count
+            FROM token_usage
+            WHERE created_at >= CURRENT_DATE - CAST(#{limit} AS INTEGER)
+            GROUP BY request_source
+            ORDER BY total_tokens DESC
+            """)
+    List<Map<String, Object>> findBySourceSummary(@Param("limit") int limit);
 }

@@ -99,6 +99,6 @@ class WritingServiceTest {
         mc.setApiKey("test-key");
         mc.setIsEnabled(true);
         when(modelConfigService.getPrimaryChatModel()).thenReturn(mc);
-        when(aiService.call(anyString(), anyDouble(), anyInt())).thenReturn("生成的测试文章内容。");
+        when(aiService.call(anyString(), anyDouble(), anyInt(), anyString())).thenReturn("生成的测试文章内容。");
     }
 }

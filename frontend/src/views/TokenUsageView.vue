@@ -27,25 +27,49 @@
       <template v-else-if="currentTab === 'daily'">
         <n-empty v-if="!groupedData.length" description="暂无用量数据" class="py-16" />
         <div v-else class="max-w-5xl mx-auto space-y-4">
-          <div class="chart-card">
-            <div class="chart-title">每日 Token 消耗趋势</div>
-            <div class="chart-bars">
-              <div v-for="row in groupedData" :key="row.date" class="chart-bar-col">
-                <div class="chart-bar-stack">
-                  <div
+          <div class="charts-row">
+            <div class="chart-card chart-card-wide">
+              <div class="chart-title">每日 Token 消耗趋势</div>
+              <div class="chart-bars">
+                <div v-for="row in groupedData" :key="row.date" class="chart-bar-col">
+                  <div class="chart-bar-stack">
+                    <div
 v-for="seg in row.segments" :key="seg.provider"
-                    class="chart-bar-seg"
-                    :style="{ height: seg.pct + '%', backgroundColor: providerColor(seg.provider), minHeight: seg.pct > 0 ? '2px' : '0' }"
-                    :title="`${seg.provider}: ${(seg.totalTokens / 1000).toFixed(1)}K`">
+                      class="chart-bar-seg"
+                      :style="{ height: seg.pct + '%', backgroundColor: providerColor(seg.provider), minHeight: seg.pct > 0 ? '2px' : '0' }"
+                      :title="`${seg.provider}: ${(seg.totalTokens / 1000).toFixed(1)}K`">
+                    </div>
                   </div>
+                  <span class="chart-bar-label">{{ formatDateShort(row.date) }}</span>
                 </div>
-                <span class="chart-bar-label">{{ formatDateShort(row.date) }}</span>
+              </div>
+              <div class="chart-legend">
+                <span v-for="p in providers" :key="p" class="legend-item">
+                  <span class="legend-dot" :style="{ backgroundColor: providerColor(p) }"></span>{{ p }}
+                </span>
               </div>
             </div>
-            <div class="chart-legend">
-              <span v-for="p in providers" :key="p" class="legend-item">
-                <span class="legend-dot" :style="{ backgroundColor: providerColor(p) }"></span>{{ p }}
-              </span>
+            <div class="chart-card chart-card-narrow" v-if="sourceData.length">
+              <div class="chart-title">来源分布</div>
+              <div class="pie-wrapper">
+                <svg class="pie-svg" viewBox="0 0 100 100">
+                  <g v-for="seg in pieSegments" :key="seg.source">
+                    <path :d="seg.path" :fill="sourceColor(seg.source)" stroke="var(--color-surface)" stroke-width="1.5" />
+                    <title>{{ sourceLabel(seg.source) }}: {{ (seg.totalTokens / 1000).toFixed(1) }}K</title>
+                  </g>
+                  <circle cx="50" cy="50" r="20" fill="var(--color-surface)" />
+                  <text x="50" y="48" text-anchor="middle" class="pie-center-num" fill="var(--color-text)">{{ (pieTotal / 1000).toFixed(0) }}K</text>
+                  <text x="50" y="60" text-anchor="middle" class="pie-center-label" fill="var(--color-text-secondary)">总计</text>
+                </svg>
+                <div class="pie-legend">
+                  <div v-for="seg in sourceData" :key="seg.request_source" class="pie-legend-item">
+                    <span class="legend-dot" :style="{ backgroundColor: sourceColor(seg.request_source) }"></span>
+                    <span class="pie-legend-source">{{ sourceLabel(seg.request_source) }}</span>
+                    <span class="pie-legend-val">{{ (seg.total_tokens / 1000).toFixed(1) }}K</span>
+                    <span class="pie-legend-pct">{{ ((seg.total_tokens / pieTotal) * 100).toFixed(1) }}%</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <n-data-table :columns="dailyColumns" :data="dailyData" :bordered="false" :single-line="false" size="small" />
@@ -94,9 +118,37 @@ const dailyData = ref([])
 const totalStats = ref(null)
 const providers = ref([])
 const groupedData = ref([])
+const sourceData = ref([])
 
 const providerColors = { OPENAI: '#4a90d9', DEEPSEEK: '#4a9a8a', ALIYUN: '#d9a84a', GEMINI: '#8b5cf6' }
 function providerColor(p) { return providerColors[p] || 'var(--color-text-secondary)' }
+
+const sourceColors = { CHAT: '#4a90d9', AUTO_PROCESS: '#34d399', WRITING: '#d9a84a', DAILY_REVIEW: '#8b5cf6', UNKNOWN: '#9ca3af' }
+function sourceColor(s) { return sourceColors[s] || '#9ca3af' }
+
+const sourceLabels = { CHAT: 'AI对话', AUTO_PROCESS: '自动处理', WRITING: '写作助手', DAILY_REVIEW: '每日复盘', UNKNOWN: '其他' }
+function sourceLabel(s) { return sourceLabels[s] || s }
+
+const pieTotal = computed(() => { return sourceData.value.reduce((sum, s) => sum + (s.total_tokens || 0), 0) })
+
+const pieSegments = computed(() => {
+  const cx = 50, cy = 50, r = 28
+  let start = 0
+  const total = pieTotal.value || 1
+  return sourceData.value.map(s => {
+    const pct = (s.total_tokens || 0) / total
+    const end = start + pct * Math.PI * 2
+    const x1 = cx + r * Math.sin(start), y1 = cy - r * Math.cos(start)
+    const x2 = cx + r * Math.sin(end), y2 = cy - r * Math.cos(end)
+    const large = end - start > Math.PI ? 1 : 0
+    const path = pct >= 1
+      ? `M ${cx} ${cy - r} A ${r} ${r} 0 1 1 ${cx - 0.01} ${cy - r}`
+      : `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`
+    const seg = { source: s.request_source, totalTokens: s.total_tokens, path }
+    start = end
+    return seg
+  })
+})
 
 const avgTokens = computed(() => { if (!totalStats.value || !totalStats.value.requestCount) return 0; return Math.round(totalStats.value.totalTokens / totalStats.value.requestCount) })
 
@@ -123,7 +175,7 @@ function buildGrouped(data) {
   return result
 }
 
-async function loadDaily() { loading.value = true; error.value = ''; try { const res = await tokenUsageApi.getDaily(days.value); dailyData.value = res.data.data || []; groupedData.value = buildGrouped(dailyData.value) } catch { error.value = '加载每日用量失败' } finally { loading.value = false } }
+async function loadDaily() { loading.value = true; error.value = ''; try { const [dailyRes, sourceRes] = await Promise.all([tokenUsageApi.getDaily(days.value), tokenUsageApi.getBySource(days.value)]); dailyData.value = dailyRes.data.data || []; groupedData.value = buildGrouped(dailyData.value); sourceData.value = sourceRes.data.data || [] } catch { error.value = '加载每日用量失败' } finally { loading.value = false } }
 
 async function loadTotal() { loading.value = true; error.value = ''; try { const end = new Date(); const start = new Date(); start.setDate(start.getDate() - days.value); const fmt = (d) => d.toISOString().slice(0, 10); const res = await tokenUsageApi.getTotal(fmt(start), fmt(end)); totalStats.value = res.data.data || null } catch { error.value = '加载总计统计失败' } finally { loading.value = false } }
 
@@ -139,6 +191,10 @@ onMounted(loadDaily)
   color: white; flex-shrink: 0;
   background: var(--gradient-brand);
 }
+.charts-row { display: flex; gap: 16px; align-items: stretch; }
+.chart-card-wide { flex: 1; min-width: 0; }
+.chart-card-narrow { width: 260px; flex-shrink: 0; }
+@media (max-width: 800px) { .charts-row { flex-direction: column; } .chart-card-narrow { width: 100%; } }
 .chart-card { padding: 20px; border-radius: 14px; background-color: var(--color-surface); border: 1px solid var(--color-border); }
 .chart-title { font-size: 0.8rem; font-weight: 600; color: var(--color-text-secondary); margin-bottom: 16px; }
 .chart-bars { display: flex; align-items: flex-end; gap: 4px; height: 120px; }
@@ -146,9 +202,18 @@ onMounted(loadDaily)
 .chart-bar-stack { width: 100%; max-width: 28px; height: 100%; border-radius: 4px 4px 0 0; overflow: hidden; display: flex; flex-direction: column-reverse; background-color: var(--color-bg); }
 .chart-bar-seg { width: 100%; transition: height 0.5s ease; }
 .chart-bar-label { font-size: 0.6rem; color: var(--color-text-secondary); white-space: nowrap; }
-.chart-legend { display: flex; gap: 16px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-border); }
+.chart-legend { display: flex; gap: 16px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-border); flex-wrap: wrap; }
 .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--color-text-secondary); }
 .legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+.pie-wrapper { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.pie-svg { width: 140px; height: 140px; }
+.pie-center-num { font-size: 10px; font-weight: 700; }
+.pie-center-label { font-size: 5px; }
+.pie-legend { width: 100%; display: flex; flex-direction: column; gap: 6px; }
+.pie-legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.7rem; }
+.pie-legend-source { flex: 1; color: var(--color-text); }
+.pie-legend-val { font-weight: 600; color: var(--color-text); font-variant-numeric: tabular-nums; min-width: 36px; text-align: right; }
+.pie-legend-pct { color: var(--color-text-secondary); min-width: 36px; text-align: right; font-size: 0.65rem; }
 .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .stat-box { padding: 20px; border-radius: 14px; background-color: var(--color-surface); border: 1px solid var(--color-border); text-align: center; }
 .stat-label { font-size: 0.75rem; color: var(--color-text-secondary); margin-bottom: 6px; }

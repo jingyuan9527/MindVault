@@ -68,7 +68,7 @@ public class WritingService {
                 : "（知识库中没有直接相关的参考内容，请基于你的知识进行创作）\n\n";
         String prompt = PromptRegistry.WRITING_ARTICLE.resolve(config, styleGuide, kwGuide, topic, knowledgePart);
 
-        String result = aiService.call(prompt, temperature, maxTokens);
+        String result = aiService.call(prompt, temperature, maxTokens, "WRITING");
         return result != null ? result : config.getString("default.writing.fallback-message", "文章生成失败，请稍后重试。");
     }
 

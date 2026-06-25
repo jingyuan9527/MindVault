@@ -9,6 +9,7 @@ import com.mindvault.knowledge.SearchEnhanceService;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.systemconfig.SystemConfigService;
+import com.mindvault.tokenusage.TokenUsageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,6 +41,7 @@ class AgentServiceIntegrationTest {
     @Mock private ChatModel chatModel;
     @Mock private KnowledgeService knowledgeService;
     @Mock private SearchEnhanceService searchEnhanceService;
+    @Mock private TokenUsageService tokenUsageService;
 
     private SearchKnowledgeTool searchTool;
     private AddKnowledgeTool addTool;
@@ -58,7 +60,7 @@ class AgentServiceIntegrationTest {
 
     private AgentService createService() {
         AgentService s = new AgentService(modelConfigService, aiModelFactory, searchTool, addTool,
-                metricsService, config);
+                metricsService, config, tokenUsageService);
         s.init();
         return s;
     }

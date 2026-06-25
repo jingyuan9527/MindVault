@@ -73,6 +73,10 @@ public class TokenUsageService {
         return result;
     }
 
+    public List<Map<String, Object>> getBySourceSummary(int days) {
+        return mapper.findBySourceSummary(days);
+    }
+
     public Map<String, Object> getTotalStats(LocalDate start, LocalDate end) {
         Map<String, Object> stats = mapper.findTotalTokensAndCost(start, end);
         Map<String, Object> result = new LinkedHashMap<>();

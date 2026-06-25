@@ -8,6 +8,9 @@ vi.mock('@/api/tokenUsage', () => ({
       { date: '2024-06-15', provider: 'OPENAI', modelName: 'gpt-4', promptTokens: 500, completionTokens: 300, totalTokens: 800, requestCount: 2, cost: 0.02 }
     ] } }),
     getTotal: vi.fn(),
+    getBySource: vi.fn().mockResolvedValue({ data: { data: [
+      { request_source: 'CHAT', total_tokens: 500, cost: 0.01, request_count: 2 }
+    ] } }),
   }
 }))
 
@@ -22,5 +25,13 @@ describe('TokenUsageView', () => {
     await new Promise(r => setTimeout(r, 50))
     expect(wrapper.text()).toContain('OPENAI')
     expect(wrapper.text()).toContain('6/15')
+  })
+
+  it('renders source distribution pie chart', async () => {
+    const wrapper = mount(TokenUsageView)
+    await new Promise(r => setTimeout(r, 50))
+    expect(wrapper.text()).toContain('来源分布')
+    expect(wrapper.text()).toContain('AI对话')
+    expect(wrapper.text()).toContain('0.5K')
   })
 })

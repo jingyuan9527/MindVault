@@ -58,7 +58,7 @@ class AutoProcessServiceTest {
         ModelConfig model = new ModelConfig();
         model.setModelName("gpt-4o");
         when(modelConfigService.getPrimaryChatModel()).thenReturn(model);
-        when(aiService.call(anyString(), anyDouble(), anyInt()))
+        when(aiService.call(anyString(), anyDouble(), anyInt(), anyString()))
                 .thenReturn("AI Title")
                 .thenReturn("[\"tag1\", \"tag2\"]")
                 .thenReturn("A summary here");
@@ -78,7 +78,7 @@ class AutoProcessServiceTest {
         ModelConfig model = new ModelConfig();
         model.setModelName("gpt-4o");
         when(modelConfigService.getPrimaryChatModel()).thenReturn(model);
-        when(aiService.call(anyString(), anyDouble(), anyInt())).thenReturn(null);
+        when(aiService.call(anyString(), anyDouble(), anyInt(), anyString())).thenReturn(null);
         when(knowledgeService.getById(1L)).thenReturn(new Knowledge());
 
         service.autoProcess(1L, "User Title", "Content");
@@ -91,7 +91,7 @@ class AutoProcessServiceTest {
         ModelConfig model = new ModelConfig();
         model.setModelName("gpt-4o");
         when(modelConfigService.getPrimaryChatModel()).thenReturn(model);
-        when(aiService.call(anyString(), anyDouble(), anyInt()))
+        when(aiService.call(anyString(), anyDouble(), anyInt(), anyString()))
                 .thenReturn(null)
                 .thenReturn(null)
                 .thenReturn("Generated summary");
@@ -113,7 +113,7 @@ class AutoProcessServiceTest {
         model.setModelName("gpt-4o");
         when(modelConfigService.getPrimaryChatModel()).thenReturn(model);
         when(modelConfigService.getAvailableEmbeddingModels()).thenReturn(List.of());
-        when(aiService.call(anyString(), anyDouble(), anyInt()))
+        when(aiService.call(anyString(), anyDouble(), anyInt(), anyString()))
                 .thenReturn("AI Title")
                 .thenReturn("[\"tag1\"]")
                 .thenReturn("Summary");
@@ -134,7 +134,7 @@ class AutoProcessServiceTest {
         model.setModelName("gpt-4o");
         when(modelConfigService.getPrimaryChatModel()).thenReturn(model);
         when(modelConfigService.getAvailableEmbeddingModels()).thenReturn(List.of());
-        when(aiService.call(anyString(), anyDouble(), anyInt()))
+        when(aiService.call(anyString(), anyDouble(), anyInt(), anyString()))
                 .thenReturn("AI Title")
                 .thenReturn("[\"tag1\"]")
                 .thenReturn("Summary");

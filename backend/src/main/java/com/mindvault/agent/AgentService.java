@@ -8,6 +8,7 @@ import com.mindvault.common.service.MetricsService;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.systemconfig.SystemConfigService;
+import com.mindvault.tokenusage.TokenUsageService;
 import io.micrometer.core.instrument.Timer;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
@@ -35,22 +36,25 @@ public class AgentService {
 
     private final SearchKnowledgeTool searchTool;
     private final AddKnowledgeTool addTool;
+    private final TokenUsageService tokenUsageService;
 
     private ToolCallback[] toolCallbacks;
     private String systemPrompt;
 
-    public AgentService(ModelConfigService modelConfigService,
+public AgentService(ModelConfigService modelConfigService,
                         AiModelFactory aiModelFactory,
                         SearchKnowledgeTool searchTool,
                         AddKnowledgeTool addTool,
                         MetricsService metricsService,
-                        SystemConfigService config) {
+                        SystemConfigService config,
+                        TokenUsageService tokenUsageService) {
         this.modelConfigService = modelConfigService;
         this.aiModelFactory = aiModelFactory;
-        this.metricsService = metricsService;
         this.searchTool = searchTool;
         this.addTool = addTool;
+        this.metricsService = metricsService;
         this.config = config;
+        this.tokenUsageService = tokenUsageService;
     }
 
     @PostConstruct
@@ -79,9 +83,18 @@ public class AgentService {
                     List.of(new SystemMessage(systemPrompt), new UserMessage(userMessage)),
                     ToolCallingChatOptions.builder().toolCallbacks(toolCallbacks).build()
             );
-            String content = chatModel.call(prompt).getResult().getOutput().getText();
+            var response = chatModel.call(prompt);
+            String content = response.getResult().getOutput().getText();
 
             metricsService.recordLlmCallSuccess(sample, model.getProvider(), model.getModelName());
+
+            var usage = response.getMetadata().getUsage();
+            if (usage != null) {
+                int promptTokens = usage.getPromptTokens() != null ? usage.getPromptTokens() : 0;
+                int completionTokens = usage.getCompletionTokens() != null ? usage.getCompletionTokens() : 0;
+                tokenUsageService.recordUsage(model, promptTokens, completionTokens, "CHAT", null);
+            }
+
             return content;
         } catch (Exception e) {
             log.error("Agent 处理消息失败: {}", e.getMessage(), e);

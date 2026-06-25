@@ -172,6 +172,20 @@ class TokenUsageServiceTest {
     }
 
     @Test
+    void getBySourceSummary_shouldDelegate() {
+        List<Map<String, Object>> expected = List.of(
+                Map.of("request_source", "CHAT", "total_tokens", 1000L, "cost", 0.01, "request_count", 5),
+                Map.of("request_source", "AUTO_PROCESS", "total_tokens", 500L, "cost", 0.005, "request_count", 3)
+        );
+        when(mapper.findBySourceSummary(7)).thenReturn(expected);
+
+        List<Map<String, Object>> result = service.getBySourceSummary(7);
+
+        assertEquals(expected, result);
+        verify(mapper).findBySourceSummary(7);
+    }
+
+    @Test
     void getTotalStats_shouldBuildCorrectResponse() {
         LocalDate start = LocalDate.of(2024, 1, 1);
         LocalDate end = LocalDate.of(2024, 1, 31);

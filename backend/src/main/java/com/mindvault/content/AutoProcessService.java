@@ -118,7 +118,7 @@ public class AutoProcessService {
             double temperature = config.getDouble("threshold.auto.llm-temperature", 0.3);
             int maxTokens = config.getInt("threshold.auto.title-max-tokens", 100);
             String prompt = PromptRegistry.AUTO_TITLE.resolve(config, userTitle, AiService.truncate(content, truncateLen));
-            return aiService.call(prompt, temperature, maxTokens);
+            return aiService.call(prompt, temperature, maxTokens, "AUTO_PROCESS");
         } catch (Exception e) {
             log.warn("生成 AI 标题失败: {}", e.getMessage());
         }
@@ -131,7 +131,7 @@ public class AutoProcessService {
             double temperature = config.getDouble("threshold.auto.llm-temperature", 0.3);
             int maxTokens = config.getInt("threshold.auto.summary-max-tokens", 300);
             String prompt = PromptRegistry.AUTO_SUMMARY.resolve(config, userTitle, AiService.truncate(content, truncateLen));
-            return aiService.call(prompt, temperature, maxTokens);
+            return aiService.call(prompt, temperature, maxTokens, "AUTO_PROCESS");
         } catch (Exception e) {
             log.warn("生成摘要失败: {}", e.getMessage());
         }
@@ -144,7 +144,7 @@ public class AutoProcessService {
             double temperature = config.getDouble("threshold.auto.llm-temperature", 0.3);
             int maxTokens = config.getInt("threshold.auto.tags-max-tokens", 300);
             String prompt = PromptRegistry.AUTO_TAGS.resolve(config, userTitle, AiService.truncate(content, truncateLen));
-            String result = aiService.call(prompt, temperature, maxTokens);
+            String result = aiService.call(prompt, temperature, maxTokens, "AUTO_PROCESS");
             if (result != null) {
                 String cleaned = result.trim();
                 if (cleaned.startsWith("[") && cleaned.endsWith("]")) {

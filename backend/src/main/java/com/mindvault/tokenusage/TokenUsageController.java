@@ -34,6 +34,12 @@ public class TokenUsageController {
         return ApiResponse.success(tokenUsageService.getDailySummary(days));
     }
 
+    @Operation(summary = "按来源统计", description = "获取最近 N 天的 Token 消耗来源分布统计")
+    @GetMapping("/by-source")
+    public ApiResponse<?> getBySourceSummary(@Parameter(description = "天数范围") @RequestParam(defaultValue = "30") int days) {
+        return ApiResponse.success(tokenUsageService.getBySourceSummary(days));
+    }
+
     @Operation(summary = "总计用量统计", description = "获取指定时间范围内的 Token 消耗汇总统计")
     @GetMapping("/total")
     public ApiResponse<?> getTotalStats(

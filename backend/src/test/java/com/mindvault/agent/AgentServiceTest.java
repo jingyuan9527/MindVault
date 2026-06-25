@@ -9,6 +9,7 @@ import com.mindvault.knowledge.SearchEnhanceService;
 import com.mindvault.model.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.systemconfig.SystemConfigService;
+import com.mindvault.tokenusage.TokenUsageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,6 +29,7 @@ class AgentServiceTest {
     @Mock private SystemConfigService config;
     @Mock private KnowledgeService knowledgeService;
     @Mock private SearchEnhanceService searchEnhanceService;
+    @Mock private TokenUsageService tokenUsageService;
 
     private AgentService service;
 
@@ -36,7 +38,7 @@ class AgentServiceTest {
         SearchKnowledgeTool searchTool = new SearchKnowledgeTool(knowledgeService, searchEnhanceService, config);
         AddKnowledgeTool addTool = new AddKnowledgeTool(knowledgeService);
         service = new AgentService(modelConfigService, aiModelFactory, searchTool, addTool,
-                metricsService, config);
+                metricsService, config, tokenUsageService);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getString(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));

@@ -129,7 +129,7 @@ public class DailyReviewService {
         int maxTokens = config.getInt("threshold.daily-review.max-tokens", 1500);
         String prompt = PromptRegistry.DAILY_REVIEW_REPORT.resolve(config, knowledgeSummary);
 
-        return aiService.call(prompt, temperature, maxTokens);
+        return aiService.call(prompt, temperature, maxTokens, "DAILY_REVIEW");
     }
 
     private Map<String, Object> parseReportJson(String json) {
