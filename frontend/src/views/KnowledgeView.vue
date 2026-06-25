@@ -10,9 +10,9 @@
           </div>
           <h2 class="font-display text-xl">知识库</h2>
           <div class="flex items-center gap-1 p-0.5 rounded-lg" style="background-color: var(--color-bg)">
-            <n-button v-for="v in viewModes" :key="v.key" text size="tiny"
-              :type="viewMode === v.key ? 'primary' : 'default'"
-              :title="v.label" @click="viewMode = v.key" v-html="v.icon" />
+            <span v-for="v in viewModes" :key="v.key"
+              :title="v.label" @click="viewMode = v.key"
+              class="cursor-pointer px-1" v-html="v.icon" />
           </div>
         </div>
         <div class="flex items-center gap-1.5">

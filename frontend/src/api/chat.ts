@@ -24,6 +24,7 @@ export const chatApi = {
         onError(`请求失败: ${response.status}`)
         return
       }
+      if (!response.body) { onError('响应体为空'); return }
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''

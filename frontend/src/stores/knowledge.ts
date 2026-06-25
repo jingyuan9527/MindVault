@@ -3,8 +3,8 @@ import { knowledgeApi } from '@/api/knowledge'
 
 export const useKnowledgeStore = defineStore('knowledge', {
   state: () => ({
-    items: [],
-    searchResults: [],
+    items: [] as any[],
+    searchResults: [] as any[],
     isLoading: false,
   }),
 

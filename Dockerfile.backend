@@ -20,8 +20,13 @@ RUN apk add --no-cache curl tzdata
 # 只复制构建产物
 COPY --from=builder /build/target/*.jar app.jar
 
-# 创建数据目录
-RUN mkdir -p backups logs
+# 创建数据目录并设置权限
+RUN mkdir -p backups logs && \
+    addgroup -S appgroup && \
+    adduser -S appuser -G appgroup && \
+    chown -R appuser:appgroup /app
+
+USER appuser
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \

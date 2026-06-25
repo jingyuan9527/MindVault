@@ -1,12 +1,16 @@
 import { config } from '@vue/test-utils'
 
+config.global.stubs['router-link'] = {
+  template: '<a><slot /></a>'
+}
+
 const NAIVE_COMPONENTS = [
   'NCard', 'NButton', 'NInput', 'NSelect', 'NForm', 'NFormItem',
   'NModal', 'NTag', 'NSpace', 'NLayout', 'NLayoutSider', 'NLayoutHeader',
   'NLayoutContent', 'NMenu', 'NMenuItem', 'NMessageProvider',
   'NConfigProvider', 'NSpin', 'NEmpty', 'NPagination', 'NDataTable',
   'NTime', 'NBadge', 'NIcon', 'NList', 'NListItem', 'NRadioGroup',
-  'NRadioButton', 'NGrid', 'NGi', 'NStatistic', 'NAlert', 'NSkeleton',
+  'NRadio', 'NRadioButton', 'NGrid', 'NGi', 'NStatistic', 'NAlert', 'NSkeleton',
   'NScrollbar', 'NCheckbox', 'NSwitch', 'NDynamicTags', 'NStep', 'NSteps',
   'NTabs', 'NTabPane', 'NUpload', 'NPopover', 'NTooltip', 'NDrawer',
   'NResult', 'NCode', 'NThing', 'NText', 'NDescriptions', 'NDescriptionsItem',
@@ -37,16 +41,11 @@ for (const name of NAIVE_COMPONENTS) {
       data: Array,
       pagination: [Boolean, Object],
       'single-line': Boolean,
-      'bordered': Boolean,
       // NTime
       time: [Number, Date, String],
       format: String,
-      // NTag
-      'bordered': Boolean,
       // NBadge
       max: [Number, String],
-      // NSpin
-      size: String,
       // NModal
       'mask-closable': Boolean,
     },

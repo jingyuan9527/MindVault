@@ -28,9 +28,9 @@ cd docker && docker compose up -d --build
 ## Commands
 | Task | Command |
 |------|---------|
-| Backend tests (299 total) | `cd backend && mvn test` |
+| Backend tests (295 total) | `cd backend && mvn test` |
 | Single test class | `cd backend && mvn test -Dtest=KnowledgeControllerTest` |
-| Frontend tests (90 total) | `cd frontend && npx vitest run` |
+| Frontend tests (85 total) | `cd frontend && npx vitest run` |
 | Build backend jar | `cd backend && mvn clean package -DskipTests` |
 | Build frontend | `cd frontend && npm run build` |
 | Docker rebuild+deploy | `cd docker && docker compose up -d --build` |
@@ -41,7 +41,7 @@ cd docker && docker compose up -d --build
 
 ## Architecture
 - **Backend**: Spring Boot 3.4.3, Spring AI 2.0.0, JDK 21 (virtual threads), MyBatis-Plus (NOT JPA)
-- **Frontend**: Vue 3 + Pinia + Vue Router 4, Tailwind CSS, Vite, `marked` for markdown rendering
+- **Frontend**: Vue 3 + Pinia + Vue Router 4, Tailwind CSS, Vite, `marked` for markdown rendering, TypeScript (gradual migration in progress)
 - **DB**: PostgreSQL 16 with pgvector extension (Docker image `pgvector/pgvector:pg16`)
 - **Proxy**: Nginx (frontend container) proxies `/api/` → `http://backend:8080`
 - **Ports**: Backend `:8080`, Frontend `:3000`, DB `:5432`
@@ -102,7 +102,7 @@ The pipeline processes each knowledge entry in three automated rounds:
 ## Testing Notes
 - `ModelApiIntegrationTest` runs real API calls against `agnes-2.0-flash` (~29s for 5 tests). Skipped when env var absent.
 - Frontend tests use `happy-dom` environment, `@vue/test-utils`, and `vitest`.
-- Frontend test count: 90 tests across 19 files.
+- Frontend test count: 85 tests across 19 files.
 - Naive UI hooks (`useDialog`, `useMessage`, `useNotification`) are auto-imported by `unplugin-auto-import` in dev/build but NOT in vitest. The setup file (`__tests__/setup.js`) provides them on `globalThis` for views that use them without explicit import. Views that explicitly `import { useDialog } from 'naive-ui'` (e.g. FlashCardView) need a `vi.mock('naive-ui', ...)` in their test file.
 - Test data SQL (10 knowledge entries) in init script — rerun manually if DB is reset.
 - Auth is disabled in tests via `mindvault.auth.enabled=false` in `src/test/resources/application.properties`.
@@ -127,9 +127,9 @@ The pipeline processes each knowledge entry in three automated rounds:
 | Agent | LLM failover + 熔断 + 工具调用 | ❌² | ✅ | 57% |
 | 内容解析 Content | Jsoup 网页 + PDFBox PDF | ❌¹ | ✅ | 68% |
 | 认证 Auth | 登录 + Token 管理 + 密码修改 | ✅ | ✅ | — |
-| 系统配置 SystemConfig | 动态 KV 配置 + 定时任务管理 | ❌ | ❌ | 0% |
+| 系统配置 SystemConfig | 动态 KV 配置 + 定时任务管理 | ✅ | ✅ | 34% |
 | 用户管理 User | 列表 + 启用/禁用 | ✅ | ✅ | 36% |
-| **Total** | **18 模块 / 70 接口** | **12/17** | **16/17** | **53%** |
+| **Total** | **18 模块 / 70 接口** | **13/18** | **17/18** | **53%** |
 
 ### Frontend (14 routes)
 | Route | View | Responsive | Tests | Design Polish |
@@ -187,5 +187,5 @@ The pipeline processes each knowledge entry in three automated rounds:
 - v0.4 migration: `docker/migration-v0.4.sql` (creates knowledge_relation, auto_process_log tables; adds new columns to knowledge)
 - v0.5 migration: `docker/migration-v0.5.sql` (creates system_config table with ~120 default config items for prompts/crons/thresholds/defaults)
 - Networks: `mindvault` bridge
-- Health checks: DB (`pg_isready`), Backend (`GET /api/v1/system/health`)
+- Health checks: DB (`pg_isready`), Backend (`GET /api/v1/system/health`), Frontend (`wget http://localhost:80/`)
 - Admin user auto-created on first boot via env vars: `MINDVAULT_ADMIN_USERNAME` / `MINDVAULT_ADMIN_PASSWORD`

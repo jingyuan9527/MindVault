@@ -39,7 +39,7 @@ export const useThemeStore = defineStore('theme', () => {
 
   function toggleDark() {
     isDark.value = !isDark.value
-    localStorage.setItem('mindvault-dark', isDark.value)
+    localStorage.setItem('mindvault-dark', String(isDark.value))
     applyTheme()
   }
 

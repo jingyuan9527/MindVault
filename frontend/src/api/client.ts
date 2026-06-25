@@ -1,8 +1,8 @@
-import axios from 'axios'
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 
 const client = axios.create({ baseURL: '/api/v1' })
 
-client.interceptors.request.use(config => {
+client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = localStorage.getItem('mindvault_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
@@ -10,7 +10,7 @@ client.interceptors.request.use(config => {
   return config
 })
 
-let toastStore = null
+let toastStore: any = null
 let retryCount = 0
 let hasAuthSession = false
 
@@ -19,7 +19,7 @@ client.interceptors.response.use(
     retryCount = 0
     return response
   },
-  async error => {
+  async (error: AxiosError<{ message?: string }>) => {
     const status = error.response?.status
     const data = error.response?.data
 
@@ -40,7 +40,7 @@ client.interceptors.response.use(
         }
         setTimeout(() => { window.location.href = '/login' }, 100)
       }
-    } else if (status >= 500) {
+    } else if (status && status >= 500) {
       toastStore?.error(data?.message || '服务器内部错误，请稍后重试')
     } else if (!error.response) {
       toastStore?.error('网络连接失败，请检查网络')
@@ -53,7 +53,7 @@ client.interceptors.response.use(
       if (retryCount <= 3) {
         toastStore?.info('请求过于频繁，正在重试...')
         await new Promise(r => setTimeout(r, retryCount * 1000))
-        return client(error.config)
+        return client(error.config!)
       }
       toastStore?.error('请求过于频繁，请稍后重试')
     }

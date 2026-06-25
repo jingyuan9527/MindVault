@@ -3,13 +3,13 @@ import { chatApi } from '@/api/chat'
 
 export const useChatStore = defineStore('chat', {
   state: () => ({
-    sessions: [],
-    currentSessionId: null,
-    messages: [],
+    sessions: [] as any[],
+    currentSessionId: null as string | null,
+    messages: [] as any[],
     isLoading: false,
     streamingContent: '',
-    streamingSources: [],
-    cancelStream: null,
+    streamingSources: [] as any[],
+    cancelStream: null as (() => void) | null,
   }),
 
   actions: {

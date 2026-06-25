@@ -328,7 +328,7 @@ const modelColumns = [
       return h('div', { style: 'display: flex; align-items: center; justify-content: center; gap: 4px' }, [
         h(NButton, { text: true, size: 'tiny', disabled: idx === 0, onClick: () => movePriority(row.id, row.priority - 1) }, { default: () => '▲' }),
         h('span', { style: 'font-size: 12px; width: 20px; text-align: center; color: var(--color-warm-gray)' }, String(row.priority)),
-        h(NButton, { text: true, size: 'tiny', disabled: idx === models.length - 1, onClick: () => movePriority(row.id, row.priority + 1) }, { default: () => '▼' }),
+        h(NButton, { text: true, size: 'tiny', disabled: idx === models.value.length - 1, onClick: () => movePriority(row.id, row.priority + 1) }, { default: () => '▼' }),
       ])
     }
   },

@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import KnowledgeView from '@/views/KnowledgeView.vue'
 import ChatView from '@/views/ChatView.vue'
@@ -15,7 +15,7 @@ import UserManagementView from '@/views/UserManagementView.vue'
 import SystemConfigView from '@/views/SystemConfigView.vue'
 import LoginView from '@/views/LoginView.vue'
 
-const routes = [
+const routes: RouteRecordRaw[] = [
   { path: '/login', name: 'login', component: LoginView, meta: { requiresAuth: false } },
   { path: '/', name: 'knowledge', component: KnowledgeView, meta: { requiresAuth: true } },
   { path: '/chat', name: 'chat', component: ChatView, meta: { requiresAuth: true } },

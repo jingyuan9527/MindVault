@@ -1,0 +1,13 @@
+.git
+.gitignore
+.idea/
+.agents/
+.claude/
+.opencode/
+node_modules
+dist
+__tests__
+**/*.md
+docs/
+scripts/
+LICENSE
