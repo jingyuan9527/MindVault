@@ -17,6 +17,9 @@ public class AutoProcessScheduler {
     private final AggregationService aggregationService;
     private final SystemConfigService config;
 
+    private volatile long lastRound2Run = 0;
+    private volatile long lastRound3Run = 0;
+
     public AutoProcessScheduler(RelationService relationService,
                                 AggregationService aggregationService,
                                 SystemConfigService config) {
@@ -25,15 +28,23 @@ public class AutoProcessScheduler {
         this.config = config;
     }
 
-    @Scheduled(fixedDelay = 60000)
+    @Scheduled(fixedDelay = 30000)
     public void runRound2() {
         if (!config.getBool("task.auto-process.round2.enabled", true)) return;
+        long pollMs = config.getLong("task.auto-process.round2.poll-ms", 300000);
+        long now = System.currentTimeMillis();
+        if (now - lastRound2Run < pollMs) return;
+        lastRound2Run = now;
         relationService.processRound2();
     }
 
-    @Scheduled(fixedDelay = 60000)
+    @Scheduled(fixedDelay = 30000)
     public void runRound3() {
         if (!config.getBool("task.auto-process.round3.enabled", true)) return;
+        long pollMs = config.getLong("task.auto-process.round3.poll-ms", 1800000);
+        long now = System.currentTimeMillis();
+        if (now - lastRound3Run < pollMs) return;
+        lastRound3Run = now;
         aggregationService.processRound3();
     }
 }

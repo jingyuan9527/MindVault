@@ -14,7 +14,8 @@ const NAIVE_COMPONENTS = [
   'NScrollbar', 'NCheckbox', 'NSwitch', 'NDynamicTags', 'NStep', 'NSteps',
   'NTabs', 'NTabPane', 'NUpload', 'NPopover', 'NTooltip', 'NDrawer', 'NDrawerContent',
   'NResult', 'NCode', 'NThing', 'NText', 'NDescriptions', 'NDescriptionsItem',
-  'NDatePicker', 'NInputNumber', 'NButtonGroup', 'NDivider', 'NA'
+  'NDatePicker', 'NInputNumber', 'NButtonGroup', 'NDivider', 'NA',
+  'NCollapseTransition'
 ]
 
 for (const name of NAIVE_COMPONENTS) {

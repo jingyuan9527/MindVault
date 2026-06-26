@@ -1,6 +1,7 @@
 package com.mindvault.systemconfig;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mindvault.operationlog.OperationLogService;
 import com.mindvault.systemconfig.entity.SystemConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +12,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -23,6 +25,7 @@ class SystemConfigControllerTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
     @MockBean private SystemConfigService systemConfigService;
+    @MockBean private OperationLogService operationLogService;
 
     private SystemConfig createConfig(String key, String value, String type) {
         SystemConfig c = new SystemConfig();
