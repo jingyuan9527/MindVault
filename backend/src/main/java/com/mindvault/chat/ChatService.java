@@ -20,6 +20,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * 聊天核心服务。
+ * <p>管理聊天会话和消息的生命周期，提供会话创建、消息发送（同步/流式 SSE）、关键字拦截等功能。
+ * 输入为用户消息文本，输出为 AI 回复（同步返回 String 或通过 SseEmitter 流式推送）。
+ * 依赖 AgentService 调用 LLM 生成回复，KeywordBlockingService 做敏感内容过滤。
+ * 关键设计：首次消息自动更新会话标题；流式模式下异步写入消息记录并推送 token/sources/done/error 事件。</p>
+ */
 @Service
 public class ChatService {
 
@@ -48,6 +55,11 @@ public class ChatService {
         this.objectMapper = new ObjectMapper();
     }
 
+    /**
+     * 创建新的聊天会话。
+     * 初始标题设为"新对话"，记录操作日志。
+     * @return 创建的会话对象（含自增 ID）
+     */
     @Transactional
     public ChatSession createSession() {
         ChatSession session = new ChatSession();
@@ -61,14 +73,31 @@ public class ChatService {
         return session;
     }
 
+    /**
+     * 获取所有会话列表，按更新时间降序排列。
+     * @return 会话列表
+     */
     public List<ChatSession> listSessions() {
         return sessionMapper.findAllByOrderByUpdatedAtDesc();
     }
 
+    /**
+     * 获取指定会话的历史消息列表。
+     * @param sessionId 会话 ID
+     * @return 按时间升序排列的消息列表
+     */
     public List<ChatMessage> getMessages(Long sessionId) {
         return messageMapper.findBySessionIdOrderByCreatedAtAsc(sessionId);
     }
 
+    /**
+     * 向指定会话发送消息并获取 AI 同步回复。
+     * 先检查关键字拦截；若拦截则返回系统提示消息。否则保存用户消息，
+     * 调用 AgentService 生成回复，提取引用来源，自动更新会话标题。
+     * @param sessionId 会话 ID
+     * @param content 用户消息内容
+     * @return AI 回复消息对象
+     */
     @Transactional
     public ChatMessage sendMessage(Long sessionId, String content) {
         if (keywordBlockingService.isBlocked(content)) {
@@ -120,6 +149,14 @@ public class ChatService {
         return agentMsg;
     }
 
+    /**
+     * 向指定会话发送消息并通过 SSE 流式获取 AI 回复。
+     * 异步处理 LLM 流式输出，逐 token 推送，完成后写入消息记录。
+     * 事件类型：token（逐字输出）、sources（引用来源 JSON）、done（完成）、error（异常）、blocked（被拦截）。
+     * @param sessionId 会话 ID
+     * @param content 用户消息内容
+     * @return SSE 发射器，客户端可通过 EventSource 监听
+     */
     public SseEmitter sendMessageStream(Long sessionId, String content) {
         SseEmitter emitter = new SseEmitter(300_000L);
 
@@ -228,6 +265,9 @@ public class ChatService {
         return emitter;
     }
 
+    /**
+     * 更新会话标题。仅当当前标题为默认值"新对话"时，截取消息前 30 字作为新标题。
+     */
     private void updateSessionTitle(Long sessionId, String content) {
         ChatSession session = sessionMapper.selectById(sessionId);
         if (session != null && "新对话".equals(session.getTitle())) {
@@ -237,6 +277,12 @@ public class ChatService {
         }
     }
 
+    /**
+     * 从 AI 回复文本中提取引用的知识来源。
+     * 匹配形如 [123] 的数字标记，查询知识库获取标题和 URL，去重后返回 JSON 数组。
+     * @param reply AI 回复文本
+     * @return 来源列表的 JSON 字符串，格式：[{"id":1, "title":"...", "url":"..."}]
+     */
     private String extractSources(String reply) {
         try {
             Pattern pattern = Pattern.compile("\\[(\\d+)\\]");

@@ -13,6 +13,22 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 
+/**
+ * AI 写作助手服务。
+ * <p>
+ * 核心职责: 根据用户提供的主题、风格和关键词，结合知识库中的相关参考内容，
+ * 通过 LLM 生成结构化文章。
+ * </p>
+ * <p>
+ * 关键设计:
+ * <ul>
+ *   <li>自动从知识库中检索与主题和关键词相关的条目作为参考上下文</li>
+ *   <li>LLM 调用使用 PromptRegistry.WRITING_ARTICLE 模板，可自定义温度和 maxTokens</li>
+ *   <li>无可用模型时返回配置的提示文案，不抛出异常</li>
+ * </ul>
+ * </p>
+ * <p>依赖: AiService, KnowledgeMapper, ModelConfigService, SystemConfigService</p>
+ */
 @Service
 public class WritingService {
 
@@ -35,6 +51,17 @@ public class WritingService {
         this.objectMapper = new ObjectMapper();
     }
 
+    /**
+     * 生成文章。
+     * <p>
+     * 流程: 检查主模型可用性 → 按主题和关键词检索知识库 → 拼接提示词上下文 → 调用 LLM → 返回结果。
+     * 如果知识库无相关条目，LLM 基于自身知识进行创作。
+     * </p>
+     * @param topic    文章主题（必填）
+     * @param style    写作风格（可选，为空则使用默认风格）
+     * @param keywords 关键词（可选）
+     * @return AI 生成的文章文本，失败时返回 fallback 提示
+     */
     public String generateArticle(String topic, String style, String keywords) {
         try {
             modelConfigService.getPrimaryChatModel();
@@ -72,6 +99,13 @@ public class WritingService {
         return result != null ? result : config.getString("default.writing.fallback-message", "文章生成失败，请稍后重试。");
     }
 
+    /**
+     * 根据主题和关键词从知识库中检索相关条目。
+     * 先拆分关键词为词条集合，逐词模糊匹配标题和内容，结果去重后按配置上限截取。
+     * @param topic    文章主题
+     * @param keywords 附加关键词
+     * @return 相关知识条目列表，上限由 threshold.writing.max-related-results 控制
+     */
     private List<Knowledge> findRelatedKnowledge(String topic, String keywords) {
         Set<String> searchTerms = new LinkedHashSet<>();
         int minTermLen = config.getInt("threshold.writing.min-term-length", 1);

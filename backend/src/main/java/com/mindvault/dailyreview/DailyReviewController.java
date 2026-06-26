@@ -12,6 +12,13 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+/**
+ * 每日回顾报告 REST 接口。
+ * <p>
+ * 提供最新报告获取、按日期查询、最近列表和手动触发生成的 API。
+ * 报告内容由 LLM 自动生成，包含摘要、关键洞察、后续建议和分类统计。
+ * </p>
+ */
 @Tag(name = "每日回顾", description = "基于 LLM 的每日回顾报告生成")
 @RestController
 @RequestMapping("/api/v1/daily-review")

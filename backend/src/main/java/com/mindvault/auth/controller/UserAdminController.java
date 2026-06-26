@@ -13,6 +13,16 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 用户管理控制器（管理员专用），提供用户列表查看和状态管理功能。
+ *
+ * <p>所有接口在执行前校验当前用户角色是否为 ADMIN，非管理员返回 403。
+ * 用户列表返回不含密码哈希的安全视图；启用/禁用操作记录 @OperationLog
+ * 审计日志，并支持快照记录以便追溯变更历史。</p>
+ *
+ * @see UserService
+ * @see UserContext
+ */
 @Tag(name = "用户管理", description = "管理员用户管理接口")
 @RestController
 @RequestMapping("/api/v1/users")

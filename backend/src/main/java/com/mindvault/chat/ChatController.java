@@ -17,6 +17,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+/**
+ * 聊天会话与消息 REST 控制器。
+ * <p>提供会话 CRUD、消息发送（同步/SSE 流式）接口。
+ * 所有端点前缀为 /api/v1/chat。流式接口返回 MediaType.TEXT_EVENT_STREAM_VALUE，
+ * 客户端可通过 EventSource 或 fetch + ReadableStream 消费。</p>
+ */
 @Tag(name = "会话与消息管理", description = "聊天会话的创建、列表、删除，消息的发送、历史查询、SSE 流式推送")
 @RestController
 @RequestMapping("/api/v1/chat")

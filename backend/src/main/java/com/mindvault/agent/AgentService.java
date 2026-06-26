@@ -24,6 +24,14 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+/**
+ * AI Agent 核心服务。
+ * <p>整合 LLM 调用与工具执行（知识搜索、知识添加），提供同步和流式两种消息处理模式。
+ * 输入为用户消息文本，输出为 AI 回复文本（同步）或通过 StreamCallback 逐 token 回调（流式）。
+ * 依赖 AiModelFactory 动态构建 ChatModel，使用 ToolCallingChatOptions 将 SearchKnowledgeTool / AddKnowledgeTool
+ * 注册为 AI 可调用的工具函数。关键设计：系统提示词通过 PromptRegistry.AGENT_SYSTEM 动态渲染，
+ * 包含当前可用工具的声明；调用完成后记录 token 用量到 TokenUsageService。</p>
+ */
 @Service
 public class AgentService {
 
@@ -57,6 +65,11 @@ public AgentService(ModelConfigService modelConfigService,
         this.tokenUsageService = tokenUsageService;
     }
 
+    /**
+     * 初始化 Agent：注册工具回调并渲染系统提示词。
+     * 通过 MethodToolCallbackProvider 将 SearchKnowledgeTool 和 AddKnowledgeTool 注册为 AI 工具，
+     * 并将工具声明嵌入系统提示词，使 LLM 知晓可用工具的名称和用途。
+     */
     @PostConstruct
     public void init() {
         MethodToolCallbackProvider provider = MethodToolCallbackProvider.builder()
@@ -71,6 +84,12 @@ public AgentService(ModelConfigService modelConfigService,
         systemPrompt = PromptRegistry.AGENT_SYSTEM.resolve(config, sb.toString().strip());
     }
 
+    /**
+     * 同步处理用户消息，返回 AI 完整回复。
+     * 调用主模型 LLM，传入系统提示词和带工具声明的 ChatOptions，获取回复后记录 token 用量。
+     * @param userMessage 用户消息文本
+     * @return AI 回复文本，异常时返回错误提示
+     */
     public String processMessage(String userMessage) {
         try {
             ModelConfig model = modelConfigService.getPrimaryChatModel();
@@ -102,6 +121,13 @@ public AgentService(ModelConfigService modelConfigService,
         }
     }
 
+    /**
+     * 流式处理用户消息，通过回调逐 token 输出 AI 回复。
+     * 使用 chatModel.stream() 订阅 LLM 流式响应，onToken 每次回调一个 token，
+     * onComplete 表示完成，onError 表示异常。
+     * @param userMessage 用户消息文本
+     * @param callback 流式回调接口
+     */
     public void processMessageStream(String userMessage, StreamCallback callback) {
         try {
             ModelConfig model = modelConfigService.getPrimaryChatModel();

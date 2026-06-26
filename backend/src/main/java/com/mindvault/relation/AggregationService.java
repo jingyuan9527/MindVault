@@ -16,6 +16,15 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * 聚合统计服务（R3 阶段）
+ *
+ * 对完成 R2 处理（RELATION_DONE 状态）的知识条目执行最终处理：
+ * 1. 标记状态为 COMPLETED（自动处理流水线结束）
+ * 2. 重建标签云（统计所有标签使用频率）
+ *
+ * 调度方式：由 AutoProcessScheduler 每 30 分钟触发。
+ */
 @Service
 public class AggregationService {
 
@@ -38,6 +47,7 @@ public class AggregationService {
         this.objectMapper = new ObjectMapper();
     }
 
+    /** R3 入口：批量完成 RELATION_DONE → COMPLETED，重建标签云 */
     public void processRound3() {
         int batchSize = config.getInt("threshold.aggregation.batch-size", 50);
         List<Knowledge> pending = knowledgeMapper.findByAutoProcessStatus("RELATION_DONE", batchSize);
@@ -58,6 +68,7 @@ public class AggregationService {
         log.info("R3 聚合分析完成");
     }
 
+    /** 重建标签云：聚合所有知识的 ai_tags + user_tags，统计使用频率 */
     public void rebuildTagCloud() {
         try {
             List<Knowledge> all = knowledgeMapper.selectList(null);
@@ -80,6 +91,7 @@ public class AggregationService {
         }
     }
 
+    /** 解析并累计单条知识的标签到统计 Map */
     private void countTags(String tagsJson, Map<String, Long> tagCount) {
         if (tagsJson == null || tagsJson.equals("[]")) return;
         try {
@@ -92,6 +104,7 @@ public class AggregationService {
         }
     }
 
+    /** 记录 R3 处理日志 */
     private void saveLog(Long knowledgeId, String round, String status, String errorMessage) {
         try {
             AutoProcessLog l = new AutoProcessLog();

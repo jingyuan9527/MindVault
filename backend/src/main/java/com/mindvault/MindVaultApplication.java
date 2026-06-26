@@ -5,14 +5,17 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * MindVault 知忆 — 启动入口
+ * MindVault 知忆 — 应用启动入口
  *
- * 使用 JDK 21 虚拟线程（Virtual Threads）：
- * Spring Boot 3.2+ 通过 @EnableAsync 或 spring.threads.virtual.enabled=true
- * 可以将异步任务调度到虚拟线程池，大幅提升并发处理能力。
+ * 职责：
+ * - 初始化 Spring Boot 上下文，扫描所有 @Component / @Service / @Controller / @Mapper 等 Bean
+ * - 启用定时任务调度（@EnableScheduling）
+ * - JDK 21 虚拟线程通过 VirtualThreadConfig 配置（Tomcat + @Async 均使用虚拟线程）
  *
- * AgentScope 的 @AgentScan 由 Spring Boot 自动配置扫描，
- * 所有带 @Agent 注解的 Bean 会自动注册到 AgentScope 运行时。
+ * 新人指引：
+ * - 应用启动后，从 common → ai → content → knowledge → ... 逐层初始化
+ * - 数据源为 PostgreSQL 16 + pgvector，通过 MyBatis-Plus 操作
+ * - 前端为 Vue 3，由 Nginx 反向代理访问后端 /api/v1/*
  */
 @SpringBootApplication
 @EnableScheduling

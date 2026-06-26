@@ -11,6 +11,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+/**
+ * 间隔重复复习 REST 控制器。
+ * <p>提供复习计划的创建、执行和到期查询接口。
+ * 所有端点前缀为 /api/v1/review。核心操作：schedule（安排复习）、perform（执行复习并评分）、
+ * due（查看到期列表）、due-count（到期数量统计）。</p>
+ */
 @Tag(name = "复习管理", description = "SM-2 间隔重复复习调度")
 @RestController
 @RequestMapping("/api/v1/review")

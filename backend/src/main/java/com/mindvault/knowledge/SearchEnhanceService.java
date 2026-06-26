@@ -17,6 +17,20 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * 搜索增强服务
+ *
+ * 在知识库基础搜索之上提供三种 LLM 增强策略：
+ * 1. HyDE（假设文档嵌入）— 先生成一个"理想文档"再向量检索，提升查询与文档的语义对齐
+ * 2. 查询改写（Query Rewrite）— 用 LLM 优化用户原始查询后再搜索
+ * 3. LLM 重排序（Rerank）— 对初筛结果用 LLM 逐条评分后重新排序
+ *
+ * 调用链路：
+ * Controller → SearchEnhanceService.* → KnowledgeService.hybridSearch() → AI 调用(LlmFailoverService)
+ *
+ * 所有 LLM 调用参数（温度、Token 限制等）通过 SystemConfig 可配置。
+ * 如果未配置主模型，所有增强策略静默回退到普通混合搜索。
+ */
 @Service
 public class SearchEnhanceService {
 
@@ -42,6 +56,7 @@ public class SearchEnhanceService {
         this.objectMapper = new ObjectMapper();
     }
 
+    /** HyDE 搜索：生成假设文档 → 向量检索 → 返回结果 */
     public List<Map<String, Object>> hydeSearch(String query, int topN) {
         String hypotheticalDoc = generateHypotheticalDocument(query);
         if (hypotheticalDoc == null) {
@@ -63,6 +78,7 @@ public class SearchEnhanceService {
         return results;
     }
 
+    /** 查询改写搜索：改写查询 → 混合搜索 → LLM 重排序 */
     public List<Map<String, Object>> searchWithRewrite(String query, int topN) {
         String rewritten = rewriteQuery(query);
         if (rewritten == null || rewritten.isBlank()) {
@@ -74,6 +90,7 @@ public class SearchEnhanceService {
         return reranked;
     }
 
+    /** 调用 LLM 改写查询语句（提取关键词、补充同义词） */
     private String rewriteQuery(String query) {
         try {
             modelConfigService.getPrimaryChatModel();
@@ -88,6 +105,7 @@ public class SearchEnhanceService {
         return aiService.call(prompt, temperature, maxTokens);
     }
 
+    /** 调用 LLM 生成"假设文档"（HyDE 策略的关键步骤） */
     private String generateHypotheticalDocument(String query) {
         try {
             modelConfigService.getPrimaryChatModel();
@@ -102,6 +120,7 @@ public class SearchEnhanceService {
         return aiService.call(prompt, temperature, maxTokens);
     }
 
+    /** 为指定文本生成嵌入向量 */
     private String generateEmbeddingForText(String text, ModelConfig embModel) {
         int embedTruncate = config.getInt("threshold.search.hyde-embedding-truncate", 8000);
         if (text.length() > embedTruncate) text = text.substring(0, embedTruncate);
@@ -119,6 +138,10 @@ public class SearchEnhanceService {
         return null;
     }
 
+    /**
+     * LLM 重排序：对初筛结果用 LLM 逐条评分（0-10），按分数降序取 topN
+     * 如果 LLM 调用失败或返回异常，回退到取前 topN 条
+     */
     public List<Map<String, Object>> rerankResults(String query, List<Map<String, Object>> results, int topN) {
         if (results == null || results.size() <= 1) return results;
 

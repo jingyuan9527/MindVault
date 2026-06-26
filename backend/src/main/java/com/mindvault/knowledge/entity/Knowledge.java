@@ -11,6 +11,22 @@ import java.time.LocalDateTime;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 
+/**
+ * 知识实体（核心领域模型）
+ *
+ * 对应数据库 knowledge 表，每条记录代表一条知识笔记。
+ * 字段分为两类：
+ * - 用户字段（AI 永不修改）：title（用户标题）、userTags（用户标签）
+ * - AI 字段（自动处理生成）：aiTitle、tags（AI标签）、summary、embedding
+ *
+ * 显示标题策略：displayTitle() 方法优先返回 aiTitle，回退到 title。
+ * 标签策略：前端展示时合并 aiTags + userTags 去重后显示。
+ *
+ * 自动处理状态流转：
+ * PENDING → TITLE_TAG_DONE → RELATION_DONE → COMPLETED
+ *
+ * 注意：tags 和 userTags 为 JSONB 类型，使用 JsonbStringTypeHandler 处理。
+ */
 @TableName("knowledge")
 @Schema(description = "知识实体")
 public class Knowledge {

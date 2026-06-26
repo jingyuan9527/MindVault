@@ -10,6 +10,23 @@ import java.time.LocalDateTime;
 import com.mindvault.common.handler.JsonbStringTypeHandler;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+/**
+ * 操作审计日志实体。
+ * <p>
+ * 通过 AOP (@OperationLog 注解 + OperationLogAspect) 自动记录用户的关键操作，
+ * 包含操作模块、类型、实体 ID、前后快照、操作人、IP、耗时和结果。
+ * 用于审计追踪和管理员查看操作历史。
+ * </p>
+ * <p>
+ * 关键设计:
+ * <ul>
+ *   <li>detail、beforeSnapshot、afterSnapshot 字段使用 JSONB 类型存储，通过 JsonbStringTypeHandler 处理</li>
+ *   <li>beforeSnapshot 和 afterSnapshot 默认不返回（select = false），需通过 selectDetailById 方法单独查询</li>
+ *   <li>entityId 支持 Long 和 String 两种 setter 重载，兼容不同模块的 ID 类型</li>
+ * </ul>
+ * </p>
+ * <p>表: operation_log</p>
+ */
 @TableName("operation_log")
 @Data
 @Schema(description = "操作日志实体")

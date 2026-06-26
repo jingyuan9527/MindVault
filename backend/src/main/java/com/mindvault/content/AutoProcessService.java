@@ -22,6 +22,24 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.StringJoiner;
 
+/**
+ * AI 自动处理服务（R1 阶段）
+ *
+ * 对新增的知识条目自动执行以下处理（按顺序）：
+ * 1. AI 标题生成（generateAiTitle）— 基于内容生成精简中文标题
+ * 2. AI 标签生成（generateTags）— 生成 3-5 个中文标签（JSON 数组格式）
+ * 3. AI 摘要生成（generateSummary）— 生成 50-100 字中文摘要
+ * 4. 嵌入向量生成（generateEmbedding）— 构建语义搜索向量
+ *
+ * 触发方式：
+ * - 自动：知识创建时由 @Async autoProcessAsync 异步触发
+ * - 手动：KnowledgeService.reprocessKnowledge() → generateAiTitleSync()
+ *
+ * 所有 LLM 调用参数（截断长度、温度、最大 Token 等）均通过 SystemConfig 可配置。
+ * 每一步的结果会持久化到 knowledge 表对应字段，并记录 AutoProcessLog。
+ *
+ * 注意：如果没有配置主模型，自动处理会被静默跳过（不抛异常）。
+ */
 @Service
 public class AutoProcessService {
 
@@ -50,11 +68,13 @@ public class AutoProcessService {
         this.objectMapper = new ObjectMapper();
     }
 
+    /** 异步触发自动处理（由知识创建/更新事件调用） */
     @Async
     public void autoProcessAsync(Long knowledgeId, String userTitle, String content) {
         autoProcess(knowledgeId, userTitle, content);
     }
 
+    /** 同步生成 AI 标题并更新到知识条目（用于手动 reprocess） */
     public String generateAiTitleSync(Long knowledgeId, String userTitle, String content) {
         try {
             modelConfigService.getPrimaryChatModel();
@@ -69,6 +89,16 @@ public class AutoProcessService {
         return aiTitle;
     }
 
+    /**
+     * R1 自动处理主流程（同步执行）
+     *
+     * 处理顺序：
+     * 1. 检查是否有现成的 aiTitle（避免重复生成）
+     * 2. 依次生成标题 → 标签 → 摘要（LLM 调用）
+     * 3. 更新 knowledge 表对应字段并设置状态为 TITLE_TAG_DONE
+     * 4. 生成嵌入向量（用于语义搜索）
+     * 5. 记录 AutoProcessLog
+     */
     public void autoProcess(Long knowledgeId, String userTitle, String content) {
         try {
             modelConfigService.getPrimaryChatModel();
@@ -112,6 +142,7 @@ public class AutoProcessService {
         generateEmbedding(knowledgeId, userTitle, content);
     }
 
+    /** 调用 LLM 生成 AI 标题，参数从 SystemConfig 读取 */
     private String generateAiTitle(String userTitle, String content) {
         try {
             int truncateLen = config.getInt("threshold.auto.truncate-length", 2000);
@@ -125,6 +156,7 @@ public class AutoProcessService {
         return null;
     }
 
+    /** 调用 LLM 生成内容摘要 */
     private String generateSummary(String userTitle, String content) {
         try {
             int truncateLen = config.getInt("threshold.auto.truncate-length", 2000);
@@ -138,6 +170,7 @@ public class AutoProcessService {
         return null;
     }
 
+    /** 调用 LLM 生成标签（JSON 数组格式），验证合法性后返回 */
     private String generateTags(String userTitle, String content) {
         try {
             int truncateLen = config.getInt("threshold.auto.truncate-length", 2000);
@@ -157,6 +190,7 @@ public class AutoProcessService {
         return null;
     }
 
+    /** 生成嵌入向量并更新到 knowledge 表（使用第一个可用的嵌入模型） */
     private void generateEmbedding(Long knowledgeId, String userTitle, String content) {
         List<ModelConfig> embeddingModels = modelConfigService.getAvailableEmbeddingModels();
         if (embeddingModels.isEmpty()) return;
@@ -181,6 +215,7 @@ public class AutoProcessService {
         }
     }
 
+    /** 记录自动处理日志到 auto_process_log 表 */
     private void saveLog(Long knowledgeId, String round, String status, LocalDateTime startedAt,
                          String resultSummary, int tokens, int durationMs, String errorMessage) {
         try {

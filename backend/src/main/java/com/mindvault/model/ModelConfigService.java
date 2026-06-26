@@ -22,6 +22,23 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * 模型配置服务。
+ * <p>
+ * 核心职责: 管理 LLM 模型配置的增删改查，包括设置主模型、更新优先级、
+ * 从供应商拉取可用模型列表、测试连接可用性。提供 failover 所需的可用模型查询能力。
+ * </p>
+ * <p>
+ * 关键设计:
+ * <ul>
+ *   <li>设置主模型时自动清除同类型所有现有主模型标志，确保只有一个主模型</li>
+ *   <li>拉取模型列表: 支持 Ollama（本地 API）、Anthropic（REST API）和 OpenAI 兼容 API（OpenAI Java SDK）</li>
+ *   <li>测试连接: 根据模型类型（CHAT/EMBEDDING）选择调用方式，结果记录操作日志</li>
+ *   <li>所有变更操作通过 operationLogService 自动记录审计日志</li>
+ * </ul>
+ * </p>
+ * <p>依赖: ModelConfigMapper, OperationLogService, AiModelFactory</p>
+ */
 @Service
 public class ModelConfigService {
 
@@ -39,6 +56,11 @@ public class ModelConfigService {
         this.aiModelFactory = aiModelFactory;
     }
 
+    /**
+     * 新增模型配置。
+     * @param config 模型配置实体（含提供商、模型名称、API Key 等必填字段）
+     * @return 持久化后的模型配置
+     */
     @Transactional
     public ModelConfig addConfig(ModelConfig config) {
         LocalDateTime now = LocalDateTime.now();
@@ -52,10 +74,21 @@ public class ModelConfigService {
         return config;
     }
 
+    /**
+     * 获取所有模型配置。
+     * @return 全量模型配置列表
+     */
     public List<ModelConfig> listAll() {
         return mapper.selectList(null);
     }
 
+    /**
+     * 设置主模型。
+     * 自动清除同类型（CHAT/EMBEDDING）的所有现有主模型标志。
+     * @param id 模型配置 ID
+     * @return 更新后的模型配置
+     * @throws IllegalArgumentException ID 不存在时抛出
+     */
     @Transactional
     public ModelConfig setPrimary(Long id) {
         ModelConfig config = Optional.ofNullable(mapper.selectById(id))
@@ -81,19 +114,39 @@ public class ModelConfigService {
         return config;
     }
 
+    /**
+     * 获取主对话模型。
+     * @return 主模型配置
+     * @throws RuntimeException 未配置主模型时抛出
+     */
     public ModelConfig getPrimaryChatModel() {
         return mapper.findByModelTypeAndIsPrimaryTrue("CHAT")
                 .orElseThrow(() -> new RuntimeException("未配置主模型，请在设置中添加并设置主模型"));
     }
 
+    /**
+     * 获取所有可用的对话模型（已启用，按优先级降序）。
+     * @return 可用对话模型列表
+     */
     public List<ModelConfig> getAvailableChatModels() {
         return mapper.findByModelTypeAndIsEnabledTrueOrderByPriorityDesc("CHAT");
     }
 
+    /**
+     * 获取所有可用的嵌入模型（已启用，按优先级降序）。
+     * @return 可用嵌入模型列表
+     */
     public List<ModelConfig> getAvailableEmbeddingModels() {
         return mapper.findByModelTypeAndIsEnabledTrueOrderByPriorityDesc("EMBEDDING");
     }
 
+    /**
+     * 更新模型优先级。
+     * @param id       模型配置 ID
+     * @param priority 新优先级（数值越大优先级越高）
+     * @return 更新后的模型配置
+     * @throws IllegalArgumentException ID 不存在时抛出
+     */
     @Transactional
     public ModelConfig updatePriority(Long id, int priority) {
         ModelConfig config = Optional.ofNullable(mapper.selectById(id))
@@ -107,6 +160,21 @@ public class ModelConfigService {
         return config;
     }
 
+    /**
+     * 从指定供应商拉取可用模型列表。
+     * <p>
+     * 根据供应商类型选择不同的拉取方式:
+     * <ul>
+     *   <li>OLLAMA: 调用本地 Ollama API 的 /api/tags 接口</li>
+     *   <li>ANTHROPIC: 调用 Anthropic REST API 的 /v1/models 接口</li>
+     *   <li>其他: 使用 OpenAI Java SDK 的 /v1/models 接口（兼容 OpenAI/DeepSeek/Alibaba/SiliconFlow）</li>
+     * </ul>
+     * </p>
+     * @param provider 供应商名称（大小写不敏感）
+     * @param apiKey   API 密钥
+     * @param baseUrl  自定义基础 URL（可选）
+     * @return 可用模型名称列表，拉取失败时返回空列表
+     */
     public List<String> fetchAvailableModels(String provider, String apiKey, String baseUrl) {
         String upper = provider.toUpperCase();
         try {
@@ -180,6 +248,11 @@ public class ModelConfigService {
         };
     }
 
+    /**
+     * 删除模型配置。
+     * @param id 模型配置 ID
+     * @throws IllegalArgumentException ID 不存在时抛出
+     */
     @Transactional
     public void deleteConfig(Long id) {
         ModelConfig config = Optional.ofNullable(mapper.selectById(id))
@@ -190,6 +263,16 @@ public class ModelConfigService {
                 "删除模型 " + config.getProvider() + "/" + config.getModelName());
     }
 
+    /**
+     * 测试模型连接是否正常。
+     * <p>
+     * 根据模型类型（CHAT/EMBEDDING）分别通过 AiModelFactory 构建对应的模型实例，
+     * 发送一条简单消息验证连通性。结果记录操作日志。
+     * </p>
+     * @param id 模型配置 ID
+     * @return true 连接成功，false 连接失败
+     * @throws IllegalArgumentException ID 不存在时抛出
+     */
     public boolean testConnection(Long id) {
         ModelConfig config = Optional.ofNullable(mapper.selectById(id))
                 .orElseThrow(() -> new IllegalArgumentException("模型配置不存在: " + id));

@@ -23,6 +23,24 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+/**
+ * 知识库 REST 控制器
+ *
+ * 提供知识的完整 CRUD 接口，以及搜索（混合搜索 / HyDE / 查询改写）、
+ * 导入导出（JSON / Markdown / CSV）、标签管理（批量打标签、AI 打标签）、
+ * 内容解析（URL / PDF）和关联推荐等功能。
+ *
+ * 端点概览（共 20+ 个端点）：
+ * - CRUD: POST/GET/PUT/DELETE /api/v1/knowledge[/{id}]
+ * - 搜索: GET /api/v1/knowledge/search /search/hyde /search/rewrite
+ * - 关联: GET /api/v1/knowledge/{id}/related
+ * - 导入导出: /export/json /export/markdown /export/csv /import /import/preview
+ * - 批量: /batch/delete /batch/tag /batch/ai-tag /batch/export
+ * - 解析: /parse-url /parse-pdf
+ * - 标签: /tags
+ *
+ * 注意：写操作（新增/更新/删除/导入）标注了 @OperationLog 自动记录操作日志
+ */
 @Tag(name = "知识库", description = "知识的增删改查、搜索、导入导出、标签管理")
 @RestController
 @RequestMapping("/api/v1/knowledge")
@@ -46,6 +64,7 @@ public class KnowledgeController {
         this.autoProcessLogMapper = autoProcessLogMapper;
     }
 
+    /** 新增知识（自动触发 AI 处理 + 复习计划安排） */
     @OperationLog(module = "知识库", action = "新增知识", actionType = "CREATE", entityType = Knowledge.class, recordSnapshot = true)
     @Operation(summary = "新增知识", description = "创建一条新的知识笔记")
     @PostMapping
@@ -53,6 +72,7 @@ public class KnowledgeController {
         return ApiResponse.success(knowledgeService.addKnowledge(knowledge));
     }
 
+    /** 分页查询列表（支持关键词、标签、排序） */
     @Operation(summary = "知识列表", description = "分页获取知识列表，支持关键字搜索、标签筛选、排序")
     @GetMapping
     public ApiResponse<PageResult<Knowledge>> listAll(
@@ -65,12 +85,14 @@ public class KnowledgeController {
         return ApiResponse.success(knowledgeService.listAll(page, size, keyword, tags, sortBy, sortOrder));
     }
 
+    /** 获取单条知识详情 */
     @Operation(summary = "知识详情", description = "根据 ID 获取单条知识")
     @GetMapping("/{id}")
     public ApiResponse<Knowledge> getById(@Parameter(description = "知识 ID") @PathVariable Long id) {
         return ApiResponse.success(knowledgeService.getById(id));
     }
 
+    /** 更新知识（仅更新用户字段） */
     @OperationLog(module = "知识库", action = "更新知识", actionType = "UPDATE", entityType = Knowledge.class, recordSnapshot = true)
     @Operation(summary = "更新知识", description = "更新指定 ID 的知识内容")
     @PutMapping("/{id}")
@@ -79,6 +101,7 @@ public class KnowledgeController {
         return ApiResponse.success(knowledgeService.updateKnowledge(id, knowledge));
     }
 
+    /** 搜索：混合搜索（关键词 + 向量 + RRF 融合），可选 LLM 重排序 */
     @Operation(summary = "搜索知识", description = "混合搜索（向量+关键字），支持语义重排序和标签过滤")
     @GetMapping("/search")
     public ApiResponse<?> search(
@@ -93,6 +116,7 @@ public class KnowledgeController {
         return ApiResponse.success(reranked);
     }
 
+    /** HyDE 搜索：先生成假设文档再向量检索，提高语义匹配精度 */
     @Operation(summary = "HyDE 搜索", description = "基于假设文档嵌入的增强语义搜索")
     @GetMapping("/search/hyde")
     public ApiResponse<?> searchHyde(
@@ -103,6 +127,7 @@ public class KnowledgeController {
         return ApiResponse.success(reranked);
     }
 
+    /** 查询改写搜索：LLM 先优化查询语句再搜索 */
     @Operation(summary = "查询改写搜索", description = "LLM 改写查询后进行语义搜索")
     @GetMapping("/search/rewrite")
     public ApiResponse<?> searchWithRewrite(
@@ -112,6 +137,7 @@ public class KnowledgeController {
         return ApiResponse.success(results);
     }
 
+    /** 关联推荐：基于向量相似度获取相关知识 */
     @Operation(summary = "相关知识", description = "基于向量相似度获取相关知识推荐")
     @GetMapping("/{id}/related")
     public ApiResponse<List<Map<String, Object>>> getRelated(
@@ -120,6 +146,7 @@ public class KnowledgeController {
         return ApiResponse.success(associationService.getRelatedKnowledge(id, limit));
     }
 
+    /** AI 批量打标签：LLM 分析内容生成标签并追加到 user_tags */
     @OperationLog(module = "知识库", action = "AI 批量打标签", actionType = "UPDATE", entityType = Knowledge.class)
     @Operation(summary = "AI 批量打标签", description = "选中多条知识，AI 根据内容生成标签并追加到 user_tags")
     @PostMapping("/batch/ai-tag")
@@ -131,6 +158,7 @@ public class KnowledgeController {
         return ApiResponse.success(result);
     }
 
+    /** 删除知识（级联删除关联记录） */
     @OperationLog(module = "知识库", action = "删除知识", actionType = "DELETE", entityType = Knowledge.class, recordSnapshot = true)
     @Operation(summary = "删除知识", description = "删除指定 ID 的知识及其关联的复习计划")
     @DeleteMapping("/{id}")
@@ -139,6 +167,7 @@ public class KnowledgeController {
         return ApiResponse.success(null);
     }
 
+    /** 重新处理：重置 AI 字段并重新执行 R1 自动处理 */
     @OperationLog(module = "知识库", action = "重新 AI 处理", actionType = "UPDATE", entityType = Knowledge.class)
     @Operation(summary = "重新 AI 处理", description = "重置 AI 字段并重新执行自动处理流水线")
     @PostMapping("/{id}/reprocess")
@@ -147,12 +176,14 @@ public class KnowledgeController {
         return ApiResponse.success(null);
     }
 
+    /** 获取 AI 自动处理日志 */
     @Operation(summary = "处理日志", description = "获取知识的 AI 自动处理日志")
     @GetMapping("/{id}/process-logs")
     public ApiResponse<List<AutoProcessLog>> getProcessLogs(@Parameter(description = "知识 ID") @PathVariable Long id) {
         return ApiResponse.success(autoProcessLogMapper.findByKnowledgeId(id));
     }
 
+    /** 解析 URL：抓取网页内容并自动创建知识 */
     @Operation(summary = "解析 URL", description = "从网页 URL 提取内容并创建知识")
     @PostMapping("/parse-url")
     public ApiResponse<Knowledge> parseUrl(@RequestBody Map<String, String> body) {
@@ -172,6 +203,7 @@ public class KnowledgeController {
         return ApiResponse.success(knowledgeService.addKnowledge(knowledge));
     }
 
+    /** 解析 PDF：上传 PDF 文件并自动创建知识 */
     @Operation(summary = "解析 PDF", description = "上传 PDF 文件，提取内容并创建知识")
     @PostMapping("/parse-pdf")
     public ApiResponse<Knowledge> parsePdf(@RequestParam("file") MultipartFile file) {
@@ -194,6 +226,7 @@ public class KnowledgeController {
         }
     }
 
+    /** 导出全部知识为 JSON */
     @Operation(summary = "导出 JSON", description = "导出全部知识为 JSON 格式文件")
     @GetMapping("/export/json")
     public ResponseEntity<String> exportJson() {
@@ -204,6 +237,7 @@ public class KnowledgeController {
                 .body(json);
     }
 
+    /** 导出全部知识为 Markdown（ZIP 压缩包） */
     @Operation(summary = "导出 Markdown", description = "导出全部知识为 Markdown 文件（ZIP 压缩包）")
     @GetMapping("/export/markdown")
     public ResponseEntity<byte[]> exportMarkdown() {
@@ -214,6 +248,7 @@ public class KnowledgeController {
                 .body(zip);
     }
 
+    /** 导出全部知识为 CSV */
     @Operation(summary = "导出 CSV", description = "导出全部知识为 CSV 格式文件")
     @GetMapping("/export/csv")
     public ResponseEntity<String> exportCsv() {
@@ -224,6 +259,7 @@ public class KnowledgeController {
                 .body(csv);
     }
 
+    /** 预览导入数据并检测冲突 */
     @Operation(summary = "预览导入", description = "预览 JSON 导入的内容，显示冲突信息")
     @PostMapping("/import/preview")
     public ApiResponse<ImportPreview> previewImport(@RequestBody String jsonBody) {
@@ -231,6 +267,7 @@ public class KnowledgeController {
         return ApiResponse.success(preview);
     }
 
+    /** 导入知识（支持 skip/overwrite 冲突策略） */
     @OperationLog(module = "知识库", action = "导入知识", actionType = "CREATE")
     @Operation(summary = "导入 JSON", description = "导入 JSON 格式的知识数据，支持冲突策略（skip/overwrite）")
     @PostMapping("/import")
@@ -244,6 +281,7 @@ public class KnowledgeController {
         return ApiResponse.success(result);
     }
 
+    /** 批量删除知识 */
     @OperationLog(module = "知识库", action = "批量删除", actionType = "DELETE", entityType = Knowledge.class)
     @Operation(summary = "批量删除", description = "根据 ID 列表批量删除知识")
     @PostMapping("/batch/delete")
@@ -252,6 +290,7 @@ public class KnowledgeController {
         return ApiResponse.success(null);
     }
 
+    /** 批量添加标签 */
     @Operation(summary = "批量打标签", description = "为多条知识批量添加/替换标签")
     @PostMapping("/batch/tag")
     public ApiResponse<Void> batchTag(@RequestBody Map<String, Object> body) {
@@ -263,6 +302,7 @@ public class KnowledgeController {
         return ApiResponse.success(null);
     }
 
+    /** 批量导出为 JSON（按 ID 列表选择） */
     @Operation(summary = "批量导出", description = "按 ID 列表批量导出知识为 JSON 文件")
     @PostMapping("/batch/export")
     public ResponseEntity<String> batchExport(@RequestBody List<Long> ids) {
@@ -273,6 +313,7 @@ public class KnowledgeController {
                 .body(json);
     }
 
+    /** 获取标签聚合统计（标签名 + 使用次数 + 排序） */
     @Operation(summary = "标签列表", description = "获取所有标签及其使用次数")
     @GetMapping("/tags")
     public ApiResponse<List<Map<String, Object>>> getAllTags() {

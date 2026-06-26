@@ -8,6 +8,25 @@ import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
 
+/**
+ * 数据库表初始化器，在应用启动时自动建表和迁移。
+ *
+ * <p>使用 JdbcTemplate 直接执行 DDL（而非 Flyway/Liquibase），保证轻量简洁。
+ * 仅在 PostgreSQL 环境下执行完整的分区表创建逻辑，非 PG 环境（如测试 H2）
+ * 跳过分区相关步骤。</p>
+ *
+ * <p>初始化内容：
+ * <ul>
+ *   <li><b>users</b> — 用户表，含用户名唯一约束和角色/状态字段</li>
+ *   <li><b>api_tokens</b> — API 令牌表，外键关联 users，级联删除</li>
+ *   <li><b>operation_log</b> — 操作日志分区表，按月分区(RANGE)，含列迁移逻辑</li>
+ * </ul>
+ * </p>
+ *
+ * <p>分区策略：operation_log 按 created_at 月份 RANGE 分区，预创建当前月
+ * 及下两个月的分区。新列通过 ALTER TABLE ADD COLUMN IF NOT EXISTS 逐列迁移，
+ * 兼容旧版 schema。分区创建失败时回退为普通表。</p>
+ */
 @Component
 @ConditionalOnProperty(name = "mindvault.auth.enabled", havingValue = "true", matchIfMissing = true)
 public class DatabaseInitializer {
@@ -16,6 +35,14 @@ public class DatabaseInitializer {
 
     private final JdbcTemplate jdbcTemplate;
 
+    /**
+     * 检测当前数据库是否为 PostgreSQL。
+     *
+     * 通过 JDBC MetaData 获取数据库产品名判断。非 PG 环境（如 H2）时跳过
+     * PostgreSQL 专有的分区表创建逻辑。
+     *
+     * @return true 表示当前数据库为 PostgreSQL
+     */
     private boolean isPostgres() {
         try {
             return jdbcTemplate.getDataSource().getConnection().getMetaData()
@@ -25,6 +52,13 @@ public class DatabaseInitializer {
         }
     }
 
+    /**
+     * 创建或迁移 operation_log 表。
+     *
+     * 优先创建按月 RANGE 分区表，并预创建当前月及后两个月的分区。
+     * 若分区表创建失败（如 PG 版本过低），回退为普通非分区表。
+     * 最后执行旧表列迁移（添加新增列）和索引创建。
+     */
     private void createOperationLogTable() {
         if (!isPostgres()) return;
 
@@ -94,6 +128,12 @@ public class DatabaseInitializer {
                 "CREATE INDEX IF NOT EXISTS idx_operation_log_operator ON operation_log (operator_id, created_at DESC)");
     }
 
+    /**
+     * 迁移旧版 operation_log 表的缺失列。
+     *
+     * 逐列执行 ALTER TABLE ADD COLUMN IF NOT EXISTS，确保从早期版本升级
+     * 时新增列不会缺失。每列迁移独立执行，单列失败不影响其他列。
+     */
     private void migrateOldOperationLogTable() {
         String[][] migrations = {
             {"action_type", "ALTER TABLE operation_log ADD COLUMN IF NOT EXISTS action_type VARCHAR(10) NOT NULL DEFAULT 'OTHER'"},
@@ -113,6 +153,14 @@ public class DatabaseInitializer {
         }
     }
 
+    /**
+     * 创建 operation_log 的月度分区（如果不存在）。
+     *
+     * 分区名为 "operation_log_yyyy_MM" 格式。名称冲突或 PG 版本不支持时
+     * 静默跳过，不中断初始化流程。
+     *
+     * @param monthsAhead 从当前月开始的偏移量（0=本月，1=下月…）
+     */
     private void createPartitionIfNotExists(int monthsAhead) {
         try {
             String partitionName = "operation_log_" + java.time.LocalDate.now()
@@ -127,6 +175,15 @@ public class DatabaseInitializer {
         }
     }
 
+    /**
+     * 创建索引（如果不存在）。
+     *
+     * 先查询 pg_indexes 系统表判断索引是否已存在，不存在时才执行 DDL。
+     * 仅对 PostgreSQL 生效。
+     *
+     * @param indexName 索引名称
+     * @param ddl       CREATE INDEX DDL 语句
+     */
     private void createIndexIfNotExists(String indexName, String ddl) {
         try {
             jdbcTemplate.queryForObject(
@@ -142,6 +199,13 @@ public class DatabaseInitializer {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    /**
+     * 初始化核心数据库表。
+     *
+     * 依次创建 users、api_tokens 和 operation_log 三张核心表。
+     * 所有 DDL 使用 IF NOT EXISTS 保证幂等性。任何表创建失败时记录
+     * 错误日志但不阻止应用启动。
+     */
     @PostConstruct
     public void init() {
         try {

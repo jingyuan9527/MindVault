@@ -15,6 +15,13 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+/**
+ * 数据备份 REST 接口。
+ * <p>
+ * 提供备份创建、列表查询和文件下载功能。
+ * 备份以 JSON 格式存储，创建接口每分钟限流 2 次（RateLimit 注解控制）。
+ * </p>
+ */
 @Tag(name = "数据备份", description = "数据库的备份与恢复")
 @RestController
 @RequestMapping("/api/v1/backup")

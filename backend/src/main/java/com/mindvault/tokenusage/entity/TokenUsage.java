@@ -9,6 +9,14 @@ import java.time.LocalDateTime;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+/**
+ * Token 用量记录实体。
+ * <p>
+ * 记录每次 LLM 调用的 Token 消耗详情，包括提供商、模型名称、提示/补全 Token 数、
+ * 估算费用、请求来源和请求 ID。用于用量统计、费用分析和前端可视化展示。
+ * </p>
+ * <p>表: token_usage</p>
+ */
 @TableName("token_usage")
 @Schema(description = "Token 用量记录实体")
 public class TokenUsage {

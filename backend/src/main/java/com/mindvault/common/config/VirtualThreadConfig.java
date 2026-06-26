@@ -14,11 +14,13 @@ import java.util.concurrent.Executors;
  * 虚拟线程配置
  *
  * JDK 21 虚拟线程是轻量级线程（平台线程的"载体"），
- * 一个平台线程可以承载数千个虚拟线程，适合 IO 密集型任务。
+ * 一个平台线程可以承载数千个虚拟线程，适合 IO 密集型任务（如 HTTP 请求、数据库查询）。
  *
- * 此处配置：
- * 1. Tomcat 请求处理使用虚拟线程
- * 2. Spring @Async 异步方法使用虚拟线程池
+ * 应用场景：
+ * 1. Tomcat 请求处理使用虚拟线程 → 每个 HTTP 请求一个虚拟线程，大幅降低内存开销
+ * 2. Spring @Async 异步方法使用虚拟线程 → 所有异步任务（如 AI 自动处理）共享虚拟线程池
+ *
+ * 启用条件：spring.threads.virtual.enabled=true（application.yml 中配置）
  */
 @Configuration
 @EnableAsync

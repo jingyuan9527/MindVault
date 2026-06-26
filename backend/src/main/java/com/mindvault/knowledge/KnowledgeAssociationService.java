@@ -10,6 +10,17 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * 知识关联推荐服务
+ *
+ * 基于向量相似度（cosine distance）为指定知识推荐相关内容。
+ * 关联发现逻辑：
+ * - 实时查询：getRelatedKnowledge 根据指定知识的嵌入向量检索最相似的 TOP N 条
+ * - 定时发现：scheduledAssociationDiscovery 每天凌晨 2:00 扫描全库统计关联覆盖
+ *
+ * 注意：此服务仅做相似度推荐，不创建持久化的关联记录。
+ * 持久化的关联发现（写入 knowledge_relation 表）由 RelationService 处理。
+ */
 @Service
 public class KnowledgeAssociationService {
 
@@ -27,6 +38,7 @@ public class KnowledgeAssociationService {
         this.config = config;
     }
 
+    /** 获取相关知识推荐：基于向量相似度，排除自身 */
     public List<Map<String, Object>> getRelatedKnowledge(Long knowledgeId, int limit) {
         Knowledge knowledge = knowledgeService.getById(knowledgeId);
         if (knowledge.getEmbedding() == null || knowledge.getEmbedding().isBlank()) {
@@ -65,6 +77,7 @@ public class KnowledgeAssociationService {
         return list;
     }
 
+    /** 定时统计全库关联覆盖情况（每天 02:00），记录日志供监控 */
     @Scheduled(cron = "0 0 2 * * ?")
     public void scheduledAssociationDiscovery() {
         if (!config.getBool("task.association.enabled", true)) return;

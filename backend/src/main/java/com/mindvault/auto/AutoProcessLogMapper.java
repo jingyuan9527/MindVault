@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
 
+/** 自动处理日志数据访问层 */
 @Mapper
 public interface AutoProcessLogMapper extends BaseMapper<AutoProcessLog> {
 

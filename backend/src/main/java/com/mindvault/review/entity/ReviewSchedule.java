@@ -9,6 +9,14 @@ import java.time.LocalDateTime;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+/**
+ * SM-2 间隔重复复习调度实体。
+ * <p>映射 review_schedule 表，记录每条知识的复习状态。核心字段：
+ * ease_factor（简易系数，初始 2.50）控制间隔增长速度，
+ * interval_days（当前间隔天数）决定下次复习时间，
+ * review_count（已复习次数）用于计算首次/二次成功后的特殊间隔。
+ * 每次复习后根据质量评分（0-5）更新 ease_factor 和 interval，实现自适应调度。</p>
+ */
 @TableName("review_schedule")
 @Schema(description = "复习调度实体（SM-2 算法）")
 public class ReviewSchedule {

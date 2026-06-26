@@ -11,6 +11,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+/**
+ * 闪卡 REST 控制器。
+ * <p>提供闪卡的查询（全部/按知识/按来源）、自动生成和删除接口。
+ * 所有端点前缀为 /api/v1/flashcards。generate 端点基于知识内容调用 LLM 自动创建问答对闪卡。</p>
+ */
 @Tag(name = "闪卡管理", description = "闪卡的增删改查")
 @RestController
 @RequestMapping("/api/v1/flashcards")

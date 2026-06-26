@@ -15,6 +15,20 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+/**
+ * 全局异常处理器
+ *
+ * 通过 @RestControllerAdvice 拦截所有 Controller 层异常，
+ * 统一转换为 ApiResponse 格式返回，避免敏感信息泄漏。
+ *
+ * 支持的异常类型：
+ * - 参数校验失败（MethodArgumentNotValidException / ConstraintViolationException）
+ * - 参数错误（IllegalArgumentException / MissingServletRequestParameterException / MethodArgumentTypeMismatchException）
+ * - 运行时异常（RuntimeException）→ 500
+ * - 未知异常（Exception）→ 500
+ *
+ * 所有异常记录 TraceId，方便链路追踪。
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

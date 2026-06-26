@@ -23,6 +23,20 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 认证控制器，提供登录、登出、当前用户信息、密码修改及 API 令牌管理接口。
+ *
+ * <p>所有接口都需要认证（除 /login 外），认证通过后使用 SessionManager
+ * 维护会话状态，或通过 ApiTokenService 管理长期令牌。登录成功时返回会话
+ * 令牌及用户基本信息；API 令牌相关接口供用户在个人设置中管理。</p>
+ *
+ * <p>敏感操作（登录、修改密码、创建/删除令牌）均记录 @OperationLog 审计日志。
+ * 登录接口还受 @RateLimit 限流保护（5 次/60 秒），防止暴力破解。</p>
+ *
+ * @see SessionManager
+ * @see UserService
+ * @see ApiTokenService
+ */
 @Tag(name = "认证", description = "用户认证与 API Token 管理")
 @RestController
 @RequestMapping("/api/v1/auth")

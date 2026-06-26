@@ -17,6 +17,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.*;
 
+/**
+ * 闪卡服务。
+ * <p>提供闪卡的自动生成（基于 LLM）、查询和删除功能。
+ * 自动生成流程：调用 LLM 根据知识标题和内容提取问答对，解析 JSON 后批量入库。
+ * 生成前会清空该知识已有的自动闪卡，避免重复。LLM 调用参数（截断长度、温度、最大 token 数）通过 SystemConfigService 配置。
+ * 输入为 knowledgeId，输出为生成的 FlashCard 列表。</p>
+ */
 @Service
 public class FlashCardService {
 
@@ -42,6 +49,13 @@ public class FlashCardService {
         this.objectMapper = new ObjectMapper();
     }
 
+    /**
+     * 基于知识内容自动生成闪卡。
+     * 先清空该知识已有的自动闪卡，调用 LLM 提取问答对，解析 JSON 并批量入库。
+     * @param knowledgeId 知识 ID
+     * @return 生成的闪卡列表
+     * @throws IllegalArgumentException 当知识不存在时
+     */
     @Transactional
     public List<FlashCard> generateCards(Long knowledgeId) {
         Knowledge knowledge = knowledgeService.getById(knowledgeId);
@@ -97,22 +111,45 @@ public class FlashCardService {
 
     /* CRUD methods unchanged */
 
+    /**
+     * 查询指定知识关联的所有闪卡。
+     * @param knowledgeId 知识 ID
+     * @return 闪卡列表
+     */
     public List<FlashCard> listByKnowledge(Long knowledgeId) {
         return mapper.findByKnowledgeId(knowledgeId);
     }
 
+    /**
+     * 查询所有闪卡。
+     * @return 全部闪卡列表
+     */
     public List<FlashCard> listAll() {
         return mapper.selectList(null);
     }
 
+    /**
+     * 按来源类型查询闪卡。
+     * @param sourceType 来源类型（AUTO / MANUAL）
+     * @return 闪卡列表
+     */
     public List<FlashCard> listBySourceType(String sourceType) {
         return mapper.findBySourceType(sourceType);
     }
 
+    /**
+     * 统计指定知识的闪卡数量。
+     * @param knowledgeId 知识 ID
+     * @return 闪卡数量
+     */
     public long countByKnowledge(Long knowledgeId) {
         return mapper.countByKnowledgeId(knowledgeId);
     }
 
+    /**
+     * 删除指定闪卡。
+     * @param id 闪卡 ID
+     */
     @Transactional
     public void deleteCard(Long id) {
         mapper.deleteById(id);

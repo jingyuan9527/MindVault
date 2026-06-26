@@ -11,6 +11,13 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 系统配置 REST 接口。
+ * <p>
+ * 提供配置的 CRUD、按模块分组查询、定时任务元数据查询、审计日志查看和缓存刷新功能。
+ * 所有配置修改均通过 @OperationLog 记录审计日志。
+ * </p>
+ */
 @Tag(name = "系统配置", description = "动态 KV 配置管理，支持运行时修改不重启")
 @RestController
 @RequestMapping("/api/v1/system-config")

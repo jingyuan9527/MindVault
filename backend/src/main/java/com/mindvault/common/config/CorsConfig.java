@@ -8,10 +8,13 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
 /**
- * CORS 跨域配置
+ * CORS 跨域配置（仅 dev profile 生效）
  *
- * 开发阶段允许前端 localhost:5173 (Vite dev server) 跨域访问
- * 生产环境由 Nginx 反向代理处理，此配置仅用于开发调试
+ * 开发阶段允许前端 Vite dev server 跨域访问后端 API。
+ * 生产环境由 Nginx 反向代理统一处理跨域，此配置不加载。
+ *
+ * 策略：允许所有来源/方法/头，支持凭据（credentials）。
+ * 仅对 /api/** 路径生效。
  */
 @Configuration
 @Profile("dev")

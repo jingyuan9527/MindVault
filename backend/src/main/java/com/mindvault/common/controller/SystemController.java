@@ -20,6 +20,18 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * 系统监控与健康检查控制器
+ *
+ * 提供应用运行状态相关信息，供前端监控面板和后端 Docker 健康检查使用。
+ *
+ * 端点概览：
+ * - GET /api/v1/system/health — 综合健康检查（DB + 磁盘 + LLM）
+ * - GET /api/v1/system/info    — JVM 运行时信息（内存、线程、进程数）
+ * - GET /api/v1/system/metrics — Prometheus 关键指标摘要
+ *
+ * 另提供 Actuator 端点（/api/v1/actuator/*）用于更细粒度的监控。
+ */
 @RestController
 @RequestMapping("/api/v1/system")
 public class SystemController {
@@ -39,6 +51,7 @@ public class SystemController {
         this.modelConfigService = modelConfigService;
     }
 
+    /** 综合健康检查：数据库连接 + 磁盘空间 + LLM 模型配置 */
     @GetMapping("/health")
     public ResponseEntity<Map<String, Object>> health() {
         Map<String, Object> status = new LinkedHashMap<>();
@@ -57,6 +70,7 @@ public class SystemController {
         return ResponseEntity.status(http200).body(status);
     }
 
+    /** JVM 运行时信息（应用名、版本、运行时长、内存、线程数） */
     @GetMapping("/info")
     public ApiResponse<Map<String, Object>> info() {
         RuntimeMXBean runtime = ManagementFactory.getRuntimeMXBean();
@@ -77,6 +91,7 @@ public class SystemController {
         return ApiResponse.success(info);
     }
 
+    /** Prometheus 关键指标摘要（线程数、堆内存、活跃连接数、运行时长） */
     @GetMapping("/metrics")
     public ApiResponse<Map<String, Object>> metrics() {
         Map<String, Object> metrics = new LinkedHashMap<>();
@@ -92,6 +107,7 @@ public class SystemController {
         return ApiResponse.success(metrics);
     }
 
+    /** 数据库健康检查：执行 SELECT 1 确认连接可用 */
     private Map<String, Object> checkDatabase() {
         Map<String, Object> db = new LinkedHashMap<>();
         db.put("name", "PostgreSQL");
@@ -105,6 +121,7 @@ public class SystemController {
         return db;
     }
 
+    /** 磁盘健康检查：当前工作目录的剩余空间与总量 */
     private Map<String, Object> checkDisk() {
         Map<String, Object> disk = new LinkedHashMap<>();
         try {
@@ -122,6 +139,7 @@ public class SystemController {
         return disk;
     }
 
+    /** LLM 配置检查：查询已配置的可用聊天模型，无模型时返回 NO_MODELS_CONFIGURED */
     private Map<String, Object> checkLlm() {
         Map<String, Object> llm = new LinkedHashMap<>();
         llm.put("name", "LLM");

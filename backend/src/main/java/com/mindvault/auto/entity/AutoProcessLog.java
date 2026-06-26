@@ -9,6 +9,17 @@ import java.time.LocalDateTime;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+/**
+ * 自动处理日志实体
+ *
+ * 记录每条知识在 R1/R2/R3 各阶段的处理结果。
+ * 每条知识在每个阶段可能有多个日志条目（如首次处理 + 重新处理）。
+ *
+ * 轮次说明：
+ * - R1_TITLE_TAG:   AI 标题 + 标签 + 摘要 + 嵌入向量
+ * - R2_RELATION:    关联发现（语义 + 标签 + LLM）
+ * - R3_AGGREGATION: 聚合统计 + 标签云重建
+ */
 @TableName("auto_process_log")
 @Schema(description = "自动处理日志")
 public class AutoProcessLog {

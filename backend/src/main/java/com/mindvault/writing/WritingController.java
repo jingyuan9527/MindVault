@@ -8,6 +8,13 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+/**
+ * AI 写作助手 REST 接口。
+ * <p>
+ * 提供基于主题/风格/关键词生成文章的 API。支持从知识库检索相关参考内容辅助创作。
+ * 主题为必填参数，风格和关键词可选。
+ * </p>
+ */
 @Tag(name = "写作助手", description = "AI 辅助写作：根据主题/风格/关键词生成文章")
 @RestController
 @RequestMapping("/api/v1/writing")

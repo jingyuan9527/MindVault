@@ -19,6 +19,19 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
+/**
+ * 操作日志切面
+ *
+ * 拦截所有标注 @OperationLog 的方法，自动完成：
+ * 1. 方法调用前/后的日志记录（含入参、耗时、TraceId）
+ * 2. 数据快照录制（UPDATE/DELETE 操作前快照 + CREATE/UPDATE 操作后快照）
+ * 3. 异常时的 FAILURE 日志记录
+ *
+ * 依赖：
+ * - OperationLogService: 持久化日志记录
+ * - SnapshotProvider: 通过 MyBatis Mapper 查询操作前的实体快照
+ * - RequestHelper: 获取客户端 IP
+ */
 @Aspect
 @Component
 public class OperationLogAspect {
@@ -38,6 +51,16 @@ public class OperationLogAspect {
         this.requestHelper = requestHelper;
     }
 
+    /**
+     * 环绕增强：在 @OperationLog 方法执行前后自动记录操作日志和快照
+     *
+     * 处理流程：
+     * 1. 提取注解元数据（module、action、actionType、entityType）
+     * 2. UPDATE/DELETE 操作前录制 beforeSnapshot
+     * 3. 执行目标方法（捕获异常时记录 FAILURE 日志并重新抛出）
+     * 4. CREATE/UPDATE 操作后录制 afterSnapshot
+     * 5. 记录 SUCCESS 日志（含耗时、TraceId）
+     */
     @Around("@annotation(operationLog)")
     public Object around(ProceedingJoinPoint joinPoint, OperationLog operationLog) throws Throwable {
         long start = System.currentTimeMillis();
@@ -92,6 +115,13 @@ public class OperationLogAspect {
         return result;
     }
 
+    /**
+     * 构造并持久化操作日志记录
+     *
+     * @param result       操作结果（SUCCESS / FAILURE）
+     * @param errorMessage 异常信息（仅 FAILURE 时有值）
+     * @param duration     方法执行耗时（毫秒）
+     */
     private void recordLog(String module, String action, String actionType, String entityId,
                            String summary, String beforeSnapshot, String afterSnapshot,
                            String result, String errorMessage, long duration,
@@ -129,6 +159,10 @@ public class OperationLogAspect {
         }
     }
 
+    /**
+     * 从方法参数中提取实体 ID
+     * 遍历参数列表，优先匹配 Long 类型，其次匹配纯数字字符串，最后匹配 Number 类型
+     */
     private String extractEntityId(Object[] args) {
         if (args == null) return null;
         for (Object arg : args) {
@@ -139,6 +173,10 @@ public class OperationLogAspect {
         return null;
     }
 
+    /**
+     * 从方法返回值中提取新创建实体的 ID
+     * 将返回对象序列化为 JSON 后解析 "id" 字段
+     */
     private String extractEntityIdFromResult(Object result) {
         try {
             String json = objectMapper.writeValueAsString(result);
@@ -151,6 +189,10 @@ public class OperationLogAspect {
         return null;
     }
 
+    /**
+     * 解析操作日志的 summary 字段
+     * 优先使用注解中的 summary 值，其次使用 action 值，最后使用方法名
+     */
     private String resolveSummary(String summary, ProceedingJoinPoint joinPoint) {
         if (!summary.isEmpty()) return summary;
         OperationLog ann = ((MethodSignature) joinPoint.getSignature()).getMethod()
@@ -162,6 +204,7 @@ public class OperationLogAspect {
         return joinPoint.getSignature().getName();
     }
 
+    /** 将对象序列化为 JSON 字符串，序列化失败时返回 null 并记录警告日志 */
     private String toJson(Object obj) {
         if (obj == null) return null;
         try {
@@ -172,6 +215,7 @@ public class OperationLogAspect {
         }
     }
 
+    /** 截断字符串到指定长度（用于日志参数太长时缩短输出） */
     private String truncate(String s, int maxLen) {
         if (s == null) return null;
         return s.length() <= maxLen ? s : s.substring(0, maxLen) + "...";

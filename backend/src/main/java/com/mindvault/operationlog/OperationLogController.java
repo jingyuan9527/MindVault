@@ -9,6 +9,13 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+/**
+ * 操作审计日志 REST 接口。
+ * <p>
+ * 提供操作日志的分页查询和单条详情查看功能。
+ * 日志由 @OperationLog AOP 自动记录，覆盖主要业务模块的关键操作。
+ * </p>
+ */
 @Tag(name = "操作日志", description = "用户操作行为审计日志")
 @RestController
 @RequestMapping("/api/v1/operation-logs")

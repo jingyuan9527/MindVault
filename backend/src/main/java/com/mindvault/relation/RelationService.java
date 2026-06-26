@@ -22,6 +22,22 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * 知识关联发现服务（R2 阶段）
+ *
+ * 对完成 R1 处理（TITLE_TAG_DONE 状态）的知识条目，通过三种策略发现关联：
+ * 1. 语义相似度（VECTOR）— 基于 pgvector 余弦距离，> similarityMin 阈值的视为关联
+ * 2. 标签重叠（TAG）— 共享标签越多，关联分越高
+ * 3. LLM 分析（LLM）— 将候选列表提交 LLM 判断关联类型和原因
+ *
+ * 关联类型：
+ * - COMPLEMENT: 互补关系（内容互相补充）
+ * - CONTRAST:   对比关系（观点相左）
+ * - EXTENSION:  延伸关系（进一步深入）
+ * - REFERENCE:  引用关系（相互引用）
+ *
+ * 调度方式：由 AutoProcessScheduler 每 5 分钟轮询触发。
+ */
 @Service
 public class RelationService {
 
@@ -53,6 +69,7 @@ public class RelationService {
         this.objectMapper = new ObjectMapper();
     }
 
+    /** R2 入口：分批处理 TITLE_TAG_DONE 状态的知识，发现关联后更新状态为 RELATION_DONE */
     public void processRound2() {
         int batchSize = config.getInt("threshold.relation.batch-size", 20);
         List<Knowledge> pending = knowledgeMapper.findByAutoProcessStatus("TITLE_TAG_DONE", batchSize);
@@ -71,6 +88,12 @@ public class RelationService {
     }
 
     @Transactional
+    /**
+     * 对单条知识执行三种关联发现策略：
+     * 1. 向量语义搜索 → COMPLEMENT + VECTOR
+     * 2. 标签重叠 → REFERENCE + TAG
+     * 3. LLM 分析 → 由 LLM 判断类型 + LLM
+     */
     public void processKnowledgeRelations(Knowledge k) {
         LocalDateTime now = LocalDateTime.now();
         String userTitle = k.getTitle();
@@ -177,6 +200,7 @@ public class RelationService {
         }
     }
 
+    /** 保存关联记录到 knowledge_relation 表（重复关联静默忽略） */
     private void saveRelation(Long knowledgeId, Long relatedId, String type, BigDecimal score, String source, LocalDateTime now) {
         try {
             KnowledgeRelation rel = new KnowledgeRelation();
@@ -193,6 +217,7 @@ public class RelationService {
         }
     }
 
+    /** 解析 JSON 标签数组为 Set 集合 */
     private Set<String> parseTags(String tagsJson) {
         if (tagsJson == null || tagsJson.equals("[]")) return new HashSet<>();
         try {
@@ -203,6 +228,7 @@ public class RelationService {
         }
     }
 
+    /** 记录 R2 处理日志 */
     private void saveLog(Long knowledgeId, String round, String status, String errorMessage) {
         try {
             AutoProcessLog l = new AutoProcessLog();

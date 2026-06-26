@@ -16,6 +16,21 @@ import org.springframework.ai.ollama.OllamaEmbeddingModel;
 import org.springframework.ai.ollama.api.OllamaApi;
 import org.springframework.stereotype.Component;
 
+/**
+ * AI 模型工厂
+ *
+ * 根据 ModelConfig 实体动态构建 Spring AI 的 ChatModel / EmbeddingModel 实例。
+ * 支持的供应商：
+ * - OPENAI / DEEPSEEK / ALIYUN / SILICONFLOW → OpenAiChatModel（兼容 OpenAI API 格式）
+ * - OLLAMA → OllamaChatModel（本地模型）
+ *
+ * 对于 OpenAI 兼容供应商，默认 BaseURL 见下方常量定义；
+ * 如果配置中 baseUrl 为空或空白，自动回退到对应供应商的默认地址。
+ *
+ * 注意：
+ * - Ollama 使用 OllamaApi.builder() 构造（非 new OllamaApi(url)）
+ * - 温度（temperature）可为 null（由模型自身决定默认值）
+ */
 @Component
 public class AiModelFactory {
 
@@ -26,10 +41,17 @@ public class AiModelFactory {
     public static final String OPENAI_DEFAULT_BASE_URL = "https://api.openai.com/v1";
     public static final String SILICONFLOW_DEFAULT_BASE_URL = "https://api.siliconflow.cn/v1";
 
+    /** 构建聊天模型（使用模型默认温度） */
     public ChatModel buildChatModel(ModelConfig config) {
         return buildChatModel(config, null);
     }
 
+    /**
+     * 构建聊天模型（可指定温度）
+     * 供应商分支逻辑：
+     * - OLLAMA → 使用 OllamaChatModel.Builder
+     * - 其他 → 使用 OpenAiChatModel.Builder（统一兼容 OpenAI API）
+     */
     public ChatModel buildChatModel(ModelConfig config, Double temperature) {
         String provider = config.getProvider().toUpperCase();
         String baseUrl = config.getBaseUrl();
@@ -58,6 +80,7 @@ public class AiModelFactory {
                 .build();
     }
 
+    /** 构建嵌入模型（语义搜索使用），供应商分支同 buildChatModel */
     public EmbeddingModel buildEmbeddingModel(ModelConfig config) {
         String provider = config.getProvider().toUpperCase();
         String baseUrl = config.getBaseUrl();
@@ -85,6 +108,7 @@ public class AiModelFactory {
                 .build();
     }
 
+    /** 解析聊天模型的基础 URL，baseUrl 为空时使用供应商默认地址 */
     private String resolveChatBaseUrl(String provider, String baseUrl) {
         String effective = (baseUrl != null && !baseUrl.isBlank()) ? baseUrl : null;
         return switch (provider) {
@@ -96,6 +120,7 @@ public class AiModelFactory {
         };
     }
 
+    /** 解析嵌入模型的基础 URL，baseUrl 为空时使用供应商默认地址 */
     private String resolveEmbeddingBaseUrl(String provider, String baseUrl) {
         String effective = (baseUrl != null && !baseUrl.isBlank()) ? baseUrl : null;
         return switch (provider) {

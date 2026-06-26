@@ -25,6 +25,23 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
+/**
+ * 数据备份服务。
+ * <p>
+ * 核心职责: 将知识库数据导出为 JSON 并写入文件系统，支持定时自动备份、
+ * 备份列表查询、文件下载和旧备份清理。
+ * </p>
+ * <p>
+ * 关键设计:
+ * <ul>
+ *   <li>备份以 JSON 文件存储，文件名格式: mindvault-backup-yyyyMMdd-HHmmss.json</li>
+ *   <li>每天凌晨 3:00 自动执行定时备份，可通过 system_config 开关控制</li>
+ *   <li>旧备份清理策略: 保留 retention-days 配置天数内的文件，超出的按修改时间删除最旧的</li>
+ *   <li>每次备份自动记录操作日志并更新备份指标计数</li>
+ * </ul>
+ * </p>
+ * <p>依赖: KnowledgeService, OperationLogService, MetricsService, SystemConfigService</p>
+ */
 @Service
 public class BackupService {
 
@@ -51,6 +68,9 @@ public class BackupService {
         this.config = config;
     }
 
+    /**
+     * 初始化备份目录。在服务启动时自动创建配置的备份目录（如不存在）。
+     */
     @PostConstruct
     public void init() {
         try {
@@ -61,6 +81,10 @@ public class BackupService {
         }
     }
 
+    /**
+     * 定时任务: 每天凌晨 3:00 自动创建备份并清理过期文件。
+     * 可通过 task.backup.enabled 配置项开关。
+     */
     @Scheduled(cron = "0 0 3 * * ?")
     public void scheduledBackup() {
         if (!config.getBool("task.backup.enabled", true)) return;
@@ -74,6 +98,12 @@ public class BackupService {
         }
     }
 
+    /**
+     * 创建一次新的备份。
+     * 将知识库全部数据导出为 JSON，写入备份目录，记录操作日志和备份指标。
+     * @return 备份文件名
+     * @throws RuntimeException 当文件写入失败时
+     */
     public String createBackup() {
         String json = knowledgeService.exportAllAsJson();
         String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
@@ -92,6 +122,10 @@ public class BackupService {
         }
     }
 
+    /**
+     * 列出所有备份文件，按文件名倒序排列（最新的在前）。
+     * @return 备份文件名列表
+     */
     public List<String> listBackups() {
         File dir = new File(backupDir);
         File[] files = dir.listFiles((d, name) -> name.startsWith("mindvault-backup-") && name.endsWith(".json"));
@@ -103,6 +137,13 @@ public class BackupService {
                 .toList();
     }
 
+    /**
+     * 读取指定备份文件的字节内容。
+     * @param filename 备份文件名
+     * @return 文件字节数据
+     * @throws IllegalArgumentException 文件不存在时
+     * @throws RuntimeException 读取失败时
+     */
     public byte[] getBackup(String filename) {
         try {
             Path filePath = Paths.get(backupDir, filename);
@@ -115,6 +156,11 @@ public class BackupService {
         }
     }
 
+    /**
+     * 清理过期备份文件。
+     * 保留最近 retentionDays 个备份，删除其余更早的文件。
+     * 如果文件总数不超过保留天数则不执行清理。
+     */
     public void cleanOldBackups() {
         File dir = new File(backupDir);
         File[] files = dir.listFiles((d, name) -> name.startsWith("mindvault-backup-") && name.endsWith(".json"));

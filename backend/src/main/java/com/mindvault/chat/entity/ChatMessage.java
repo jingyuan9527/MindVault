@@ -9,6 +9,13 @@ import java.time.LocalDateTime;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+/**
+ * 聊天消息实体。
+ * <p>映射 chat_message 表，存储聊天会话中的每一条消息。
+ * 支持 USER（用户）、ASSISTANT（AI 回复）、SYSTEM（系统消息）三种角色。
+ * metadata 字段以 JSONB 格式存储附加元数据，sources 字段以 JSONB 数组格式存储引用的知识来源列表。
+ * 消息按 created_at 升序排列以还原对话顺序。</p>
+ */
 @TableName("chat_message")
 @Schema(description = "聊天消息实体")
 public class ChatMessage {

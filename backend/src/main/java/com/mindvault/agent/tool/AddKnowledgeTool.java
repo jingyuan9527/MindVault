@@ -8,6 +8,13 @@ import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 
+/**
+ * AI 工具：向知识库添加条目。
+ * <p>注册为 Spring AI Tool（名称 add_knowledge），供 LLM 在对话过程中调用。
+ * 接收标题和内容两个参数，创建 TEXT 类型的 Knowledge 条目并持久化。
+ * 输入为标题+内容字符串，输出为保存结果的成功/失败消息。
+ * 依赖 KnowledgeService 完成实际的存储和 AI 自动处理。</p>
+ */
 @Component
 public class AddKnowledgeTool {
 

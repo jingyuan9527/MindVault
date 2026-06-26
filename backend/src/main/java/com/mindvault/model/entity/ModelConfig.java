@@ -11,6 +11,22 @@ import java.time.LocalDateTime;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 
+/**
+ * LLM 模型配置实体。
+ * <p>
+ * 管理可用的 AI 模型提供商配置，支持 OpenAI 兼容 API（OpenAI/DeepSeek/Alibaba/SiliconFlow）、
+ * Ollama 和 Anthropic。每个配置包含提供商、模型名称、API Key、基础 URL 等参数。
+ * </p>
+ * <p>
+ * 关键设计:
+ * <ul>
+ *   <li>isPrimary: 标记该类型的主模型（CHAT/EMBEDDING 各一个），用于默认调用</li>
+ *   <li>priority: 用于 failover 时的选择优先级</li>
+ *   <li>metadata: JSONB 格式存储，用于扩展字段</li>
+ * </ul>
+ * </p>
+ * <p>表: model_config</p>
+ */
 @TableName("model_config")
 @Data
 @Schema(description = "模型配置实体")

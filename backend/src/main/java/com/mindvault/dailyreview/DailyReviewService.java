@@ -19,6 +19,22 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
 
+/**
+ * 每日回顾报告服务。
+ * <p>
+ * 核心职责: 每天凌晨 2:30 通过定时任务自动生成前一天的回顾报告（依赖 LLM），
+ * 同时提供按日期查询、获取最新报告、手动触发生成等接口。
+ * </p>
+ * <p>
+ * 关键设计:
+ * <ul>
+ *   <li>报告生成使用 PromptRegistry.DAILY_REVIEW_REPORT 模板调用 LLM，结果解析为结构化 JSON</li>
+ *   <li>当天无新增知识时直接返回空模板，不调用 LLM</li>
+ *   <li>LLM 调用失败时使用 fallback 摘要文案</li>
+ * </ul>
+ * </p>
+ * <p>依赖: AiService, KnowledgeMapper, DailyReviewMapper, SystemConfigService, ModelConfigService</p>
+ */
 @Service
 public class DailyReviewService {
 
@@ -44,6 +60,10 @@ public class DailyReviewService {
         this.objectMapper = new ObjectMapper();
     }
 
+    /**
+     * 定时任务: 每天凌晨 2:30 自动生成前一天的回顾报告。
+     * 可通过 system_config 中的 task.daily-review.enabled 开关控制。
+     */
     @Scheduled(cron = "0 30 2 * * ?")
     @Transactional
     public void scheduledDailyReview() {
@@ -53,6 +73,15 @@ public class DailyReviewService {
         generateReport(yesterday);
     }
 
+    /**
+     * 生成指定日期的回顾报告。
+     * <p>
+     * 流程: 查询当日新增知识 → 如果为空则返回空模板 → 否则调用 LLM 生成摘要/洞察/建议/分类统计 → 持久化。
+     * 如果已有当日的报告则直接返回已有结果（幂等）。
+     * </p>
+     * @param date 回顾报告日期
+     * @return 生成的每日回顾报告
+     */
     @Transactional
     public DailyReview generateReport(LocalDate date) {
         Optional<DailyReview> existing = mapper.findByReportDate(date);
@@ -118,6 +147,12 @@ public class DailyReviewService {
         return report;
     }
 
+    /**
+     * 调用 LLM 生成回顾报告文本。
+     * 使用 modelConfigService 检查主模型可用性，通过 SystemConfig 读取温度和 maxTokens 参数。
+     * @param knowledgeSummary 当日新增知识的汇总文本
+     * @return LLM 返回的原始 JSON 字符串，失败时返回 null
+     */
     private String callLlmForReport(String knowledgeSummary) {
         try {
             modelConfigService.getPrimaryChatModel();
@@ -132,6 +167,12 @@ public class DailyReviewService {
         return aiService.call(prompt, temperature, maxTokens, "DAILY_REVIEW");
     }
 
+    /**
+     * 解析 LLM 返回的 JSON 字符串为结构化 Map。
+     * 处理常见的 markdown 代码块包裹 (```json ... ```)，解析失败时以原始文本作为 summary 兜底。
+     * @param json LLM 返回的原始文本
+     * @return 解析后的 Map，始终包含 summary/keyInsights/recommendations/categoryBreakdown 四个键
+     */
     private Map<String, Object> parseReportJson(String json) {
         try {
             String cleaned = json.trim();
@@ -149,14 +190,28 @@ public class DailyReviewService {
         }
     }
 
+    /**
+     * 按日期查询回顾报告。
+     * @param date 目标日期
+     * @return 该日期的报告，不存在则返回空
+     */
     public Optional<DailyReview> getReportByDate(LocalDate date) {
         return mapper.findByReportDate(date);
     }
 
+    /**
+     * 获取最近 N 条回顾报告。
+     * @param limit 返回条数上限
+     * @return 最近报告列表
+     */
     public List<DailyReview> getRecentReports(int limit) {
         return mapper.findTopByOrderByReportDateDesc(limit);
     }
 
+    /**
+     * 获取最新报告，若不存在则自动为今天生成一份。
+     * @return 最新或今日生成的报告
+     */
     public DailyReview getLatestOrGenerate() {
         return mapper.findTopByOrderByReportDateDesc(1).stream()
                 .findFirst()

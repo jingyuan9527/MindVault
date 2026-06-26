@@ -9,6 +9,23 @@ import java.time.LocalDateTime;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+/**
+ * 系统配置实体。
+ * <p>
+ * 以 KV 键值对形式存储系统的动态配置参数，支持运行时修改无需重启。
+ * 配置项涵盖提示词模板（prompt.*）、阈值参数（threshold.*）、默认值（default.*）、
+ * 定时任务控制（task.*）等，按模块分组管理。
+ * </p>
+ * <p>
+ * 关键设计:
+ * <ul>
+ *   <li>configKey 按命名空间分层: prompt.模块名.* / threshold.模块名.* / task.模块名.* 等</li>
+ *   <li>valueType 字段标注值类型（string/int/bool/cron/prompt），前端自动切换输入控件</li>
+ *   <li>默认值和校验规则由 SystemConfigDefaults 类集中管理</li>
+ * </ul>
+ * </p>
+ * <p>表: system_config</p>
+ */
 @TableName("system_config")
 @Schema(description = "系统配置")
 public class SystemConfig {

@@ -4,6 +4,23 @@ import com.mindvault.systemconfig.SystemConfigService;
 
 import java.util.function.Function;
 
+/**
+ * 提示词模板注册表
+ *
+ * 以枚举形式集中管理所有 Prompt 模板，每个枚举常量对应一个模板。
+ * 模板内容可通过 SystemConfig 覆盖，优先级：SystemConfig > 默认模板。
+ *
+ * 模板类型分类：
+ * - Agent: AGENT_SYSTEM（Agent 系统提示词）
+ * - 自动处理: AUTO_TITLE / AUTO_TAGS / AUTO_SUMMARY（AI 自动标注）
+ * - 搜索: SEARCH_QUERY_REWRITE / SEARCH_HYDE / SEARCH_RERANK（语义搜索增强）
+ * - 写作: WRITING_ARTICLE（AI 写作）
+ * - 学习: FLASHCARD_GENERATION（闪卡生成）/ DAILY_REVIEW_REPORT（每日复盘）
+ * - 关联: RELATION_LLM（知识关联发现）
+ *
+ * 使用方法：
+ * PromptRegistry.AUTO_TITLE.resolve(systemConfig, "原标题", "内容")
+ */
 public enum PromptRegistry {
 
     AGENT_SYSTEM("prompt.agent.system-prompt",

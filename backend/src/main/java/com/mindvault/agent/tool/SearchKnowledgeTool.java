@@ -14,6 +14,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * AI 工具：语义搜索知识库。
+ * <p>注册为 Spring AI Tool（名称 search_knowledge），供 LLM 在对话中检索相关知识。
+ * 支持三种搜索策略：rewrite（查询改写+向量搜索）、hyde（HyDE 假设文档嵌入）、hybridSearch（混合搜索），
+ * 通过系统配置 tool.search-knowledge.search-method 切换。
+ * 输入为搜索关键词和数量限制，输出为匹配条目的 JSON 数组（含 ID、标题、摘要、相似度分数）。
+ * 语义搜索失败时自动降级到 hybridSearch。</p>
+ */
 @Component
 public class SearchKnowledgeTool {
 

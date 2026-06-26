@@ -9,6 +9,15 @@ import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
 
+/**
+ * 知识关联数据访问层
+ *
+ * 自定义查询：
+ * - findByKnowledgeId: 以某知识为主体的关联列表
+ * - findByRelatedId: 以某知识为客体的关联列表（反向查询）
+ * - countByKnowledgeId: 关联数统计
+ * - deleteByKnowledgeId: 级联删除（用于知识删除时清除关联）
+ */
 @Mapper
 public interface KnowledgeRelationMapper extends BaseMapper<KnowledgeRelation> {
 

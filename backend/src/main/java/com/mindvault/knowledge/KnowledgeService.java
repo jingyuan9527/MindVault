@@ -35,6 +35,25 @@ import java.util.zip.ZipOutputStream;
 import com.mindvault.knowledge.dto.ImportPreview;
 import com.mindvault.knowledge.dto.ImportPreview.ConflictItem;
 
+/**
+ * 知识库核心服务
+ *
+ * 知识条目的增删改查、搜索、导入导出、标签管理、AI 自动处理编排。
+ * 这是系统中最复杂的服务，依赖多个模块协同工作。
+ *
+ * 核心方法概览：
+ * - CRUD: addKnowledge / updateKnowledge / deleteKnowledge / getById
+ * - 搜索: hybridSearch / keywordSearchWithRank / searchSimilar / searchByKeyword
+ * - 批量操作: batchDelete / batchTag / batchAiTag / batchExport
+ * - 导入导出: exportAllAsJson / exportAllAsMarkdown / exportAllAsCsv / importFromJsonWithConflict
+ * - 标签: updateTags / getAllTags / mergeTags
+ * - AI: updateAiFields / updateEmbedding / reprocessKnowledge
+ *
+ * 事务边界：
+ * - 每个写操作都有 @Transactional 保证原子性
+ * - addKnowledge 包含：插入 + AI 标题生成(同步) + 异步自动处理 + 复习计划安排
+ * - deleteKnowledge 包含：删除 + 级联删除关联记录
+ */
 @Service
 public class KnowledgeService {
 
@@ -75,6 +94,7 @@ public class KnowledgeService {
         this.objectMapper = new ObjectMapper();
     }
 
+    /** 新增知识：插入 DB → 同步生成 AI 标题 → 异步 R1 自动处理 → 安排复习计划 */
     @Transactional
     public Knowledge addKnowledge(Knowledge knowledge) {
         LocalDateTime now = LocalDateTime.now();
@@ -102,6 +122,7 @@ public class KnowledgeService {
         return knowledge;
     }
 
+    /** 分页列表查询：支持关键词搜索、多标签筛选、自定义排序（createdAt/updatedAt/title） */
     public PageResult<Knowledge> listAll(int page, int size, String keyword, List<String> tags,
                                           String sortBy, String sortOrder) {
         QueryWrapper<Knowledge> qw = new QueryWrapper<>();
@@ -135,6 +156,7 @@ public class KnowledgeService {
         return new PageResult<>(records, total, page, size, totalPages);
     }
 
+    /** 简化分页列表（不包含关键字/标签筛选），用于内部调用 */
     public List<Knowledge> listAllSimple(int page, int size) {
         int offset = page * size;
         QueryWrapper<Knowledge> qw = new QueryWrapper<>();
@@ -143,12 +165,14 @@ public class KnowledgeService {
         return mapper.selectList(qw);
     }
 
+    /** 按 ID 获取单条知识，不存在时抛出 IllegalArgumentException */
     public Knowledge getById(Long id) {
         Knowledge k = mapper.selectById(id);
         if (k == null) throw new IllegalArgumentException("知识不存在: " + id);
         return k;
     }
 
+    /** 语义搜索：基于向量相似度查询，返回 id+title+aiTitle+content+similarity */
     public List<Map<String, Object>> searchSimilar(String embedding, int topN) {
         List<Map<String, Object>> results = mapper.findSimilarIds(embedding, topN);
         Map<Long, Double> similarityMap = new LinkedHashMap<>();
@@ -177,6 +201,13 @@ public class KnowledgeService {
         return list;
     }
 
+    /**
+     * 混合搜索（核心搜索入口）
+     *
+     * 策略：
+     * 1. 如果数据库中有嵌入向量 → 混合搜索（关键词 + 向量，RRF 融合排序）
+     * 2. 否则 → 纯关键词搜索（带排名）
+     */
     public List<Map<String, Object>> hybridSearch(String query, int limit) {
         boolean hasVector = hasEmbedding();
         if (hasVector) {
@@ -185,6 +216,7 @@ public class KnowledgeService {
         return keywordSearchWithRank(query, limit);
     }
 
+    /** 检查数据库中是否已有嵌入向量（避免查询空 embedding 时报错） */
     private boolean hasEmbedding() {
         try {
             return mapper.selectCount(null) > 0
@@ -194,6 +226,13 @@ public class KnowledgeService {
         }
     }
 
+    /**
+     * 混合搜索核心实现（RRF 融合）
+     * 1. 关键词搜索（带 ILIKE 排名）
+     * 2. 向量语义搜索（余弦距离）
+     * 3. RRF（Reciprocal Rank Fusion）融合两组结果
+     * 参数 k（rrf-k）控制融合权重
+     */
     private List<Map<String, Object>> hybridSearchWithRerank(String query, int limit) {
         String embedding = generateEmbedding(query);
         if (embedding == null) {
@@ -247,6 +286,7 @@ public class KnowledgeService {
         return list;
     }
 
+    /** 纯关键词搜索（按创建时间降序返回完整信息） */
     public List<Map<String, Object>> keywordSearchWithRank(String query, int limit) {
         List<Knowledge> results = mapper.keywordSearch(query, limit);
         List<Map<String, Object>> list = new ArrayList<>();
@@ -267,10 +307,12 @@ public class KnowledgeService {
         return list;
     }
 
+    /** 获取显示标题：优先 AI 标题，回退到用户标题 */
     public String displayTitle(Knowledge k) {
         return k.getAiTitle() != null && !k.getAiTitle().isBlank() ? k.getAiTitle() : k.getTitle();
     }
 
+    /** 为搜索查询生成嵌入向量（使用第一个可用的嵌入模型） */
     private String generateEmbedding(String text) {
         List<ModelConfig> embeddingModels = modelConfigService.getAvailableEmbeddingModels();
         if (embeddingModels.isEmpty()) return null;
@@ -290,15 +332,18 @@ public class KnowledgeService {
         return null;
     }
 
+    /** 关键词搜索（供 Agent 工具调用） */
     public List<Knowledge> searchByKeyword(String query, int limit) {
         return mapper.keywordSearch(query, limit);
     }
 
+    /** 关键词 + 标签组合搜索 */
     public List<Knowledge> searchByKeywordWithTag(String query, int limit, String tag) {
         return mapper.searchByTag("[\"" + tag + "\"]", limit);
     }
 
     @Transactional
+    /** 更新知识（仅更新用户字段，不影响 AI 字段） */
     public Knowledge updateKnowledge(Long id, Knowledge updated) {
         Knowledge existing = getById(id);
         existing.setTitle(updated.getTitle());
@@ -317,6 +362,7 @@ public class KnowledgeService {
     }
 
     @Transactional
+    /** 更新 AI 自动生成的标题和标签（由 AutoProcessService 调用） */
     public Knowledge updateAiFields(Long id, String aiTitle, String aiTags) {
         Knowledge k = getById(id);
         if (aiTitle != null) k.setAiTitle(aiTitle);
@@ -328,6 +374,7 @@ public class KnowledgeService {
     }
 
     @Transactional
+    /** 更新嵌入向量（由 AutoProcessService 生成后调用） */
     public void updateEmbedding(Long id, String embedding) {
         Knowledge k = mapper.selectById(id);
         if (k != null) {
@@ -337,6 +384,7 @@ public class KnowledgeService {
     }
 
     @Transactional
+    /** 删除知识（级联删除关联记录） */
     public void deleteKnowledge(Long id) {
         Knowledge k = getById(id);
         mapper.deleteById(id);
@@ -346,12 +394,14 @@ public class KnowledgeService {
                 "删除知识「" + k.getTitle() + "」");
     }
 
+    /** 触发异步 R1 自动处理 */
     private void triggerAutoProcess(Knowledge knowledge) {
         if (knowledge.getContent() == null || knowledge.getContent().isBlank()) return;
         autoProcessService.autoProcessAsync(knowledge.getId(), knowledge.getTitle(), knowledge.getContent());
     }
 
     @Transactional
+    /** 更新知识的自动处理状态（由调度器/自动处理服务调用） */
     public void updateAutoProcessStatus(Long id, String status) {
         Knowledge k = mapper.selectById(id);
         if (k != null) {
@@ -362,6 +412,7 @@ public class KnowledgeService {
     }
 
     @Transactional
+    /** 重置 AI 字段并重新执行自动处理流水线 */
     public void reprocessKnowledge(Long id) {
         Knowledge k = getById(id);
         k.setAutoProcessStatus(config.getString("default.knowledge.auto-process-status", "PENDING"));
@@ -376,6 +427,7 @@ public class KnowledgeService {
     }
 
     @Transactional
+    /** 批量删除（逐条删除并记录操作日志） */
     public void batchDelete(List<Long> ids) {
         for (Long id : ids) {
             Knowledge k = mapper.selectById(id);
@@ -390,6 +442,7 @@ public class KnowledgeService {
     }
 
     @Transactional
+    /** 批量添加用户标签（去重追加） */
     public void batchTag(List<Long> ids, String tag) {
         for (Long id : ids) {
             Knowledge k = mapper.selectById(id);
@@ -419,6 +472,7 @@ public class KnowledgeService {
         }
     }
 
+    /** AI 批量打标签：LLM 分析内容生成标签，合并到 user_tags 中 */
     public int batchAiTag(List<Long> ids) {
         int success = 0;
         int truncateLen = config.getInt("threshold.auto.truncate-length", 2000);
@@ -457,6 +511,7 @@ public class KnowledgeService {
         return success;
     }
 
+    /** 批量导出为 JSON（按 ID 列表） */
     public String batchExport(List<Long> ids) {
         try {
             List<Knowledge> selected = mapper.selectBatchIds(ids);
@@ -488,6 +543,7 @@ public class KnowledgeService {
     }
 
     @Transactional
+    /** 更新用户标签（替换式） */
     public void updateTags(Long id, List<String> tags) {
         Knowledge k = getById(id);
         try {
@@ -502,6 +558,7 @@ public class KnowledgeService {
                 "更新标签「" + String.join(", ", tags) + "」");
     }
 
+    /** 全量导出为 JSON（含版本号、导出时间） */
     public String exportAllAsJson() {
         try {
             List<Knowledge> all = mapper.selectList(null);
@@ -533,6 +590,7 @@ public class KnowledgeService {
         }
     }
 
+    /** 全量导出为 Markdown（ZIP 压缩包），按标签分类到不同目录 */
     public byte[] exportAllAsMarkdown() {
         try {
             List<Knowledge> all = mapper.selectList(null);
@@ -596,10 +654,12 @@ public class KnowledgeService {
         }
     }
 
+    /** 清理文件夹名称中的非法字符 */
     private static String sanitizeFolderName(String name) {
         return name.replaceAll("[/\\\\:*?\"<>|]", "_").trim();
     }
 
+    /** 合并 AI 标签和用户标签（去重），返回 JSON 数组格式 */
     private String mergeTags(String aiTags, String userTags) {
         try {
             Set<String> merged = new LinkedHashSet<>();
@@ -615,6 +675,7 @@ public class KnowledgeService {
         }
     }
 
+    /** 全量导出为 CSV 格式 */
     public String exportAllAsCsv() {
         try {
             List<Knowledge> all = mapper.selectList(null);
@@ -648,6 +709,7 @@ public class KnowledgeService {
         }
     }
 
+    /** CSV 字段转义（处理逗号、双引号、换行） */
     private static String escapeCsv(String value) {
         if (value == null) return "";
         if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
@@ -656,10 +718,12 @@ public class KnowledgeService {
         return value;
     }
 
+    /** 获取所有标签聚合统计（返回标签名 + 使用次数） */
     public List<Map<String, Object>> getAllTags() {
         return mapper.aggregateTags();
     }
 
+    /** 预览导入数据：解析 JSON 并检测冲突（按标题匹配已有知识） */
     public ImportPreview previewImport(String json) {
         try {
             Map<String, Object> importData = objectMapper.readValue(json,
@@ -688,6 +752,7 @@ public class KnowledgeService {
         }
     }
 
+    /** 从导入数据中提取条目列表（类型安全检查） */
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> extractItems(Object itemsObj) {
         if (itemsObj instanceof List<?> list) {
@@ -703,11 +768,17 @@ public class KnowledgeService {
     }
 
     @Transactional
+    /** 导入 JSON（默认冲突策略：skip 跳过） */
     public int importFromJson(String json) {
         return importFromJsonWithConflict(json, "skip");
     }
 
     @Transactional
+    /**
+     * 导入 JSON（可指定冲突策略）
+     *
+     * @param conflictMode skip=跳过冲突, overwrite=覆盖已有
+     */
     public int importFromJsonWithConflict(String json, String conflictMode) {
         try {
             Map<String, Object> importData = objectMapper.readValue(json,

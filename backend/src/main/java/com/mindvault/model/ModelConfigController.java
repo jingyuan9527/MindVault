@@ -14,6 +14,13 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+/**
+ * LLM 模型配置 REST 接口。
+ * <p>
+ * 提供模型配置的增删改查、设置主模型、更新优先级、拉取供应商模型列表和连接测试功能。
+ * 模型配置支持 OpenAI 兼容 API、Ollama 和 Anthropic 等供应商。
+ * </p>
+ */
 @Tag(name = "模型配置", description = "LLM 模型配置的增删改查（OpenAI/DeepSeek/Alibaba/Ollama）")
 @RestController
 @RequestMapping("/api/v1/models")

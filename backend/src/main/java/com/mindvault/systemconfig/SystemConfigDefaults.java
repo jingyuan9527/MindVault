@@ -4,10 +4,42 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 系统配置默认值及元数据。
+ * <p>
+ * 集中管理所有 system_config 配置项的默认值、按前缀的模块/分组映射关系、
+ * 值校验规则和定时任务元数据。
+ * </p>
+ * <p>
+ * 关键设计:
+ * <ul>
+ *   <li>DEFAULTS: 所有配置项的默认值，通过 configKey → defaultValue 映射</li>
+ *   <li>VALIDATION_RULES: 按配置键的校验规则（值类型、最小值/最大值、可选值列表），根据 key 的名字模式自动推导</li>
+ *   <li>KEY_TO_MODULE: 配置键前缀 → 模块 ID 的映射，用于前端按模块分组展示</li>
+ *   <li>KEY_TO_GROUP: 配置键前缀 → 分组（prompt/threshold/default/task/other）映射</li>
+ *   <li>SCHEDULED_TASKS: 定时任务列表，包含任务 ID、标签、开关 key、调度 key 和调度类型</li>
+ * </ul>
+ * </p>
+ */
 public final class SystemConfigDefaults {
 
+    /**
+     * 配置值校验规则。
+     * @param valueType 值类型: string/int/bool/cron/prompt/double
+     * @param min       最小值（数值类型时有效）
+     * @param max       最大值（数值类型时有效）
+     * @param options   可选值列表（枚举类型时有效）
+     */
     public record ValidationRule(String valueType, Double min, Double max, List<String> options) {}
 
+    /**
+     * 定时任务元数据。
+     * @param id            任务 ID
+     * @param label          任务显示名称
+     * @param enabledKey    启用开关的配置键
+     * @param scheduleKey   调度配置的键（cron 表达式或 poll-ms）
+     * @param scheduleType  调度类型: cron 或 poll-ms
+     */
     public record TaskMeta(String id, String label, String enabledKey, String scheduleKey, String scheduleType) {}
 
     private SystemConfigDefaults() {}
@@ -369,6 +401,11 @@ public final class SystemConfigDefaults {
                 new ValidationRule("int", 1.0, 100.0, null));
     }
 
+    /**
+     * 根据配置键前缀推导所属模块。
+     * @param key 配置键
+     * @return 模块 ID，无法匹配时返回 "system"
+     */
     public static String deriveModule(String key) {
         for (var entry : KEY_TO_MODULE.entrySet()) {
             if (key.startsWith(entry.getKey())) return entry.getValue();
@@ -376,6 +413,11 @@ public final class SystemConfigDefaults {
         return "system";
     }
 
+    /**
+     * 根据配置键前缀推导所属分组。
+     * @param key 配置键
+     * @return 分组 ID: prompt/threshold/default/task/other
+     */
     public static String deriveGroup(String key) {
         for (var entry : KEY_TO_GROUP.entrySet()) {
             if (key.startsWith(entry.getKey())) return entry.getValue();

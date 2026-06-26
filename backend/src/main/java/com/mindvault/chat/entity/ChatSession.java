@@ -8,6 +8,12 @@ import java.time.LocalDateTime;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+/**
+ * 聊天会话实体。
+ * <p>映射 chat_session 表，表示一次完整的对话过程。包含会话标题和创建/更新时间戳。
+ * 标题默认设为"新对话"，在首条消息发送后自动截取消息内容前 30 字替代。
+ * 会话列表按更新时间降序排列，方便用户快速找到最近对话。</p>
+ */
 @TableName("chat_session")
 @Schema(description = "聊天会话实体")
 public class ChatSession {

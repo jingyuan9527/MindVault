@@ -9,6 +9,15 @@ import java.time.LocalDateTime;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+/**
+ * 每日回顾报告实体。
+ * <p>
+ * 由 DailyReviewService 在每日凌晨自动生成，通过 LLM 对当日新增知识进行摘要、
+ * 关键洞察提取、后续建议生成和分类统计。报告内容以 JSON 格式存储在 summary、
+ * keyInsights、recommendations、categoryBreakdown 四个字段中，由前端解析展示。
+ * </p>
+ * <p>依赖: MyBatis-Plus 映射到 daily_review 表</p>
+ */
 @TableName("daily_review")
 @Schema(description = "每日回顾实体")
 public class DailyReview {

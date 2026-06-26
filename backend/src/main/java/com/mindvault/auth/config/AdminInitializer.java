@@ -7,6 +7,18 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+/**
+ * 管理员账户初始化器，在应用启动时执行。
+ *
+ * <p>通过环境变量 MINDVAULT_ADMIN_USERNAME 和 MINDVAULT_ADMIN_PASSWORD
+ * 配置初始管理员凭据。首次启动时创建 ADMIN 角色用户；如果用户已存在
+ * （UserService.createUser 抛出 IllegalArgumentException），则跳过创建。
+ * 未配置环境变量时仅记录日志，不执行任何操作。</p>
+ *
+ * <p>设计决策：使用环境变量而非配置文件，防止密码因版本控制而泄漏。</p>
+ *
+ * @see UserService#createUser(String, String, String, String)
+ */
 @Component
 @ConditionalOnProperty(name = "mindvault.auth.enabled", havingValue = "true", matchIfMissing = true)
 public class AdminInitializer implements CommandLineRunner {

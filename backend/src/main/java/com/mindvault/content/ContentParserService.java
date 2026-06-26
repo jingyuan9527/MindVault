@@ -11,6 +11,16 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 
+/**
+ * 内容解析服务
+ *
+ * 支持两种内容源的解析与格式转换：
+ * 1. PDF 解析（PDFBox）— 提取文本并格式化排版
+ * 2. URL 解析（Jsoup）— 抓取网页内容并转为结构化 Markdown
+ *
+ * 输出格式统一为 Markdown，供后续 AI 自动处理和知识存储使用。
+ * 解析失败时返回 ParseResult(null, null, type)，外部需判空。
+ */
 @Service
 public class ContentParserService {
 
@@ -22,6 +32,7 @@ public class ContentParserService {
         this.jsoupTimeoutMs = properties.getJsoup().getTimeoutMs();
     }
 
+    /** 解析 PDF 文件：提取文本并格式化（含标题取自文件名、页数统计） */
     public ParseResult parsePdf(byte[] pdfData, String fileName) {
         try (PDDocument doc = Loader.loadPDF(pdfData)) {
             PDFTextStripper stripper = new PDFTextStripper();
@@ -40,6 +51,7 @@ public class ContentParserService {
         }
     }
 
+    /** 格式化 PDF 提取文本：消除多余换行、空格，保留段落间距 */
     private String formatPdfText(String text) {
         String result = text
                 .replaceAll("\r\n?", "\n")
@@ -50,6 +62,7 @@ public class ContentParserService {
         return result;
     }
 
+    /** 解析 URL 网页内容：抓取 HTML 并转为结构化 Markdown */
     public ParseResult parseUrl(String url) {
         try {
             org.jsoup.nodes.Document doc = Jsoup.connect(url)
@@ -66,6 +79,7 @@ public class ContentParserService {
         }
     }
 
+    /** 递归提取结构化文本（HTML DOM → Markdown） */
     private String extractStructuredText(org.jsoup.nodes.Element root) {
         StringBuilder sb = new StringBuilder();
         for (org.jsoup.nodes.Node child : root.childNodesCopy()) {
@@ -75,6 +89,10 @@ public class ContentParserService {
         return result;
     }
 
+    /**
+     * 递归处理 HTML 节点，按标签类型转换为 Markdown 格式
+     * 支持：标题(h1-h6)、段落、列表、引用、代码块、行内代码、加粗/斜体、链接、图片、分割线
+     */
     private void processNode(org.jsoup.nodes.Node node, StringBuilder sb, int depth) {
         if (node instanceof org.jsoup.nodes.TextNode tn) {
             String text = tn.text().trim();
@@ -145,5 +163,6 @@ public class ContentParserService {
         }
     }
 
+    /** 解析结果记录：标题、Markdown 内容、内容来源类型（PDF/URL） */
     public record ParseResult(String title, String content, String contentType) {}
 }

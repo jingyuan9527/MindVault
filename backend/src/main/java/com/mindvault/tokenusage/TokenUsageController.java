@@ -11,6 +11,13 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.PostConstruct;
 
+/**
+ * Token 用量统计 REST 接口。
+ * <p>
+ * 提供每日用量汇总、按来源分布统计和总计用量查询。
+ * 所有统计基于 TokenUsageService 和 TokenUsageMapper 的聚合 SQL 查询。
+ * </p>
+ */
 @Tag(name = "Token 用量", description = "Token 消耗记录查询")
 @RestController
 @RequestMapping("/api/v1/token-usage")

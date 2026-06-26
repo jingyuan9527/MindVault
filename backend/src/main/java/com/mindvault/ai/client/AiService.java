@@ -13,6 +13,24 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.stereotype.Service;
 
+/**
+ * AI 调用服务（简单封装）
+ *
+ * 对外提供统一的 LLM 调用入口，自动获取主模型配置、构建 ChatModel、执行调用、
+ * 记录指标和 Token 用量。
+ *
+ * 调用链路：
+ * AoService.call(prompt) → ModelConfigService.getPrimaryChatModel()
+ *                       → AiModelFactory.buildChatModel(model, temperature)
+ *                       → ChatModel.call(prompt)
+ *                       → TokenUsageService.recordUsage(...)
+ *                       → MetricsService.recordLlmCall* (...)
+ *
+ * 注意：
+ * - 此服务仅用于简单的一问一答场景
+ * - 多轮对话 / 流式响应 / Agent 调用应使用 LlmFailoverService 或 AgentService
+ * - 调用异常时返回 null（外部调用方需处理 null 判断）
+ */
 @Service
 public class AiService {
 
@@ -33,14 +51,25 @@ public class AiService {
         this.tokenUsageService = tokenUsageService;
     }
 
+    /** 使用默认参数调用 AI（temperature=0.7, maxTokens=2000, source=UNKNOWN） */
     public String call(String prompt) {
         return call(prompt, 0.7, 2000, "UNKNOWN");
     }
 
+    /** 使用指定温度和最长 Token 数调用 AI */
     public String call(String prompt, double temperature, int maxTokens) {
         return call(prompt, temperature, maxTokens, "UNKNOWN");
     }
 
+    /**
+     * 核心调用方法
+     *
+     * @param prompt      用户提示词
+     * @param temperature 温度参数（控制创造性）
+     * @param maxTokens   （预留）最大输出 Token 数
+     * @param source      调用来源标识（用于 Token 用量记录）
+     * @return AI 响应文本，失败时返回 null
+     */
     public String call(String prompt, double temperature, int maxTokens, String source) {
         try {
             ModelConfig model = modelConfigService.getPrimaryChatModel();
@@ -66,6 +95,7 @@ public class AiService {
         }
     }
 
+    /** 截断文本到指定最大长度 */
     public static String truncate(String text, int maxLen) {
         if (text == null) return "";
         return text.length() <= maxLen ? text : text.substring(0, maxLen);
