@@ -6,8 +6,10 @@ import com.mindvault.common.dto.PageResult;
 import com.mindvault.content.service.ContentParserService;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.knowledge.service.KnowledgeAssociationService;
+import com.mindvault.knowledge.service.ImportExportService;
 import com.mindvault.knowledge.service.KnowledgeService;
 import com.mindvault.knowledge.service.SearchEnhanceService;
+import com.mindvault.knowledge.service.TagService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -35,17 +37,23 @@ public class KnowledgeController {
     private final ContentParserService contentParserService;
     private final KnowledgeAssociationService associationService;
     private final SearchEnhanceService searchEnhanceService;
+    private final ImportExportService importExportService;
+    private final TagService tagService;
     private final AutoProcessLogMapper autoProcessLogMapper;
 
     public KnowledgeController(KnowledgeService knowledgeService,
                                 ContentParserService contentParserService,
                                 KnowledgeAssociationService associationService,
                                 SearchEnhanceService searchEnhanceService,
+                                ImportExportService importExportService,
+                                TagService tagService,
                                 AutoProcessLogMapper autoProcessLogMapper) {
         this.knowledgeService = knowledgeService;
         this.contentParserService = contentParserService;
         this.associationService = associationService;
         this.searchEnhanceService = searchEnhanceService;
+        this.importExportService = importExportService;
+        this.tagService = tagService;
         this.autoProcessLogMapper = autoProcessLogMapper;
     }
 
@@ -127,7 +135,7 @@ public class KnowledgeController {
     @Operation(summary = "AI 批量打标签", description = "选中多条知识，AI 根据内容生成标签并追加到 user_tags")
     @PostMapping("/batch/ai-tag")
     public ApiResponse<Map<String, Object>> batchAiTag(@RequestBody List<Long> ids) {
-        int count = knowledgeService.batchAiTag(ids);
+        int count = tagService.batchAiTag(ids);
         Map<String, Object> result = new HashMap<>();
         result.put("success", count);
         result.put("total", ids.size());
@@ -200,7 +208,7 @@ public class KnowledgeController {
     @Operation(summary = "导出 JSON", description = "导出全部知识为 JSON 格式文件")
     @GetMapping("/export/json")
     public ResponseEntity<String> exportJson() {
-        String json = knowledgeService.exportAllAsJson();
+        String json = importExportService.exportAllAsJson();
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=mindvault-export.json")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -210,7 +218,7 @@ public class KnowledgeController {
     @Operation(summary = "导出 Markdown", description = "导出全部知识为 Markdown 文件（ZIP 压缩包）")
     @GetMapping("/export/markdown")
     public ResponseEntity<byte[]> exportMarkdown() {
-        byte[] zip = knowledgeService.exportAllAsMarkdown();
+        byte[] zip = importExportService.exportAllAsMarkdown();
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=mindvault-export.zip")
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
@@ -220,7 +228,7 @@ public class KnowledgeController {
     @Operation(summary = "导出 CSV", description = "导出全部知识为 CSV 格式文件")
     @GetMapping("/export/csv")
     public ResponseEntity<String> exportCsv() {
-        String csv = knowledgeService.exportAllAsCsv();
+        String csv = importExportService.exportAllAsCsv();
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=mindvault-export.csv")
                 .contentType(MediaType.TEXT_PLAIN)
@@ -230,7 +238,7 @@ public class KnowledgeController {
     @Operation(summary = "预览导入", description = "预览 JSON 导入的内容，显示冲突信息")
     @PostMapping("/import/preview")
     public ApiResponse<ImportPreview> previewImport(@RequestBody String jsonBody) {
-        ImportPreview preview = knowledgeService.previewImport(jsonBody);
+        ImportPreview preview = importExportService.previewImport(jsonBody);
         return ApiResponse.success(preview);
     }
 
@@ -240,7 +248,7 @@ public class KnowledgeController {
     public ApiResponse<Map<String, Object>> importJson(
             @RequestBody String jsonBody,
             @Parameter(description = "冲突策略：skip 跳过 / overwrite 覆盖") @RequestParam(defaultValue = "skip") String conflict) {
-        int count = knowledgeService.importFromJsonWithConflict(jsonBody, conflict);
+        int count = importExportService.importFromJsonWithConflict(jsonBody, conflict);
         Map<String, Object> result = new HashMap<>();
         result.put("imported", count);
         result.put("conflictMode", conflict);
@@ -262,14 +270,14 @@ public class KnowledgeController {
         List<Number> rawIds = (List<Number>) body.get("ids");
         List<Long> ids = rawIds.stream().map(Number::longValue).toList();
         String tag = (String) body.get("tag");
-        knowledgeService.batchTag(ids, tag);
+        tagService.batchTag(ids, tag);
         return ApiResponse.success(null);
     }
 
     @Operation(summary = "批量导出", description = "按 ID 列表批量导出知识为 JSON 文件")
     @PostMapping("/batch/export")
     public ResponseEntity<String> batchExport(@RequestBody List<Long> ids) {
-        String json = knowledgeService.batchExport(ids);
+        String json = importExportService.batchExport(ids);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=mindvault-export.json")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -279,6 +287,6 @@ public class KnowledgeController {
     @Operation(summary = "标签列表", description = "获取所有标签及其使用次数")
     @GetMapping("/tags")
     public ApiResponse<List<Map<String, Object>>> getAllTags() {
-        return ApiResponse.success(knowledgeService.getAllTags());
+        return ApiResponse.success(tagService.getAllTags());
     }
 }

@@ -8,9 +8,11 @@ import com.mindvault.knowledge.controller.KnowledgeController;
 import com.mindvault.knowledge.dto.ImportPreview;
 import com.mindvault.knowledge.dto.ImportPreview.ConflictItem;
 import com.mindvault.knowledge.entity.Knowledge;
+import com.mindvault.knowledge.service.ImportExportService;
 import com.mindvault.knowledge.service.KnowledgeAssociationService;
 import com.mindvault.knowledge.service.KnowledgeService;
 import com.mindvault.knowledge.service.SearchEnhanceService;
+import com.mindvault.knowledge.service.TagService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -35,6 +37,8 @@ class KnowledgeControllerTest {
     @Autowired private ObjectMapper objectMapper;
 
     @MockBean private KnowledgeService knowledgeService;
+    @MockBean private ImportExportService importExportService;
+    @MockBean private TagService tagService;
     @MockBean private ContentParserService contentParserService;
     @MockBean private KnowledgeAssociationService associationService;
     @MockBean private SearchEnhanceService searchEnhanceService;
@@ -187,7 +191,7 @@ class KnowledgeControllerTest {
 
     @Test
     void exportJson_shouldReturnAttachment() throws Exception {
-        when(knowledgeService.exportAllAsJson()).thenReturn("{\"count\":0,\"items\":[]}");
+        when(importExportService.exportAllAsJson()).thenReturn("{\"count\":0,\"items\":[]}");
 
         mockMvc.perform(get("/api/v1/knowledge/export/json"))
                 .andExpect(status().isOk())
@@ -197,7 +201,7 @@ class KnowledgeControllerTest {
 
     @Test
     void exportCsv_shouldReturnAttachment() throws Exception {
-        when(knowledgeService.exportAllAsCsv()).thenReturn("标题,内容\n");
+        when(importExportService.exportAllAsCsv()).thenReturn("标题,内容\n");
 
         mockMvc.perform(get("/api/v1/knowledge/export/csv"))
                 .andExpect(status().isOk())
@@ -208,7 +212,7 @@ class KnowledgeControllerTest {
     void previewImport_shouldReturnPreview() throws Exception {
         ImportPreview preview = new ImportPreview(2, 1, 1,
                 List.of(new ConflictItem(0, "Existing", "Existing")));
-        when(knowledgeService.previewImport(anyString())).thenReturn(preview);
+        when(importExportService.previewImport(anyString())).thenReturn(preview);
 
         mockMvc.perform(post("/api/v1/knowledge/import/preview")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -220,7 +224,7 @@ class KnowledgeControllerTest {
 
     @Test
     void importJson_shouldImport() throws Exception {
-        when(knowledgeService.importFromJsonWithConflict(anyString(), eq("skip"))).thenReturn(2);
+        when(importExportService.importFromJsonWithConflict(anyString(), eq("skip"))).thenReturn(2);
 
         mockMvc.perform(post("/api/v1/knowledge/import?conflict=skip")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -246,12 +250,12 @@ class KnowledgeControllerTest {
                         .content("{\"ids\": [1, 2], \"tag\": \"java\"}"))
                 .andExpect(status().isOk());
 
-        verify(knowledgeService).batchTag(List.of(1L, 2L), "java");
+        verify(tagService).batchTag(List.of(1L, 2L), "java");
     }
 
     @Test
     void batchExport_shouldExport() throws Exception {
-        when(knowledgeService.batchExport(List.of(1L, 2L)))
+        when(importExportService.batchExport(List.of(1L, 2L)))
                 .thenReturn("{\"count\":2,\"items\":[]}");
 
         mockMvc.perform(post("/api/v1/knowledge/batch/export")
@@ -263,7 +267,7 @@ class KnowledgeControllerTest {
 
     @Test
     void getTags_shouldReturnTags() throws Exception {
-        when(knowledgeService.getAllTags()).thenReturn(List.of(
+        when(tagService.getAllTags()).thenReturn(List.of(
                 Map.of("name", "java", "count", 5),
                 Map.of("name", "spring", "count", 3)
         ));
@@ -340,7 +344,7 @@ class KnowledgeControllerTest {
     @Test
     void exportMarkdown_shouldReturnZipAttachment() throws Exception {
         byte[] zipData = "zip content".getBytes();
-        when(knowledgeService.exportAllAsMarkdown()).thenReturn(zipData);
+        when(importExportService.exportAllAsMarkdown()).thenReturn(zipData);
 
         mockMvc.perform(get("/api/v1/knowledge/export/markdown"))
                 .andExpect(status().isOk())

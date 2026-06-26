@@ -1,7 +1,7 @@
 package com.mindvault.backup.service;
 
 import com.mindvault.common.service.MetricsService;
-import com.mindvault.knowledge.service.KnowledgeService;
+import com.mindvault.knowledge.service.ImportExportService;
 import com.mindvault.operationlog.service.OperationLogService;
 import com.mindvault.systemconfig.service.SystemConfigService;
 import jakarta.annotation.PostConstruct;
@@ -27,7 +27,7 @@ public class BackupServiceImpl implements BackupService {
 
     private static final Logger log = LoggerFactory.getLogger(BackupServiceImpl.class);
 
-    private final KnowledgeService knowledgeService;
+    private final ImportExportService importExportService;
     private final OperationLogService operationLogService;
     private final MetricsService metricsService;
     private final SystemConfigService config;
@@ -38,11 +38,11 @@ public class BackupServiceImpl implements BackupService {
     @Value("${mindvault.backup.retention-days:7}")
     private int retentionDays;
 
-    public BackupServiceImpl(KnowledgeService knowledgeService,
+    public BackupServiceImpl(ImportExportService importExportService,
                              OperationLogService operationLogService,
                              MetricsService metricsService,
                              SystemConfigService config) {
-        this.knowledgeService = knowledgeService;
+        this.importExportService = importExportService;
         this.operationLogService = operationLogService;
         this.metricsService = metricsService;
         this.config = config;
@@ -73,7 +73,7 @@ public class BackupServiceImpl implements BackupService {
 
     @Override
     public String createBackup() {
-        String json = knowledgeService.exportAllAsJson();
+        String json = importExportService.exportAllAsJson();
         String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
         String filename = "mindvault-backup-" + dateStr + ".json";
 

@@ -3,7 +3,7 @@ package com.mindvault.backup;
 import com.mindvault.backup.service.BackupServiceImpl;
 import com.mindvault.backup.service.BackupService;
 import com.mindvault.common.service.MetricsService;
-import com.mindvault.knowledge.service.KnowledgeService;
+import com.mindvault.knowledge.service.ImportExportService;
 import com.mindvault.operationlog.service.OperationLogService;
 import com.mindvault.systemconfig.service.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,7 +24,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class BackupServiceTest {
 
-    @Mock private KnowledgeService knowledgeService;
+    @Mock private ImportExportService importExportService;
     @Mock private OperationLogService operationLogService;
     @Mock private MetricsService metricsService;
     @Mock private SystemConfigService config;
@@ -36,7 +36,7 @@ class BackupServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new BackupServiceImpl(knowledgeService, operationLogService, metricsService, config);
+        service = new BackupServiceImpl(importExportService, operationLogService, metricsService, config);
         ReflectionTestUtils.setField(service, "backupDir", tempDir.toString());
         ReflectionTestUtils.setField(service, "retentionDays", 7);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
@@ -49,7 +49,7 @@ class BackupServiceTest {
 
     @Test
     void createBackup_shouldWriteFile() {
-        when(knowledgeService.exportAllAsJson()).thenReturn("{\"count\":0,\"items\":[]}");
+        when(importExportService.exportAllAsJson()).thenReturn("{\"count\":0,\"items\":[]}");
 
         String filename = service.createBackup();
 
@@ -61,14 +61,14 @@ class BackupServiceTest {
 
     @Test
     void createBackup_shouldThrowOnFailure() {
-        when(knowledgeService.exportAllAsJson()).thenThrow(new RuntimeException("export failed"));
+        when(importExportService.exportAllAsJson()).thenThrow(new RuntimeException("export failed"));
 
         assertThrows(RuntimeException.class, () -> service.createBackup());
     }
 
     @Test
     void listBackups_shouldReturnSorted() throws Exception {
-        when(knowledgeService.exportAllAsJson()).thenReturn("{}");
+        when(importExportService.exportAllAsJson()).thenReturn("{}");
         service.createBackup();
         Thread.sleep(1100);
         service.createBackup();
@@ -88,7 +88,7 @@ class BackupServiceTest {
 
     @Test
     void getBackup_shouldReturnContent() {
-        when(knowledgeService.exportAllAsJson()).thenReturn("{\"data\":\"test\"}");
+        when(importExportService.exportAllAsJson()).thenReturn("{\"data\":\"test\"}");
         String filename = service.createBackup();
 
         byte[] content = service.getBackup(filename);
@@ -114,7 +114,7 @@ class BackupServiceTest {
 
     @Test
     void cleanOldBackups_shouldRemoveExcess() throws Exception {
-        when(knowledgeService.exportAllAsJson()).thenReturn("{}");
+        when(importExportService.exportAllAsJson()).thenReturn("{}");
         ReflectionTestUtils.setField(service, "retentionDays", 2);
 
         for (int i = 0; i < 5; i++) {
@@ -132,7 +132,7 @@ class BackupServiceTest {
 
     @Test
     void cleanOldBackups_shouldNotDeleteWhenUnderLimit() throws Exception {
-        when(knowledgeService.exportAllAsJson()).thenReturn("{}");
+        when(importExportService.exportAllAsJson()).thenReturn("{}");
         ReflectionTestUtils.setField(service, "retentionDays", 10);
 
         for (int i = 0; i < 3; i++) {

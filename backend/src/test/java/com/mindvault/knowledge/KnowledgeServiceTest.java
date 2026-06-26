@@ -2,16 +2,12 @@ package com.mindvault.knowledge;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mindvault.ai.client.AiModelFactory;
-import com.mindvault.ai.client.AiService;
-import com.mindvault.common.service.MetricsService;
-import com.mindvault.model.service.ModelConfigService;
-import com.mindvault.auto.service.AutoProcessService;
-import com.mindvault.knowledge.dto.ImportPreview;
+import com.mindvault.auto.service.AutoProcessOrchestrator;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.knowledge.mapper.KnowledgeMapper;
 import com.mindvault.knowledge.service.KnowledgeService;
 import com.mindvault.knowledge.service.KnowledgeServiceImpl;
+import com.mindvault.knowledge.service.strategy.SearchStrategy;
 import com.mindvault.operationlog.service.OperationLogService;
 import com.mindvault.auto.mapper.KnowledgeRelationMapper;
 import com.mindvault.review.service.ReviewService;
@@ -38,12 +34,8 @@ class KnowledgeServiceTest {
 
     @Mock private KnowledgeMapper mapper;
     @Mock private OperationLogService operationLogService;
-    @Mock private AutoProcessService autoProcessService;
-    @Mock private ModelConfigService modelConfigService;
-    @Mock private AiModelFactory aiModelFactory;
-    @Mock private AiService aiService;
+    @Mock private AutoProcessOrchestrator autoProcessOrchestrator;
     @Mock private ReviewService reviewService;
-    @Mock private MetricsService metricsService;
     @Mock private KnowledgeRelationMapper relationMapper;
     @Mock private SystemConfigService config;
 
@@ -55,7 +47,7 @@ class KnowledgeServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new KnowledgeServiceImpl(mapper, operationLogService, autoProcessService, reviewService, modelConfigService, aiModelFactory, aiService, metricsService, relationMapper, config);
+        service = new KnowledgeServiceImpl(mapper, operationLogService, autoProcessOrchestrator, reviewService, relationMapper, config, List.of());
         objectMapper = new ObjectMapper();
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
@@ -188,69 +180,6 @@ class KnowledgeServiceTest {
     }
 
     @Test
-    void batchTag_shouldAddTagToUserTags() {
-        Knowledge k1 = createSampleKnowledge(1L, "A", "a", "[]");
-        k1.setUserTags("[\"existing\"]");
-        Knowledge k2 = createSampleKnowledge(2L, "B", "b", "[]");
-        when(mapper.selectById(1L)).thenReturn(k1);
-        when(mapper.selectById(2L)).thenReturn(k2);
-
-        service.batchTag(List.of(1L, 2L), "new-tag");
-
-        verify(mapper, times(2)).updateById(any(Knowledge.class));
-        assertTrue(k1.getUserTags().contains("new-tag"));
-        assertTrue(k1.getUserTags().contains("existing"));
-        assertTrue(k2.getUserTags().contains("new-tag"));
-    }
-
-    @Test
-    void batchTag_shouldSkipDuplicateTags() {
-        Knowledge k1 = createSampleKnowledge(1L, "A", "a", "[\"tag1\"]");
-        k1.setUserTags("[\"tag1\"]");
-        when(mapper.selectById(1L)).thenReturn(k1);
-
-        service.batchTag(List.of(1L), "tag1");
-
-        verify(mapper, never()).updateById(any(Knowledge.class));
-    }
-
-    @Test
-    void batchExport_shouldProduceJson() throws Exception {
-        Knowledge k1 = createSampleKnowledge(1L, "Title1", "Content1", "[\"t1\"]");
-        Knowledge k2 = createSampleKnowledge(2L, "Title2", "Content2", "[]");
-        when(mapper.selectBatchIds(List.of(1L, 2L))).thenReturn(List.of(k1, k2));
-
-        String json = service.batchExport(List.of(1L, 2L));
-
-        Map<String, Object> data = objectMapper.readValue(json, Map.class);
-        assertEquals(2, data.get("count"));
-        assertEquals("0.4.0", data.get("version"));
-    }
-
-    @Test
-    void batchExport_shouldHandleEmptyList() {
-        when(mapper.selectBatchIds(List.of())).thenReturn(List.of());
-
-        String json = service.batchExport(List.of());
-
-        assertTrue(json.contains("\"count\" : 0") || json.contains("\"count\": 0"));
-    }
-
-    @Test
-    void updateTags_shouldUpdateUserTags() {
-        Knowledge existing = createSampleKnowledge(1L, "Title", "Content", "[]");
-        when(mapper.selectById(1L)).thenReturn(existing);
-
-        service.updateTags(1L, List.of("tag1", "tag2"));
-
-        verify(mapper).updateById(knowledgeCaptor.capture());
-        String tags = knowledgeCaptor.getValue().getUserTags();
-        assertTrue(tags.contains("tag1"));
-        assertTrue(tags.contains("tag2"));
-        verify(operationLogService).log(eq("KNOWLEDGE"), eq("TAG"), eq(1L), anyString());
-    }
-
-    @Test
     void displayTitle_shouldUseAiTitleWhenAvailable() {
         Knowledge k = createSampleKnowledge(1L, "User Title", "Content", "[]");
         k.setAiTitle("AI Title");
@@ -261,154 +190,6 @@ class KnowledgeServiceTest {
     void displayTitle_shouldFallbackToUserTitle() {
         Knowledge k = createSampleKnowledge(1L, "User Title", "Content", "[]");
         assertEquals("User Title", service.displayTitle(k));
-    }
-
-    @Test
-    void exportAllAsJson_shouldProduceJson() throws Exception {
-        Knowledge k1 = createSampleKnowledge(1L, "Title1", "Content1", "[]");
-        Knowledge k2 = createSampleKnowledge(2L, "Title2", "Content2", "[]");
-        when(mapper.selectList(null)).thenReturn(List.of(k1, k2));
-
-        String json = service.exportAllAsJson();
-
-        Map<String, Object> data = objectMapper.readValue(json, Map.class);
-        assertEquals(2, data.get("count"));
-        List<Map<String, Object>> items = (List<Map<String, Object>>) data.get("items");
-        assertEquals("Title1", items.get(0).get("title"));
-        assertNotNull(data.get("exportedAt"));
-    }
-
-    @Test
-    void exportAllAsCsv_shouldProduceValidCsv() {
-        Knowledge k1 = createSampleKnowledge(1L, "Title, with comma", "Content \"quoted\"", "[\"tag1\"]");
-        Knowledge k2 = createSampleKnowledge(2L, "Normal Title", "Normal content", "[]");
-        when(mapper.selectList(null)).thenReturn(List.of(k1, k2));
-
-        String csv = service.exportAllAsCsv();
-
-        assertTrue(csv.startsWith("标题,内容,类型,摘要,标签,来源,创建时间\n"));
-        assertTrue(csv.contains("Title, with comma"));
-        assertTrue(csv.contains("Content \"\"quoted\"\""));
-        assertTrue(csv.contains("tag1"));
-        assertTrue(csv.contains("Normal Title"));
-    }
-
-    @Test
-    void csv_shouldEscapeSpecialCharacters() {
-        Knowledge k = createSampleKnowledge(1L, "Test", "Line1\nLine2", "[]");
-        when(mapper.selectList(null)).thenReturn(List.of(k));
-
-        String csv = service.exportAllAsCsv();
-
-        assertTrue(csv.contains("\"Line1\nLine2\""));
-    }
-
-    @Test
-    void reprocessKnowledge_shouldResetAndTrigger() {
-        Knowledge existing = createSampleKnowledge(1L, "Title", "Content", "[\"old\"]");
-        existing.setAiTitle("Old AI Title");
-        existing.setAutoProcessStatus("COMPLETED");
-        when(mapper.selectById(1L)).thenReturn(existing);
-
-        service.reprocessKnowledge(1L);
-
-        ArgumentCaptor<Knowledge> captor = ArgumentCaptor.forClass(Knowledge.class);
-        verify(mapper, times(1)).updateById(captor.capture());
-        Knowledge updated = captor.getValue();
-        assertEquals("PENDING", updated.getAutoProcessStatus());
-        assertNull(updated.getAiTitle());
-        assertEquals("[]", updated.getTags());
-        verify(autoProcessService).autoProcessAsync(eq(1L), eq("Title"), eq("Content"));
-        verify(operationLogService).log(eq("KNOWLEDGE"), eq("REPROCESS"), eq(1L), anyString());
-    }
-
-    @Test
-    void previewImport_shouldDetectConflicts() throws Exception {
-        String json = """
-                {
-                    "version": "0.4.0",
-                    "items": [
-                        {"title": "Existing Article", "content": "hello"},
-                        {"title": "New Article", "content": "world"}
-                    ]
-                }
-                """;
-
-        Knowledge existing = createSampleKnowledge(1L, "Existing Article", "existing", "[]");
-        when(mapper.findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(eq("Existing Article"), eq("")))
-                .thenReturn(List.of(existing));
-        when(mapper.findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(eq("New Article"), eq("")))
-                .thenReturn(List.of());
-
-        ImportPreview preview = service.previewImport(json);
-
-        assertEquals(2, preview.totalCount());
-        assertEquals(1, preview.newCount());
-        assertEquals(1, preview.conflictCount());
-        assertEquals(1, preview.conflicts().size());
-        assertEquals("Existing Article", preview.conflicts().get(0).title());
-    }
-
-    @Test
-    void previewImport_shouldHandleInvalidJson() {
-        ImportPreview preview = service.previewImport("not json");
-
-        assertEquals(0, preview.totalCount());
-        assertEquals(0, preview.newCount());
-        assertEquals(0, preview.conflictCount());
-    }
-
-    @Test
-    void importFromJsonWithConflict_skipMode_shouldSkipConflicts() throws Exception {
-        String json = """
-                {
-                    "items": [
-                        {"title": "Existing", "content": "new content"},
-                        {"title": "New", "content": "fresh"}
-                    ]
-                }
-                """;
-
-        Knowledge existing = createSampleKnowledge(1L, "Existing", "old content", "[]");
-        when(mapper.findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(eq("Existing"), eq("")))
-                .thenReturn(List.of(existing));
-        when(mapper.findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(eq("New"), eq("")))
-                .thenReturn(List.of());
-
-        int count = service.importFromJsonWithConflict(json, "skip");
-
-        assertEquals(1, count);
-        verify(mapper, times(1)).insert(any(Knowledge.class));
-    }
-
-    @Test
-    void importFromJsonWithConflict_overwriteMode_shouldUpdateConflicts() throws Exception {
-        String json = """
-                {
-                    "items": [
-                        {"title": "Existing", "content": "updated content", "contentType": "TEXT"},
-                        {"title": "New", "content": "fresh", "contentType": "TEXT"}
-                    ]
-                }
-                """;
-
-        Knowledge existing = createSampleKnowledge(1L, "Existing", "old content", "[]");
-        when(mapper.findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(eq("Existing"), eq("")))
-                .thenReturn(List.of(existing));
-        when(mapper.findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(eq("New"), eq("")))
-                .thenReturn(List.of());
-
-        int count = service.importFromJsonWithConflict(json, "overwrite");
-
-        assertEquals(2, count);
-        verify(mapper).updateById(knowledgeCaptor.capture());
-        assertEquals("updated content", knowledgeCaptor.getValue().getContent());
-    }
-
-    @Test
-    void importFromJsonWithConflict_shouldThrowOnError() {
-        assertThrows(RuntimeException.class,
-                () -> service.importFromJsonWithConflict("invalid json", "skip"));
     }
 
     @Test
@@ -442,20 +223,6 @@ class KnowledgeServiceTest {
         service.updateEmbedding(99L, "[0.1,0.2]");
 
         verify(mapper, never()).updateById(any(Knowledge.class));
-    }
-
-    @Test
-    void getAllTags_shouldAggregate() {
-        when(mapper.aggregateTags()).thenReturn(List.of(
-                Map.of("name", "java", "count", 5L),
-                Map.of("name", "spring", "count", 3L)
-        ));
-
-        List<Map<String, Object>> tags = service.getAllTags();
-
-        assertEquals(2, tags.size());
-        assertEquals("java", tags.get(0).get("name"));
-        assertEquals(5L, tags.get(0).get("count"));
     }
 
     @Test
