@@ -3,7 +3,7 @@ package com.mindvault.knowledge.service.strategy;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindvault.common.service.MetricsService;
 import com.mindvault.knowledge.entity.Knowledge;
-import com.mindvault.systemconfig.service.SystemConfigService;
+import com.mindvault.knowledge.config.ImportExportProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -19,12 +19,12 @@ public class JsonExportStrategy implements ExportFormatStrategy {
 
     private static final Logger log = LoggerFactory.getLogger(JsonExportStrategy.class);
 
-    private final SystemConfigService config;
+    private final ImportExportProperties importExportProperties;
     private final MetricsService metricsService;
     private final ObjectMapper objectMapper;
 
-    public JsonExportStrategy(SystemConfigService config, MetricsService metricsService) {
-        this.config = config;
+    public JsonExportStrategy(ImportExportProperties importExportProperties, MetricsService metricsService) {
+        this.importExportProperties = importExportProperties;
         this.metricsService = metricsService;
         this.objectMapper = new ObjectMapper();
     }
@@ -49,7 +49,7 @@ public class JsonExportStrategy implements ExportFormatStrategy {
                 exportList.add(item);
             }
             Map<String, Object> exportData = new LinkedHashMap<>();
-            exportData.put("version", config.getString("default.export.version", "0.4.0"));
+            exportData.put("version", importExportProperties.getExportVersion());
             exportData.put("exportedAt", LocalDateTime.now().toString());
             exportData.put("count", exportList.size());
             exportData.put("items", exportList);

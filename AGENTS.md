@@ -54,52 +54,48 @@ cd docker && docker compose up -d --build
 
 ## SOLID 设计决策（2024-06-26 烧烤共识）
 
-以下为基于 SOLID 原则的 8 项重构共识，后续开发应遵循：
+以下为基于 SOLID 原则的 8 项重构共识，后续开发应遵循。标注 ✅ 为已完成，🔄 为部分完成，❌ 为未完成：
 
-### 1. 包归属
-| 当前 | 目标 | 原因 |
-|------|------|------|
-| `AutoProcessService` 在 `content` 包 | → `auto` 包 | AI 处理非内容解析，与 `AutoProcessLog` 实体同包 |
-| `KnowledgeAssociationService` 在 `knowledge` 包 | 保持 | 实时相似查询是知识查看体验的一部分，非持久化关联 |
-| `KeywordBlockingService` 在 `chat` 包 | 保持 | 敏感词过滤是聊天特有功能 |
-| R1/R2/R3 + 调度器横跨 `auto/relation/scheduler` | → 统一到 `auto` 包，按子包 `r1/`, `r2/`, `r3/` 拆分 | 自动处理流水线是一个完整领域 |
+### 1. 包归属 ✅
+| 当前 | 目标 | 状态 |
+|------|------|:----:|
+| `AutoProcessService` 在 `content` 包 | → `auto` 包 | ✅ |
+| `KnowledgeAssociationService` 在 `knowledge` 包 | 保持 | ✅ |
+| `KeywordBlockingService` 在 `chat` 包 | 保持 | ✅ |
+| R1/R2/R3 + 调度器横跨 `auto/relation/scheduler` | → 统一到 `auto` 包，按子包 `r1/`, `r2/`, `r3/` 拆分 | ✅ |
 
-### 2. 单一职责（SRP）
+### 2. 单一职责（SRP） ✅
 - `KnowledgeService`（849 行）拆出 2 个新服务：
   - **`ImportExportService`** — JSON/Markdown/CSV 导入导出、格式转义、预览
   - **`TagService`** — 标签 CRUD、批量打标签、AI 批量打标签、标签合并
   - `KnowledgeService` 保留 CRUD + 搜索 + 编排
 
-### 3. 依赖倒置 + 接口隔离（DIP + ISP）
-- **所有 Service 抽取接口**：每个业务模块的 Service 层 = `XxxService`（接口）+ `XxxServiceImpl`（实现）
+### 3. 依赖倒置 + 接口隔离（DIP + ISP） 🔄
+- **所有 Service 抽取接口**：部分业务模块仍有 `XxxService` 接口，部分尚待抽取
 - Controller 和 Service 间依赖接口而非具体类
 
-### 4. 开闭原则（OCP）— 策略模式
+### 4. 开闭原则（OCP）— 策略模式 ✅
 - **搜索**：`SearchStrategy` 接口 → `HybridSearchStrategy`, `KeywordSearchStrategy`, `VectorSearchStrategy` 等实现，`SearchService` 按条件自动选择
-- **导出**：`ExportFormatStrategy` 接口 → `JsonExportStrategy`, `MarkdownExportStrategy`, `CsvExportStrategy` 实现，新增格式只需加新实现类
+- **导出**：`ExportFormatStrategy` 接口 → `JsonExportStrategy`, `MarkdownExportStrategy`, `CsvExportStrategy` 实现
 
-### 5. 包结构统一
-所有业务模块对齐 `auth` 的 5 子包结构：
-```
-com.mindvault.xxx/
-├── controller/
-├── service/
-├── mapper/
-├── entity/
-└── dto/
-```
+### 5. 包结构统一 🔄
+- 大部分模块已有 5 子包骨架（含空目录），部分实体和 dto 目录尚待填充
 
-### 6. 强类型配置绑定
-- 替换全局 `SystemConfigService` 的字符串 key 模式
-- 每个模块有自己的 `@ConfigurationProperties` 类（如 `KnowledgeProperties`, `SearchProperties`, `ReviewProperties`）
-- 仅在需要运行时修改且无固定 schema 的场景保留 `SystemConfigService`
+### 6. 强类型配置绑定 ✅
+- ✅ 14 个模块全部抽取 `@ConfigurationProperties` 类，替换 `SystemConfigService` 字符串 key 模式
+- ✅ 各模块配置类：`ReviewProperties`, `RelationProperties`, `FlashCardProperties`, `DailyReviewProperties`,
+  `WritingProperties`, `AgentProperties`, `SearchToolProperties`, `ChatProperties`, `TokenUsageProperties`,
+  `AssociationProperties`, `SearchProperties`, `ImportExportProperties`, `KnowledgeProperties`,
+  `AutoThresholdProperties` (已有 `AutoProcessProperties`)
+- ✅ 所有 Service 注入强类型 properties 类，仅 PromptRegistry 和 SystemConfig UI 保留 `SystemConfigService`
+  （BackupServiceImpl 的 `task.backup.enabled` 为已知例外，待后续抽取）
 
-### 7. 调度器重写
-- 移除 `AutoProcessScheduler` 的 `volatile` 手动节流
-- 改用 `@Scheduled(fixedRateString = "${...}")` + 强类型配置类
-- 频率变更需重启生效（而非运行时热更新）
+### 7. 调度器重写 ✅
+- ✅ 移除 `AutoProcessScheduler` 的 `volatile` 手动节流
+- ✅ 改用 `@Scheduled(fixedRateString = "${mindvault.auto-process.round2.fixed-delay-ms:300000}")` + `AutoProcessProperties` 强类型配置
+- ✅ 频率变更需重启生效（而非运行时热更新）
 
-### 8. 循环依赖解耦
+### 8. 循环依赖解耦 ✅
 - `KnowledgeService` ↔ `AutoProcessService` 的 `@Lazy` 循环依赖通过拆分职责消除
 - 新增 `AutoProcessOrchestrator`（在 `auto` 包）作为 R1 的单一协调入口
 
@@ -111,17 +107,15 @@ com.mindvault.xxx/
 | `chat` | Chat sessions, messages, SSE streaming |
 | `agent` | LLM calling with failover, tool execution |
 | `auth` | User auth, login, API tokens, session manager, auth filter, admin initializer, user management (admin) |
-| `auto` | Auto-processing pipeline (R1: aiTitle/aiTags/summary/embedding via @Async; R3: AggregationService for tag cloud + stats) |
+| `auto` | Auto-processing pipeline (R1: aiTitle/aiTags/summary/embedding via @Async; R2: RelationService under auto/r2/; R3: AggregationService under auto/r3/; scheduler under auto/scheduler/) |
 | `model` | Model config CRUD (OpenAI/DeepSeek/Alibaba/SiliconFlow/Ollama) |
 | `content` | URL (Jsoup) and PDF (PDFBox) parsing → markdown |
 | `review` | SM-2 spaced repetition scheduling |
-| `relation` | Round 2 association discovery (semantic + tag + LLM) |
 | `flashcard` | Flashcard management |
 | `dailyreview` | Daily review report generation (uses LLM) |
 | `backup` | DB backup/restore via pg_dump |
 | `tokenusage` | Token usage tracking |
 | `operationlog` | Audit log |
-| `scheduler` | Scheduled tasks: AutoProcessScheduler (R2 @5min, R3 @30min) |
 | `common` | Global exception handler, filters, health endpoint, metrics, actuator, AOP operation log, custom type handlers |
 | `annotation` | @OperationLog custom annotation |
 | `aspect` | OperationLogAspect — auto-logging around @OperationLog methods |
@@ -141,13 +135,13 @@ com.mindvault.xxx/
 - **Auto-process logs**: Stored in `auto_process_log` table (knowledge_id, round, status, result_summary, llm_tokens, ...), written by `AutoProcessService` and `RelationService`.
 
 ## AI Auto-Processing Pipeline (R1/R2/R3)
-The pipeline processes each knowledge entry in three automated rounds:
+The pipeline processes each knowledge entry in three automated rounds. Scheduler lives in `auto/scheduler/`.
 
 | Round | Stage | Service | What it does | Trigger |
 |-------|-------|---------|--------------|---------|
 | R1 | Title & Tags | `AutoProcessService` | Generates `aiTitle`, `aiTags`, summary, embedding vector via LLM; sets status → `TITLE_TAG_DONE` | `@Async` on create / `reprocessKnowledge()` |
-| R2 | Relation Discovery | `RelationService` | Discovers associations using semantic similarity + tag overlap + LLM analysis; writes to `knowledge_relation`; sets status → `RELATION_DONE` | `AutoProcessScheduler` every 5 minutes |
-| R3 | Aggregation | `AggregationService` | Rebuilds tag cloud, refreshes stats, completes processing; sets status → `COMPLETED` | `AutoProcessScheduler` every 30 minutes |
+| R2 | Relation Discovery | `RelationService` | Discovers associations using semantic similarity + tag overlap + LLM analysis; writes to `knowledge_relation`; sets status → `RELATION_DONE` | `AutoProcessScheduler` via `AutoProcessProperties` (default 5 min) |
+| R3 | Aggregation | `AggregationService` | Rebuilds tag cloud, refreshes stats, completes processing; sets status → `COMPLETED` | `AutoProcessScheduler` via `AutoProcessProperties` (default 30 min) |
 
 ## Spring AI 2.0 Conventions
 - **AiModelFactory** (`ai.client`): Builds `ChatModel` / `EmbeddingModel` dynamically from `ModelConfig` entities. OpenAI/DeepSeek/Alibaba/SiliconFlow → `OpenAiChatModel` (all OpenAI-compatible API), Ollama → `OllamaChatModel`. Supports overloaded `buildChatModel(ModelConfig, Double temperature)`. Empty/blank `baseUrl` strings are treated as null (falls back to provider default).
@@ -168,27 +162,28 @@ The pipeline processes each knowledge entry in three automated rounds:
 
 ## Feature Progress
 
-### Backend (API — 78 endpoints)
+### Backend (API — 80 endpoints)
 | Module | Backend | Controller Test | Service Test | Coverage |
 |--------|---------|:-:|:-:|:-:|
-| 知识库 Knowledge | CRUD + 搜索 + 导入导出 + 标签 + URL/PDF 解析 + AI自动处理(R1) | ✅ | ✅ | 54% |
+| 知识库 Knowledge | CRUD + 搜索（3 种）+ 导入导出 + 标签 + URL/PDF 解析 + AI自动处理(R1) | ✅ | ✅ | 54% |
 | 聊天 Chat | 会话 + 消息 + SSE 流式 | ✅ | ✅ | 49% |
-| 模型配置 Model Config | CRUD + 主模型 + 测试连接 + 拉取列表 | ✅ | ✅ | 36% |
-| 复习 Review | SM-2 调度 + 到期查询 | ✅ | ✅ | 99% |
-| 闪卡 FlashCard | CRUD + 自动生成 | ✅ | ✅ | 25% |
+| 模型配置 Model Config | CRUD + 主模型 + 优先级 + 测试连接 + 拉取列表 | ✅ | ✅ | 36% |
+| 复习 Review | SM-2 调度 + 到期查询 + 执行复习 | ✅ | ✅ | 99% |
+| 闪卡 FlashCard | 列表查询 + AI 生成 | ✅ | ✅ | 25% |
 | 每日回顾 DailyReview | LLM 报告生成 + 定时任务 | ✅ | ✅ | 33% |
 | 写作助手 Writing | AI 文章生成 | ✅ | ✅ | 76% |
 | 操作日志 OperationLog | 审计日志查询 | ✅ | ✅ | 31% |
 | Token 用量 TokenUsage | 用量记录 + 日结汇总 | ✅ | ✅ | 89% |
-| 数据备份 Backup | 备份 + 列表 + 下载 + 清理 | ✅ | ✅ | 85% |
-| 关联发现 Relation | R2 关联发现（语义 + 标签 + LLM） | ❌¹ | ✅ | 54% |
-| 自动处理 AutoProcess | R1 自动标注 + R3 聚合统计 + 定时调度 | ❌¹ | ✅ | 58% |
+| 数据备份 Backup | 备份 + 列表 + 下载 | ✅ | ✅ | 85% |
+| 关联发现 Relation | R2 关联发现（语义 + 标签 + LLM）（在 auto/r2/ 下） | ❌¹ | ✅ | 54% |
+| 自动处理 AutoProcess | R1 自动标注 + R2 关联 + R3 聚合统计 + 定时调度（在 auto/ 下） | ❌¹ | ✅ | 58% |
 | Agent | LLM failover + 熔断 + 工具调用 | ❌² | ✅ | 57% |
 | 内容解析 Content | Jsoup 网页 + PDFBox PDF | ❌¹ | ✅ | 68% |
-| 认证 Auth | 登录 + Token 管理 + 密码修改 | ✅ | ✅ | — |
+| 系统监控 System | 健康/信息/指标端点 | ✅ | ✅ | — |
 | 系统配置 SystemConfig | 模块导航 + 内联编辑 + 定时任务 + 默认值还原 + 审计溯源 | ✅ | ✅ | 34% |
 | 用户管理 User | 列表 + 启用/禁用 | ✅ | ✅ | 36% |
-| **Total** | **18 模块 / 78 接口** | **13/18** | **17/18** | **53%** |
+| 认证 Auth | 登录 + Token 管理 + 密码修改 | ✅ | ✅ | — |
+| **Total** | **18 模块 / 80 接口** | **14/18** | **17/18** | **53%** |
 
 ### Frontend (14 routes)
 | Route | View | Responsive | Tests | Design Polish |

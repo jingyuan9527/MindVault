@@ -11,7 +11,7 @@ import com.mindvault.knowledge.service.strategy.SearchStrategy;
 import com.mindvault.operationlog.service.OperationLogService;
 import com.mindvault.auto.mapper.KnowledgeRelationMapper;
 import com.mindvault.review.service.ReviewService;
-import com.mindvault.systemconfig.service.SystemConfigService;
+import com.mindvault.knowledge.config.KnowledgeProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,7 +37,7 @@ class KnowledgeServiceTest {
     @Mock private AutoProcessOrchestrator autoProcessOrchestrator;
     @Mock private ReviewService reviewService;
     @Mock private KnowledgeRelationMapper relationMapper;
-    @Mock private SystemConfigService config;
+    private KnowledgeProperties knowledgeProperties;
 
     private KnowledgeService service;
     private ObjectMapper objectMapper;
@@ -47,14 +47,9 @@ class KnowledgeServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new KnowledgeServiceImpl(mapper, operationLogService, autoProcessOrchestrator, reviewService, relationMapper, config, List.of());
+        knowledgeProperties = new KnowledgeProperties();
+        service = new KnowledgeServiceImpl(mapper, operationLogService, autoProcessOrchestrator, reviewService, relationMapper, knowledgeProperties, List.of());
         objectMapper = new ObjectMapper();
-        lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
-        lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
-        lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));
-        lenient().when(config.getString(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
-        lenient().when(config.getBool(anyString(), anyBoolean())).thenAnswer(i -> i.getArgument(1));
-        lenient().when(config.getPrompt(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
     }
 
     private Knowledge createSampleKnowledge(Long id, String title, String content, String tags) {

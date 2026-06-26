@@ -10,6 +10,7 @@ import com.mindvault.knowledge.service.KnowledgeService;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.service.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
+import com.mindvault.auto.config.AutoThresholdProperties;
 import com.mindvault.systemconfig.service.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,13 +32,14 @@ class AutoProcessServiceTest {
     @Mock private AiModelFactory aiModelFactory;
     @Mock private KnowledgeService knowledgeService;
     @Mock private AutoProcessLogMapper logMapper;
+    @Mock private AutoThresholdProperties autoThresholdProperties;
     @Mock private SystemConfigService config;
 
     private AutoProcessService service;
 
     @BeforeEach
     void setUp() {
-        service = new AutoProcessServiceImpl(modelConfigService, aiService, aiModelFactory, knowledgeService, logMapper, config);
+        service = new AutoProcessServiceImpl(modelConfigService, aiService, aiModelFactory, knowledgeService, logMapper, autoThresholdProperties, config);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));

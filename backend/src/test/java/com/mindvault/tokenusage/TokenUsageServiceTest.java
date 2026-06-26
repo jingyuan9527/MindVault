@@ -1,8 +1,8 @@
 package com.mindvault.tokenusage;
 
 import com.mindvault.common.config.MindVaultProperties;
-import com.mindvault.systemconfig.service.SystemConfigService;
 import com.mindvault.model.entity.ModelConfig;
+import com.mindvault.tokenusage.config.TokenUsageProperties;
 import com.mindvault.tokenusage.entity.TokenUsage;
 import com.mindvault.tokenusage.mapper.TokenUsageMapper;
 import com.mindvault.tokenusage.service.TokenUsageService;
@@ -31,7 +31,7 @@ class TokenUsageServiceTest {
     @Mock
     private TokenUsageMapper mapper;
 
-    @Mock private SystemConfigService config;
+    @Mock private TokenUsageProperties tokenUsageProperties;
 
     private TokenUsageService service;
 
@@ -40,6 +40,7 @@ class TokenUsageServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(tokenUsageProperties.getCalcDivisor()).thenReturn(1000.0);
         MindVaultProperties props = new MindVaultProperties();
         Map<String, Map<String, BigDecimal[]>> pricing = new LinkedHashMap<>();
         Map<String, BigDecimal[]> aliyun = new LinkedHashMap<>();
@@ -57,13 +58,7 @@ class TokenUsageServiceTest {
         openai.put("gpt-4o", new BigDecimal[]{BigDecimal.valueOf(0.005), BigDecimal.valueOf(0.015)});
         pricing.put("OPENAI", openai);
         props.getPricing().setModels(pricing);
-        service = new TokenUsageServiceImpl(mapper, props, config);
-        lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
-        lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
-        lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));
-        lenient().when(config.getString(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
-        lenient().when(config.getBool(anyString(), anyBoolean())).thenAnswer(i -> i.getArgument(1));
-        lenient().when(config.getPrompt(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
+        service = new TokenUsageServiceImpl(mapper, props, tokenUsageProperties);
     }
 
     private ModelConfig createModelConfig(Long id, String provider, String modelName, String modelType) {

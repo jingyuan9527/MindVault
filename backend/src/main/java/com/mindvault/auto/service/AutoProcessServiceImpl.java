@@ -10,6 +10,7 @@ import com.mindvault.auto.mapper.AutoProcessLogMapper;
 import com.mindvault.knowledge.service.KnowledgeService;
 import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.model.service.ModelConfigService;
+import com.mindvault.auto.config.AutoThresholdProperties;
 import com.mindvault.systemconfig.service.SystemConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +33,8 @@ public class AutoProcessServiceImpl implements AutoProcessService {
     private final AiModelFactory aiModelFactory;
     private final KnowledgeService knowledgeService;
     private final AutoProcessLogMapper logMapper;
-    private final SystemConfigService config;
+    private final AutoThresholdProperties autoThresholdProperties;
+    private final SystemConfigService systemConfigService;
     private final ObjectMapper objectMapper;
 
     public AutoProcessServiceImpl(ModelConfigService modelConfigService,
@@ -40,13 +42,15 @@ public class AutoProcessServiceImpl implements AutoProcessService {
                                   AiModelFactory aiModelFactory,
                                   @Lazy KnowledgeService knowledgeService,
                                   AutoProcessLogMapper logMapper,
-                                  SystemConfigService config) {
+                                  AutoThresholdProperties autoThresholdProperties,
+                                  SystemConfigService systemConfigService) {
         this.modelConfigService = modelConfigService;
         this.aiService = aiService;
         this.aiModelFactory = aiModelFactory;
         this.knowledgeService = knowledgeService;
         this.logMapper = logMapper;
-        this.config = config;
+        this.autoThresholdProperties = autoThresholdProperties;
+        this.systemConfigService = systemConfigService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -117,10 +121,10 @@ public class AutoProcessServiceImpl implements AutoProcessService {
 
     private String generateAiTitle(String userTitle, String content) {
         try {
-            int truncateLen = config.getInt("threshold.auto.truncate-length", 2000);
-            double temperature = config.getDouble("threshold.auto.llm-temperature", 0.3);
-            int maxTokens = config.getInt("threshold.auto.title-max-tokens", 100);
-            String prompt = PromptRegistry.AUTO_TITLE.resolve(config, userTitle, AiService.truncate(content, truncateLen));
+            int truncateLen = autoThresholdProperties.getTruncateLength();
+            double temperature = autoThresholdProperties.getLlmTemperature();
+            int maxTokens = autoThresholdProperties.getTitleMaxTokens();
+            String prompt = PromptRegistry.AUTO_TITLE.resolve(systemConfigService, userTitle, AiService.truncate(content, truncateLen));
             return aiService.call(prompt, temperature, maxTokens, "AUTO_PROCESS");
         } catch (Exception e) {
             log.warn("生成 AI 标题失败: {}", e.getMessage());
@@ -130,10 +134,10 @@ public class AutoProcessServiceImpl implements AutoProcessService {
 
     private String generateSummary(String userTitle, String content) {
         try {
-            int truncateLen = config.getInt("threshold.auto.truncate-length", 2000);
-            double temperature = config.getDouble("threshold.auto.llm-temperature", 0.3);
-            int maxTokens = config.getInt("threshold.auto.summary-max-tokens", 300);
-            String prompt = PromptRegistry.AUTO_SUMMARY.resolve(config, userTitle, AiService.truncate(content, truncateLen));
+            int truncateLen = autoThresholdProperties.getTruncateLength();
+            double temperature = autoThresholdProperties.getLlmTemperature();
+            int maxTokens = autoThresholdProperties.getSummaryMaxTokens();
+            String prompt = PromptRegistry.AUTO_SUMMARY.resolve(systemConfigService, userTitle, AiService.truncate(content, truncateLen));
             return aiService.call(prompt, temperature, maxTokens, "AUTO_PROCESS");
         } catch (Exception e) {
             log.warn("生成摘要失败: {}", e.getMessage());
@@ -143,10 +147,10 @@ public class AutoProcessServiceImpl implements AutoProcessService {
 
     private String generateTags(String userTitle, String content) {
         try {
-            int truncateLen = config.getInt("threshold.auto.truncate-length", 2000);
-            double temperature = config.getDouble("threshold.auto.llm-temperature", 0.3);
-            int maxTokens = config.getInt("threshold.auto.tags-max-tokens", 300);
-            String prompt = PromptRegistry.AUTO_TAGS.resolve(config, userTitle, AiService.truncate(content, truncateLen));
+            int truncateLen = autoThresholdProperties.getTruncateLength();
+            double temperature = autoThresholdProperties.getLlmTemperature();
+            int maxTokens = autoThresholdProperties.getTagsMaxTokens();
+            String prompt = PromptRegistry.AUTO_TAGS.resolve(systemConfigService, userTitle, AiService.truncate(content, truncateLen));
             String result = aiService.call(prompt, temperature, maxTokens, "AUTO_PROCESS");
             if (result != null) {
                 String cleaned = result.trim();
@@ -165,7 +169,7 @@ public class AutoProcessServiceImpl implements AutoProcessService {
         if (embeddingModels.isEmpty()) return;
 
         ModelConfig embModel = embeddingModels.get(0);
-        int embedTruncate = config.getInt("threshold.auto.embedding-truncate-length", 8000);
+        int embedTruncate = autoThresholdProperties.getEmbeddingTruncateLength();
         String text = (userTitle + "\n" + content);
         if (text.length() > embedTruncate) text = text.substring(0, embedTruncate);
 

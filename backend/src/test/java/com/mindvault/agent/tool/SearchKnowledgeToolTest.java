@@ -3,7 +3,7 @@ package com.mindvault.agent.tool;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindvault.knowledge.service.KnowledgeService;
 import com.mindvault.knowledge.service.SearchEnhanceService;
-import com.mindvault.systemconfig.service.SystemConfigService;
+import com.mindvault.agent.config.SearchToolProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,20 +22,21 @@ class SearchKnowledgeToolTest {
 
     @Mock private KnowledgeService knowledgeService;
     @Mock private SearchEnhanceService searchEnhanceService;
-    @Mock private SystemConfigService config;
+    @Mock private SearchToolProperties searchToolProperties;
 
     private SearchKnowledgeTool tool;
 
     @BeforeEach
     void setUp() {
-        lenient().when(config.getString(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
-        lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
-        tool = new SearchKnowledgeTool(knowledgeService, searchEnhanceService, config);
+        lenient().when(searchToolProperties.getSearchMethod()).thenReturn("rewrite");
+        lenient().when(searchToolProperties.getDefaultLimit()).thenReturn(3);
+        lenient().when(searchToolProperties.getMaxLimit()).thenReturn(10);
+        tool = new SearchKnowledgeTool(knowledgeService, searchEnhanceService, searchToolProperties);
     }
 
     @Test
     void searchKnowledge_withRewriteMethod_shouldCallSearchWithRewrite() throws Exception {
-        when(config.getString("tool.search-knowledge.search-method", "rewrite")).thenReturn("rewrite");
+        when(searchToolProperties.getSearchMethod()).thenReturn("rewrite");
         when(searchEnhanceService.searchWithRewrite("test query", 3)).thenReturn(List.of(
                 Map.of("id", 1L, "title", "result1", "summary", "summary1", "similarity", 0.95)
         ));
@@ -50,7 +51,7 @@ class SearchKnowledgeToolTest {
 
     @Test
     void searchKnowledge_withHydeMethod_shouldCallHydeSearch() throws Exception {
-        when(config.getString("tool.search-knowledge.search-method", "rewrite")).thenReturn("hyde");
+        when(searchToolProperties.getSearchMethod()).thenReturn("hyde");
         when(searchEnhanceService.hydeSearch("test query", 3)).thenReturn(List.of(
                 Map.of("id", 1L, "title", "result1", "summary", "summary1", "similarity", 0.9)
         ));
@@ -65,7 +66,7 @@ class SearchKnowledgeToolTest {
 
     @Test
     void searchKnowledge_withHybridMethod_shouldCallHybridSearch() throws Exception {
-        when(config.getString("tool.search-knowledge.search-method", "rewrite")).thenReturn("hybrid");
+        when(searchToolProperties.getSearchMethod()).thenReturn("hybrid");
         when(knowledgeService.hybridSearch("test query", 3)).thenReturn(List.of(
                 Map.of("id", 1L, "title", "result1", "content", "content1", "similarity", 0.85)
         ));
@@ -80,8 +81,8 @@ class SearchKnowledgeToolTest {
 
     @Test
     void searchKnowledge_withCustomDefaultLimit_shouldUseDefaultLimitFromConfig() throws Exception {
-        when(config.getString("tool.search-knowledge.search-method", "rewrite")).thenReturn("rewrite");
-        when(config.getInt("tool.search-knowledge.default-limit", 3)).thenReturn(5);
+        when(searchToolProperties.getSearchMethod()).thenReturn("rewrite");
+        when(searchToolProperties.getDefaultLimit()).thenReturn(5);
         when(searchEnhanceService.searchWithRewrite("test", 5)).thenReturn(List.of(
                 Map.of("id", 1L, "title", "t", "summary", "s", "similarity", 0.5)
         ));
@@ -96,8 +97,8 @@ class SearchKnowledgeToolTest {
 
     @Test
     void searchKnowledge_withCustomLimitArg_shouldUseSpecifiedLimit() throws Exception {
-        when(config.getString("tool.search-knowledge.search-method", "rewrite")).thenReturn("rewrite");
-        when(config.getInt("tool.search-knowledge.max-limit", 10)).thenReturn(10);
+        when(searchToolProperties.getSearchMethod()).thenReturn("rewrite");
+        when(searchToolProperties.getMaxLimit()).thenReturn(10);
         when(searchEnhanceService.searchWithRewrite("test", 7)).thenReturn(List.of(
                 Map.of("id", 1L, "title", "t", "summary", "s", "similarity", 0.5)
         ));
@@ -109,8 +110,8 @@ class SearchKnowledgeToolTest {
 
     @Test
     void searchKnowledge_shouldNotExceedMaxLimit() throws Exception {
-        when(config.getString("tool.search-knowledge.search-method", "rewrite")).thenReturn("rewrite");
-        when(config.getInt("tool.search-knowledge.max-limit", 10)).thenReturn(5);
+        when(searchToolProperties.getSearchMethod()).thenReturn("rewrite");
+        when(searchToolProperties.getMaxLimit()).thenReturn(5);
         when(searchEnhanceService.searchWithRewrite("test", 5)).thenReturn(List.of(
                 Map.of("id", 1L, "title", "t", "summary", "s", "similarity", 0.5)
         ));
@@ -122,7 +123,7 @@ class SearchKnowledgeToolTest {
 
     @Test
     void searchKnowledge_withEmptyResults_shouldReturnEmptyJsonArray() {
-        when(config.getString("tool.search-knowledge.search-method", "rewrite")).thenReturn("rewrite");
+        when(searchToolProperties.getSearchMethod()).thenReturn("rewrite");
         when(searchEnhanceService.searchWithRewrite("empty query", 3)).thenReturn(List.of());
 
         String result = tool.searchKnowledge("empty query", null);
@@ -132,7 +133,7 @@ class SearchKnowledgeToolTest {
 
     @Test
     void searchKnowledge_whenMethodThrows_shouldFallbackToHybrid() throws Exception {
-        when(config.getString("tool.search-knowledge.search-method", "rewrite")).thenReturn("rewrite");
+        when(searchToolProperties.getSearchMethod()).thenReturn("rewrite");
         when(searchEnhanceService.searchWithRewrite("query", 3)).thenThrow(new RuntimeException("API error"));
         when(knowledgeService.hybridSearch("query", 3)).thenReturn(List.of(
                 Map.of("id", 1L, "title", "fallback", "content", "fallback content", "similarity", 0.5)
@@ -148,7 +149,7 @@ class SearchKnowledgeToolTest {
 
     @Test
     void searchKnowledge_whenMethodAndFallbackBothFail_shouldReturnEmptyArray() {
-        when(config.getString("tool.search-knowledge.search-method", "rewrite")).thenReturn("rewrite");
+        when(searchToolProperties.getSearchMethod()).thenReturn("rewrite");
         when(searchEnhanceService.searchWithRewrite("query", 3)).thenThrow(new RuntimeException("API error"));
         when(knowledgeService.hybridSearch("query", 3)).thenThrow(new RuntimeException("DB error"));
 
@@ -159,7 +160,7 @@ class SearchKnowledgeToolTest {
 
     @Test
     void searchKnowledge_shouldFormatOutputFields() throws Exception {
-        when(config.getString("tool.search-knowledge.search-method", "rewrite")).thenReturn("rewrite");
+        when(searchToolProperties.getSearchMethod()).thenReturn("rewrite");
         when(searchEnhanceService.searchWithRewrite("query", 3)).thenReturn(List.of(
                 Map.of("id", 42L, "title", "My Title", "summary", "Short summary", "similarity", 0.88)
         ));
@@ -177,7 +178,7 @@ class SearchKnowledgeToolTest {
 
     @Test
     void searchKnowledge_shouldTruncateLongContent() throws Exception {
-        when(config.getString("tool.search-knowledge.search-method", "rewrite")).thenReturn("rewrite");
+        when(searchToolProperties.getSearchMethod()).thenReturn("rewrite");
         String longContent = "x".repeat(500);
         when(searchEnhanceService.searchWithRewrite("query", 3)).thenReturn(List.of(
                 Map.of("id", 1L, "title", "t", "content", longContent, "similarity", 0.5)

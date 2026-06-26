@@ -3,6 +3,7 @@ package com.mindvault.flashcard;
 import com.mindvault.ai.client.AiService;
 import com.mindvault.flashcard.entity.FlashCard;
 import com.mindvault.flashcard.mapper.FlashCardMapper;
+import com.mindvault.flashcard.config.FlashCardProperties;
 import com.mindvault.flashcard.service.FlashCardService;
 import com.mindvault.flashcard.service.FlashCardServiceImpl;
 import com.mindvault.knowledge.service.KnowledgeService;
@@ -28,13 +29,14 @@ class FlashCardServiceTest {
     @Mock private AiService aiService;
     @Mock private KnowledgeService knowledgeService;
     @Mock private FlashCardMapper mapper;
+    @Mock private FlashCardProperties flashCardProperties;
     @Mock private SystemConfigService config;
 
     private FlashCardService service;
 
     @BeforeEach
     void setUp() {
-        service = new FlashCardServiceImpl(modelConfigService, aiService, knowledgeService, mapper, config);
+        service = new FlashCardServiceImpl(modelConfigService, aiService, knowledgeService, mapper, flashCardProperties, config);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));

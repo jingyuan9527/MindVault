@@ -1,8 +1,8 @@
 package com.mindvault.auto.scheduler;
 
+import com.mindvault.auto.config.AutoProcessProperties;
 import com.mindvault.auto.r2.RelationService;
 import com.mindvault.auto.r3.AggregationService;
-import com.mindvault.systemconfig.service.SystemConfigService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -16,14 +16,16 @@ class AutoProcessSchedulerTest {
 
     @Mock private RelationService relationService;
     @Mock private AggregationService aggregationService;
-    @Mock private SystemConfigService config;
+    @Mock private AutoProcessProperties properties;
 
     @InjectMocks
     private AutoProcessScheduler scheduler;
 
     @Test
     void runRound2_enabled_shouldProcess() {
-        when(config.getBool("task.auto-process.round2.enabled", true)).thenReturn(true);
+        AutoProcessProperties.Round2 round2 = new AutoProcessProperties.Round2();
+        round2.setEnabled(true);
+        when(properties.getRound2()).thenReturn(round2);
 
         scheduler.runRound2();
 
@@ -32,7 +34,9 @@ class AutoProcessSchedulerTest {
 
     @Test
     void runRound2_disabled_shouldSkip() {
-        when(config.getBool("task.auto-process.round2.enabled", true)).thenReturn(false);
+        AutoProcessProperties.Round2 round2 = new AutoProcessProperties.Round2();
+        round2.setEnabled(false);
+        when(properties.getRound2()).thenReturn(round2);
 
         scheduler.runRound2();
 
@@ -41,7 +45,9 @@ class AutoProcessSchedulerTest {
 
     @Test
     void runRound3_enabled_shouldProcess() {
-        when(config.getBool("task.auto-process.round3.enabled", true)).thenReturn(true);
+        AutoProcessProperties.Round3 round3 = new AutoProcessProperties.Round3();
+        round3.setEnabled(true);
+        when(properties.getRound3()).thenReturn(round3);
 
         scheduler.runRound3();
 
@@ -50,7 +56,9 @@ class AutoProcessSchedulerTest {
 
     @Test
     void runRound3_disabled_shouldSkip() {
-        when(config.getBool("task.auto-process.round3.enabled", true)).thenReturn(false);
+        AutoProcessProperties.Round3 round3 = new AutoProcessProperties.Round3();
+        round3.setEnabled(false);
+        when(properties.getRound3()).thenReturn(round3);
 
         scheduler.runRound3();
 

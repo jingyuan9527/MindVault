@@ -9,6 +9,7 @@ import com.mindvault.flashcard.mapper.FlashCardMapper;
 import com.mindvault.knowledge.service.KnowledgeService;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.service.ModelConfigService;
+import com.mindvault.flashcard.config.FlashCardProperties;
 import com.mindvault.systemconfig.service.SystemConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,19 +35,22 @@ public class FlashCardServiceImpl implements FlashCardService {
     private final AiService aiService;
     private final KnowledgeService knowledgeService;
     private final FlashCardMapper mapper;
-    private final SystemConfigService config;
+    private final FlashCardProperties flashCardProperties;
+    private final SystemConfigService systemConfigService;
     private final ObjectMapper objectMapper;
 
     public FlashCardServiceImpl(ModelConfigService modelConfigService,
                                 AiService aiService,
                                 KnowledgeService knowledgeService,
                                 FlashCardMapper mapper,
-                                SystemConfigService config) {
+                                FlashCardProperties flashCardProperties,
+                                SystemConfigService systemConfigService) {
         this.modelConfigService = modelConfigService;
         this.aiService = aiService;
         this.knowledgeService = knowledgeService;
         this.mapper = mapper;
-        this.config = config;
+        this.flashCardProperties = flashCardProperties;
+        this.systemConfigService = systemConfigService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -82,10 +86,10 @@ public class FlashCardServiceImpl implements FlashCardService {
             return List.of();
         }
 
-        int truncateLen = config.getInt("threshold.flashcard.truncate-length", 3000);
-        double temperature = config.getDouble("threshold.flashcard.temperature", 0.3);
-        int maxTokens = config.getInt("threshold.flashcard.max-tokens", 1000);
-        String prompt = PromptRegistry.FLASHCARD_GENERATION.resolve(config, title,
+        int truncateLen = flashCardProperties.getTruncateLength();
+        double temperature = flashCardProperties.getTemperature();
+        int maxTokens = flashCardProperties.getMaxTokens();
+        String prompt = PromptRegistry.FLASHCARD_GENERATION.resolve(systemConfigService, title,
                 AiService.truncate(content, truncateLen));
 
         String result = aiService.call(prompt, temperature, maxTokens);

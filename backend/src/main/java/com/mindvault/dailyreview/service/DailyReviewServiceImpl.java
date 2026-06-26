@@ -3,6 +3,7 @@ package com.mindvault.dailyreview.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindvault.ai.client.AiService;
 import com.mindvault.ai.prompt.PromptRegistry;
+import com.mindvault.dailyreview.config.DailyReviewProperties;
 import com.mindvault.dailyreview.entity.DailyReview;
 import com.mindvault.dailyreview.mapper.DailyReviewMapper;
 import com.mindvault.knowledge.entity.Knowledge;
@@ -45,26 +46,29 @@ public class DailyReviewServiceImpl implements DailyReviewService {
     private final AiService aiService;
     private final KnowledgeMapper knowledgeMapper;
     private final DailyReviewMapper mapper;
-    private final SystemConfigService config;
+    private final SystemConfigService systemConfigService;
+    private final DailyReviewProperties dailyReviewProperties;
     private final ObjectMapper objectMapper;
 
     public DailyReviewServiceImpl(ModelConfigService modelConfigService,
                                   AiService aiService,
                                   KnowledgeMapper knowledgeMapper,
                                   DailyReviewMapper mapper,
-                                  SystemConfigService config) {
+                                  SystemConfigService systemConfigService,
+                                  DailyReviewProperties dailyReviewProperties) {
         this.modelConfigService = modelConfigService;
         this.aiService = aiService;
         this.knowledgeMapper = knowledgeMapper;
         this.mapper = mapper;
-        this.config = config;
+        this.systemConfigService = systemConfigService;
+        this.dailyReviewProperties = dailyReviewProperties;
         this.objectMapper = new ObjectMapper();
     }
 
     @Scheduled(cron = "0 30 2 * * ?")
     @Transactional
     public void scheduledDailyReview() {
-        if (!config.getBool("task.daily-review.enabled", true)) return;
+        if (!dailyReviewProperties.isTaskEnabled()) return;
         log.info("开始执行定时每日复盘...");
         LocalDate yesterday = LocalDate.now().minusDays(1);
         generateReport(yesterday);
@@ -86,7 +90,7 @@ public class DailyReviewServiceImpl implements DailyReviewService {
         report.setTotalCount(dayKnowledge.size());
 
         if (dayKnowledge.isEmpty()) {
-            report.setSummary(config.getString("default.daily-review.empty-summary", "当日无新增知识。"));
+            report.setSummary(dailyReviewProperties.getEmptySummary());
             report.setKeyInsights("[]");
             report.setRecommendations("[]");
             report.setCategoryBreakdown("{}");
@@ -124,7 +128,7 @@ public class DailyReviewServiceImpl implements DailyReviewService {
                 report.setCategoryBreakdown("{}");
             }
         } else {
-            report.setSummary(config.getString("default.daily-review.fallback-summary", "当日知识较多，自动摘要生成失败。"));
+            report.setSummary(dailyReviewProperties.getFallbackSummary());
             report.setKeyInsights("[]");
             report.setRecommendations("[]");
             report.setCategoryBreakdown("{}");
@@ -142,9 +146,9 @@ public class DailyReviewServiceImpl implements DailyReviewService {
             return null;
         }
 
-        double temperature = config.getDouble("threshold.daily-review.temperature", 0.3);
-        int maxTokens = config.getInt("threshold.daily-review.max-tokens", 1500);
-        String prompt = PromptRegistry.DAILY_REVIEW_REPORT.resolve(config, knowledgeSummary);
+        double temperature = dailyReviewProperties.getTemperature();
+        int maxTokens = dailyReviewProperties.getMaxTokens();
+        String prompt = PromptRegistry.DAILY_REVIEW_REPORT.resolve(systemConfigService, knowledgeSummary);
 
         return aiService.call(prompt, temperature, maxTokens, "DAILY_REVIEW");
     }

@@ -10,6 +10,8 @@ import com.mindvault.knowledge.service.KnowledgeService;
 import com.mindvault.knowledge.service.SearchEnhanceService;
 import com.mindvault.model.service.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
+import com.mindvault.agent.config.AgentProperties;
+import com.mindvault.agent.config.SearchToolProperties;
 import com.mindvault.systemconfig.service.SystemConfigService;
 import com.mindvault.tokenusage.service.TokenUsageService;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,13 +46,15 @@ class AgentServiceIntegrationTest {
     @Mock private KnowledgeService knowledgeService;
     @Mock private SearchEnhanceService searchEnhanceService;
     @Mock private TokenUsageService tokenUsageService;
+    @Mock private AgentProperties agentProperties;
+    @Mock private SearchToolProperties searchToolProperties;
 
     private SearchKnowledgeTool searchTool;
     private AddKnowledgeTool addTool;
 
     @BeforeEach
     void setUp() {
-        searchTool = new SearchKnowledgeTool(knowledgeService, searchEnhanceService, config);
+        searchTool = new SearchKnowledgeTool(knowledgeService, searchEnhanceService, searchToolProperties);
         addTool = new AddKnowledgeTool(knowledgeService);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));
@@ -58,11 +62,12 @@ class AgentServiceIntegrationTest {
         lenient().when(config.getString(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getPrompt(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
         lenient().when(metricsService.startLlmCall()).thenReturn(null);
+        lenient().when(agentProperties.getErrorMessage()).thenReturn("抱歉，处理您的消息时遇到了问题，请稍后重试。");
     }
 
     private AgentServiceImpl createService() {
         AgentServiceImpl s = new AgentServiceImpl(modelConfigService, aiModelFactory, searchTool, addTool,
-                metricsService, config, tokenUsageService);
+                metricsService, config, agentProperties, tokenUsageService);
         s.init();
         return s;
     }

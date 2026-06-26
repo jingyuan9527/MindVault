@@ -8,6 +8,7 @@ import com.mindvault.knowledge.mapper.KnowledgeMapper;
 import com.mindvault.knowledge.service.KnowledgeService;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.service.ModelConfigService;
+import com.mindvault.auto.config.RelationProperties;
 import com.mindvault.systemconfig.service.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,13 +36,15 @@ class RelationServiceTest {
     @Mock private AiService aiService;
     @Mock private AutoProcessLogMapper logMapper;
     @Mock private SystemConfigService config;
+    private RelationProperties relationProperties;
 
     private RelationServiceImpl service;
 
     @BeforeEach
     void setUp() {
+        relationProperties = new RelationProperties();
         service = new RelationServiceImpl(knowledgeMapper, relationMapper, knowledgeService,
-                modelConfigService, aiService, logMapper, config);
+                modelConfigService, aiService, logMapper, config, relationProperties);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));

@@ -3,9 +3,9 @@ package com.mindvault.relation;
 import com.mindvault.auto.mapper.AutoProcessLogMapper;
 import com.mindvault.auto.r3.AggregationService;
 import com.mindvault.auto.r3.AggregationServiceImpl;
+import com.mindvault.auto.config.AutoThresholdProperties;
 import com.mindvault.knowledge.mapper.KnowledgeMapper;
 import com.mindvault.knowledge.service.KnowledgeService;
-import com.mindvault.systemconfig.service.SystemConfigService;
 import com.mindvault.knowledge.entity.Knowledge;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,19 +25,14 @@ class AggregationServiceTest {
     @Mock private KnowledgeMapper knowledgeMapper;
     @Mock private KnowledgeService knowledgeService;
     @Mock private AutoProcessLogMapper logMapper;
-    @Mock private SystemConfigService config;
+    private AutoThresholdProperties autoThresholdProperties;
 
     private AggregationService service;
 
     @BeforeEach
     void setUp() {
-        service = new AggregationServiceImpl(knowledgeMapper, knowledgeService, logMapper, config);
-        lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
-        lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
-        lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));
-        lenient().when(config.getString(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
-        lenient().when(config.getBool(anyString(), anyBoolean())).thenAnswer(i -> i.getArgument(1));
-        lenient().when(config.getPrompt(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
+        autoThresholdProperties = new AutoThresholdProperties();
+        service = new AggregationServiceImpl(knowledgeMapper, knowledgeService, logMapper, autoThresholdProperties);
     }
 
     @Test

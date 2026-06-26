@@ -9,7 +9,7 @@ import com.mindvault.knowledge.dto.ImportPreview.ConflictItem;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.knowledge.mapper.KnowledgeMapper;
 import com.mindvault.operationlog.service.OperationLogService;
-import com.mindvault.systemconfig.service.SystemConfigService;
+import com.mindvault.knowledge.config.ImportExportProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -29,19 +29,19 @@ public class ImportExportServiceImpl implements ImportExportService {
     private static final Logger log = LoggerFactory.getLogger(ImportExportServiceImpl.class);
 
     private final KnowledgeMapper mapper;
-    private final SystemConfigService config;
+    private final ImportExportProperties importExportProperties;
     private final OperationLogService operationLogService;
     private final MetricsService metricsService;
     private final AutoProcessService autoProcessService;
     private final ObjectMapper objectMapper;
 
     public ImportExportServiceImpl(KnowledgeMapper mapper,
-                                   SystemConfigService config,
+                                   ImportExportProperties importExportProperties,
                                    OperationLogService operationLogService,
                                    MetricsService metricsService,
                                    AutoProcessService autoProcessService) {
         this.mapper = mapper;
-        this.config = config;
+        this.importExportProperties = importExportProperties;
         this.operationLogService = operationLogService;
         this.metricsService = metricsService;
         this.autoProcessService = autoProcessService;
@@ -64,7 +64,7 @@ public class ImportExportServiceImpl implements ImportExportService {
                 exportList.add(item);
             }
             Map<String, Object> exportData = new LinkedHashMap<>();
-            exportData.put("version", config.getString("default.export.version", "0.4.0"));
+            exportData.put("version", importExportProperties.getExportVersion());
             exportData.put("exportedAt", LocalDateTime.now().toString());
             exportData.put("count", exportList.size());
             exportData.put("items", exportList);
@@ -91,7 +91,7 @@ public class ImportExportServiceImpl implements ImportExportService {
                 exportList.add(item);
             }
             Map<String, Object> exportData = new LinkedHashMap<>();
-            exportData.put("version", config.getString("default.export.version", "0.4.0"));
+            exportData.put("version", importExportProperties.getExportVersion());
             exportData.put("exportedAt", LocalDateTime.now().toString());
             exportData.put("count", exportList.size());
             exportData.put("items", exportList);
@@ -113,7 +113,7 @@ public class ImportExportServiceImpl implements ImportExportService {
             for (Knowledge k : all) {
                 String displayName = displayTitle(k);
                 String safeName = displayName.replaceAll("[/\\\\:*?\"<>|]", "_").replaceAll("\\s+", "_");
-                int maxFilenameLen = config.getInt("threshold.export.max-filename-length", 80);
+                int maxFilenameLen = importExportProperties.getMaxFilenameLength();
                 if (safeName.length() > maxFilenameLen) safeName = safeName.substring(0, maxFilenameLen);
                 List<String> tagList = new ArrayList<>();
                 String mergedTags = mergeTags(k.getTags(), k.getUserTags());
@@ -131,7 +131,7 @@ public class ImportExportServiceImpl implements ImportExportService {
                         + (k.getSourceUrl() != null ? "\nsource: " + k.getSourceUrl() : "")
                         + (k.getSummary() != null ? "\nsummary: " + k.getSummary() : "")
                         + "\n---\n\n# " + displayName + summarySection + tagsSection + sourceSection + "\n\n" + k.getContent() + dateSection + "\n";
-                String untaggedFolder = config.getString("default.export.markdown-untagged-folder", "未分类");
+                String untaggedFolder = importExportProperties.getMarkdownUntaggedFolder();
                 String folder = tagList.isEmpty() ? untaggedFolder : sanitizeFolderName(tagList.get(0));
                 zos.putNextEntry(new ZipEntry(folder + "/" + safeName + ".md"));
                 zos.write(md.getBytes(java.nio.charset.StandardCharsets.UTF_8));
@@ -150,7 +150,7 @@ public class ImportExportServiceImpl implements ImportExportService {
         try {
             List<Knowledge> all = mapper.selectList(null);
             StringBuilder sb = new StringBuilder();
-            sb.append(config.getString("default.export.csv-header", "标题,内容,类型,摘要,标签,来源,创建时间")).append("\n");
+            sb.append(importExportProperties.getCsvHeader()).append("\n");
             DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
             for (Knowledge k : all) {
                 String tags = "";
@@ -184,7 +184,7 @@ public class ImportExportServiceImpl implements ImportExportService {
             List<ConflictItem> conflicts = new ArrayList<>();
             int conflictCount = 0;
             for (int i = 0; i < items.size(); i++) {
-                String title = (String) items.get(i).getOrDefault("title", config.getString("default.knowledge.import-default-title", "未命名"));
+                String title = (String) items.get(i).getOrDefault("title", importExportProperties.getImportDefaultTitle());
                 List<Knowledge> existing = mapper.findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(title, "");
                 if (!existing.isEmpty()) { conflicts.add(new ConflictItem(i, title, existing.get(0).getTitle())); conflictCount++; }
             }
@@ -208,7 +208,7 @@ public class ImportExportServiceImpl implements ImportExportService {
             if (itemsObj == null) return 0;
             List<Map<String, Object>> items = extractItems(itemsObj);
             int imported = 0;
-            String defaultTitle = config.getString("default.knowledge.import-default-title", "未命名");
+            String defaultTitle = importExportProperties.getImportDefaultTitle();
             for (Map<String, Object> item : items) {
                 String title = (String) item.getOrDefault("title", defaultTitle);
                 if ("skip".equals(conflictMode)) {

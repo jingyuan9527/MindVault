@@ -8,6 +8,7 @@ import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.model.service.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.systemconfig.service.SystemConfigService;
+import com.mindvault.writing.config.WritingProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,13 +28,15 @@ class WritingServiceTest {
     @Mock private ModelConfigService modelConfigService;
     @Mock private AiService aiService;
     @Mock private KnowledgeMapper knowledgeMapper;
+    private WritingProperties writingProperties;
     @Mock private SystemConfigService config;
 
     private WritingService service;
 
     @BeforeEach
     void setUp() {
-        service = new WritingServiceImpl(modelConfigService, aiService, knowledgeMapper, config);
+        writingProperties = new WritingProperties();
+        service = new WritingServiceImpl(modelConfigService, aiService, knowledgeMapper, writingProperties, config);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));

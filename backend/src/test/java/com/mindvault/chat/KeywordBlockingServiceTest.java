@@ -1,51 +1,40 @@
 package com.mindvault.chat;
 
+import com.mindvault.chat.config.ChatProperties;
 import com.mindvault.chat.service.KeywordBlockingService;
 import com.mindvault.chat.service.KeywordBlockingServiceImpl;
-import com.mindvault.systemconfig.service.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
 class KeywordBlockingServiceTest {
 
-    @Mock
-    private SystemConfigService config;
+    private ChatProperties chatProperties;
 
     private KeywordBlockingService service;
 
     @BeforeEach
     void setUp() {
-        lenient().when(config.getString(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
-        lenient().when(config.getBool(anyString(), anyBoolean())).thenAnswer(i -> i.getArgument(1));
-        service = new KeywordBlockingServiceImpl(config);
+        chatProperties = new ChatProperties();
+        service = new KeywordBlockingServiceImpl(chatProperties);
     }
 
     @Test
     void emptyBlocklist_shouldNeverBlock() {
-        when(config.getString("chat.keyword.blocklist", "")).thenReturn("");
+        chatProperties.getKeyword().setBlocklist("");
         assertFalse(service.isBlocked("anything at all"));
     }
 
     @Test
     void exactKeyword_shouldBlock() {
-        when(config.getString("chat.keyword.blocklist", "")).thenReturn("secret");
-        when(config.getBool("chat.keyword.case-sensitive", false)).thenReturn(false);
+        chatProperties.getKeyword().setBlocklist("secret");
         assertTrue(service.isBlocked("this contains secret info"));
         assertFalse(service.isBlocked("this is safe"));
     }
 
     @Test
     void wildcard_shouldMatchNonWhitespace() {
-        when(config.getString("chat.keyword.blocklist", "")).thenReturn("pass*");
-        when(config.getBool("chat.keyword.case-sensitive", false)).thenReturn(false);
+        chatProperties.getKeyword().setBlocklist("pass*");
         assertTrue(service.isBlocked("my password is 123"));
         assertTrue(service.isBlocked("passcode"));
         assertTrue(service.isBlocked("my pass is 123"), "* matches zero non-whitespace chars");
@@ -53,8 +42,7 @@ class KeywordBlockingServiceTest {
 
     @Test
     void caseInsensitive_shouldMatchRegardlessOfCase() {
-        when(config.getString("chat.keyword.blocklist", "")).thenReturn("FORBIDDEN");
-        when(config.getBool("chat.keyword.case-sensitive", false)).thenReturn(false);
+        chatProperties.getKeyword().setBlocklist("FORBIDDEN");
         assertTrue(service.isBlocked("this is forbidden"));
         assertTrue(service.isBlocked("this is Forbidden"));
         assertTrue(service.isBlocked("this is FORBIDDEN"));
@@ -62,16 +50,15 @@ class KeywordBlockingServiceTest {
 
     @Test
     void caseSensitive_shouldMatchExactCase() {
-        when(config.getString("chat.keyword.blocklist", "")).thenReturn("Secret");
-        when(config.getBool("chat.keyword.case-sensitive", false)).thenReturn(true);
+        chatProperties.getKeyword().setBlocklist("Secret");
+        chatProperties.getKeyword().setCaseSensitive(true);
         assertTrue(service.isBlocked("This is Secret info"));
         assertFalse(service.isBlocked("this is secret info"));
     }
 
     @Test
     void commaSeparatedKeywords_shouldBlockAny() {
-        when(config.getString("chat.keyword.blocklist", "")).thenReturn("bad, evil, naughty");
-        when(config.getBool("chat.keyword.case-sensitive", false)).thenReturn(false);
+        chatProperties.getKeyword().setBlocklist("bad, evil, naughty");
         assertTrue(service.isBlocked("this is bad"));
         assertTrue(service.isBlocked("evil plan"));
         assertFalse(service.isBlocked("good behavior"));
@@ -86,7 +73,7 @@ class KeywordBlockingServiceTest {
 
     @Test
     void getBlockMessage_shouldReturnConfiguredMessage() {
-        when(config.getString("chat.keyword.block-message", "消息包含受限内容，已拦截")).thenReturn("custom block");
+        chatProperties.getKeyword().setBlockMessage("custom block");
         assertEquals("custom block", service.getBlockMessage());
     }
 
@@ -97,8 +84,7 @@ class KeywordBlockingServiceTest {
 
     @Test
     void cache_shouldNotRefreshWithin30Seconds() throws Exception {
-        when(config.getString("chat.keyword.blocklist", "")).thenReturn("first");
-        when(config.getBool("chat.keyword.case-sensitive", false)).thenReturn(false);
+        chatProperties.getKeyword().setBlocklist("first");
         assertTrue(service.isBlocked("first hit"));
 
         String cached = new String("second");

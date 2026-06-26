@@ -5,7 +5,7 @@ import com.mindvault.knowledge.service.KnowledgeService;
 import com.mindvault.operationlog.service.OperationLogService;
 import com.mindvault.review.entity.ReviewSchedule;
 import com.mindvault.review.mapper.ReviewScheduleMapper;
-import com.mindvault.systemconfig.service.SystemConfigService;
+import com.mindvault.review.config.ReviewProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
@@ -25,16 +25,16 @@ public class ReviewServiceImpl implements ReviewService {
     private final ReviewScheduleMapper mapper;
     private final KnowledgeService knowledgeService;
     private final OperationLogService operationLogService;
-    private final SystemConfigService config;
+    private final ReviewProperties reviewProperties;
 
     public ReviewServiceImpl(ReviewScheduleMapper mapper,
                              @Lazy KnowledgeService knowledgeService,
                              OperationLogService operationLogService,
-                             SystemConfigService config) {
+                             ReviewProperties reviewProperties) {
         this.mapper = mapper;
         this.knowledgeService = knowledgeService;
         this.operationLogService = operationLogService;
-        this.config = config;
+        this.reviewProperties = reviewProperties;
     }
 
     @Transactional
@@ -47,7 +47,7 @@ public class ReviewServiceImpl implements ReviewService {
         ReviewSchedule schedule = new ReviewSchedule();
         LocalDateTime now = LocalDateTime.now();
         schedule.setKnowledgeId(knowledgeId);
-        schedule.setNextReviewAt(now.plusDays(config.getInt("threshold.review.initial-interval-days", 1)));
+        schedule.setNextReviewAt(now.plusDays(reviewProperties.getInitialIntervalDays()));
         schedule.setCreatedAt(now);
         schedule.setUpdatedAt(now);
         mapper.insert(schedule);
@@ -58,8 +58,8 @@ public class ReviewServiceImpl implements ReviewService {
     @Transactional
     @Override
     public ReviewSchedule performReview(Long knowledgeId, int quality) {
-        int qualityMin = config.getInt("threshold.review.quality-min", 0);
-        int qualityMax = config.getInt("threshold.review.quality-max", 5);
+        int qualityMin = reviewProperties.getQualityMin();
+        int qualityMax = reviewProperties.getQualityMax();
         quality = Math.max(qualityMin, Math.min(qualityMax, quality));
         ReviewSchedule schedule = mapper.findByKnowledgeId(knowledgeId)
                 .orElseGet(() -> {
@@ -73,13 +73,13 @@ public class ReviewServiceImpl implements ReviewService {
         int reviewCount = schedule.getReviewCount();
 
         if (quality < 3) {
-            interval = config.getInt("threshold.review.failed-interval-days", 1);
-            easeFactor = easeFactor.subtract(new BigDecimal(String.valueOf(config.getDouble("threshold.review.ease-factor-penalty", 0.20))));
+            interval = reviewProperties.getFailedIntervalDays();
+            easeFactor = easeFactor.subtract(new BigDecimal(String.valueOf(reviewProperties.getEaseFactorPenalty())));
         } else {
             if (reviewCount == 0) {
-                interval = config.getInt("threshold.review.first-success-interval", 1);
+                interval = reviewProperties.getFirstSuccessInterval();
             } else if (reviewCount == 1) {
-                interval = config.getInt("threshold.review.second-success-interval", 6);
+                interval = reviewProperties.getSecondSuccessInterval();
             } else {
                 interval = new BigDecimal(interval)
                         .multiply(easeFactor)
@@ -87,17 +87,17 @@ public class ReviewServiceImpl implements ReviewService {
                         .intValue();
             }
             BigDecimal qualityAdjust = new BigDecimal(quality - 3)
-                    .multiply(new BigDecimal(String.valueOf(config.getDouble("threshold.review.ease-factor-adjustment", 0.10))));
+                    .multiply(new BigDecimal(String.valueOf(reviewProperties.getEaseFactorAdjustment())));
             easeFactor = easeFactor.add(qualityAdjust);
         }
 
-        BigDecimal minEase = new BigDecimal(String.valueOf(config.getDouble("threshold.review.min-ease-factor", 1.30)));
+        BigDecimal minEase = new BigDecimal(String.valueOf(reviewProperties.getMinEaseFactor()));
         if (easeFactor.compareTo(minEase) < 0) {
             easeFactor = minEase;
         }
 
         schedule.setEaseFactor(easeFactor.setScale(2, RoundingMode.HALF_UP));
-        int minInterval = config.getInt("threshold.review.failed-interval-days", 1);
+        int minInterval = reviewProperties.getFailedIntervalDays();
         schedule.setIntervalDays(Math.max(minInterval, interval));
         schedule.setReviewCount(reviewCount + 1);
         schedule.setLastReviewAt(LocalDateTime.now());

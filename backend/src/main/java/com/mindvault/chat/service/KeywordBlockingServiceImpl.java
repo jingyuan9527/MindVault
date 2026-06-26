@@ -1,6 +1,6 @@
 package com.mindvault.chat.service;
 
-import com.mindvault.systemconfig.service.SystemConfigService;
+import com.mindvault.chat.config.ChatProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
 /**
  * 关键字拦截服务。
  * <p>基于系统配置的关键字列表对用户消息进行敏感内容过滤。拦截规则支持通配符（* 匹配多个非空字符，? 匹配单个非空字符），
- * 可配置大小写敏感。关键字列表和提示消息通过 SystemConfigService 动态读取，支持运行期修改。
+ * 可配置大小写敏感。关键字列表和提示消息通过 ChatProperties 读取，支持运行期修改。
  * 使用 30 秒缓存过期策略减少配置查询频率。输出为用户可见的拦截提示消息。</p>
  */
 @Service
@@ -20,13 +20,13 @@ public class KeywordBlockingServiceImpl implements KeywordBlockingService {
 
     private static final Logger log = LoggerFactory.getLogger(KeywordBlockingServiceImpl.class);
 
-    private final SystemConfigService config;
+    private final ChatProperties chatProperties;
 
     private volatile List<Pattern> cachedPatterns = List.of();
     private volatile long lastRefresh = 0;
 
-    public KeywordBlockingServiceImpl(SystemConfigService config) {
-        this.config = config;
+    public KeywordBlockingServiceImpl(ChatProperties chatProperties) {
+        this.chatProperties = chatProperties;
     }
 
     /**
@@ -49,7 +49,7 @@ public class KeywordBlockingServiceImpl implements KeywordBlockingService {
      * @return 拦截提示文本
      */
     public String getBlockMessage() {
-        return config.getString("chat.keyword.block-message", "消息包含受限内容，已拦截");
+        return chatProperties.getKeyword().getBlockMessage();
     }
 
     /**
@@ -61,7 +61,7 @@ public class KeywordBlockingServiceImpl implements KeywordBlockingService {
         if (now - lastRefresh < 30_000) return;
         lastRefresh = now;
 
-        String raw = config.getString("chat.keyword.blocklist", "");
+        String raw = chatProperties.getKeyword().getBlocklist();
         List<Pattern> patterns = new ArrayList<>();
         if (!raw.isBlank()) {
             for (String keyword : raw.split("\\s*[,\n]\\s*")) {
@@ -75,7 +75,7 @@ public class KeywordBlockingServiceImpl implements KeywordBlockingService {
                         .replace(")", "\\)")
                         .replace("[", "\\[")
                         .replace("]", "\\]");
-                boolean caseSensitive = config.getBool("chat.keyword.case-sensitive", false);
+                boolean caseSensitive = chatProperties.getKeyword().isCaseSensitive();
                 int flags = caseSensitive ? 0 : Pattern.CASE_INSENSITIVE;
                 try {
                     patterns.add(Pattern.compile(regex, flags));

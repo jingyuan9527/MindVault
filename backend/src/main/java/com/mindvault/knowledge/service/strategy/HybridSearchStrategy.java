@@ -4,7 +4,7 @@ import com.mindvault.ai.client.AiModelFactory;
 import com.mindvault.knowledge.mapper.KnowledgeMapper;
 import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.model.service.ModelConfigService;
-import com.mindvault.systemconfig.service.SystemConfigService;
+import com.mindvault.knowledge.config.SearchProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -25,16 +25,16 @@ public class HybridSearchStrategy implements SearchStrategy {
     private final KnowledgeMapper mapper;
     private final ModelConfigService modelConfigService;
     private final AiModelFactory aiModelFactory;
-    private final SystemConfigService config;
+    private final SearchProperties searchProperties;
 
     public HybridSearchStrategy(KnowledgeMapper mapper,
                                 ModelConfigService modelConfigService,
                                 AiModelFactory aiModelFactory,
-                                SystemConfigService config) {
+                                SearchProperties searchProperties) {
         this.mapper = mapper;
         this.modelConfigService = modelConfigService;
         this.aiModelFactory = aiModelFactory;
-        this.config = config;
+        this.searchProperties = searchProperties;
     }
 
     @Override
@@ -63,12 +63,12 @@ public class HybridSearchStrategy implements SearchStrategy {
     private List<Map<String, Object>> hybridSearchWithRerank(String query, int limit) {
         String embedding = generateEmbedding(query);
         if (embedding == null) return keywordSearchWithRank(query, limit);
-        int multiplier = config.getInt("threshold.search.fetch-limit-multiplier", 3);
-        int minFetch = config.getInt("threshold.search.min-fetch-limit", 20);
+        int multiplier = searchProperties.getFetchLimitMultiplier();
+        int minFetch = searchProperties.getMinFetchLimit();
         int fetchLimit = Math.max(limit * multiplier, minFetch);
         List<Map<String, Object>> keywordResults = mapper.keywordSearchWithRank(query, fetchLimit);
         List<Map<String, Object>> vectorResults = mapper.findSimilarIds(embedding, fetchLimit);
-        double k = config.getDouble("threshold.search.rrf-k", 60.0);
+        double k = searchProperties.getRrfK();
         Map<Long, Double> rrfScores = new LinkedHashMap<>();
         int rank = 1;
         for (Map<String, Object> row : keywordResults) {

@@ -3,7 +3,7 @@ package com.mindvault.knowledge.service.strategy;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindvault.knowledge.entity.Knowledge;
-import com.mindvault.systemconfig.service.SystemConfigService;
+import com.mindvault.knowledge.config.ImportExportProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -22,11 +22,11 @@ public class MarkdownExportStrategy implements ExportFormatStrategy {
 
     private static final Logger log = LoggerFactory.getLogger(MarkdownExportStrategy.class);
 
-    private final SystemConfigService config;
+    private final ImportExportProperties importExportProperties;
     private final ObjectMapper objectMapper;
 
-    public MarkdownExportStrategy(SystemConfigService config) {
-        this.config = config;
+    public MarkdownExportStrategy(ImportExportProperties importExportProperties) {
+        this.importExportProperties = importExportProperties;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -44,7 +44,7 @@ public class MarkdownExportStrategy implements ExportFormatStrategy {
             for (Knowledge k : items) {
                 String displayName = displayTitle(k);
                 String safeName = displayName.replaceAll("[/\\\\:*?\"<>|]", "_").replaceAll("\\s+", "_");
-                int maxFilenameLen = config.getInt("threshold.export.max-filename-length", 80);
+                int maxFilenameLen = importExportProperties.getMaxFilenameLength();
                 if (safeName.length() > maxFilenameLen) safeName = safeName.substring(0, maxFilenameLen);
                 List<String> tagList = new ArrayList<>();
                 String mergedTags = mergeTags(k.getTags(), k.getUserTags());
@@ -62,7 +62,7 @@ public class MarkdownExportStrategy implements ExportFormatStrategy {
                         + (k.getSourceUrl() != null ? "\nsource: " + k.getSourceUrl() : "")
                         + (k.getSummary() != null ? "\nsummary: " + k.getSummary() : "")
                         + "\n---\n\n# " + displayName + summarySection + tagsSection + sourceSection + "\n\n" + k.getContent() + dateSection + "\n";
-                String untaggedFolder = config.getString("default.export.markdown-untagged-folder", "未分类");
+                String untaggedFolder = importExportProperties.getMarkdownUntaggedFolder();
                 String folder = tagList.isEmpty() ? untaggedFolder : sanitizeFolderName(tagList.get(0));
                 zos.putNextEntry(new ZipEntry(folder + "/" + safeName + ".md"));
                 zos.write(md.getBytes(java.nio.charset.StandardCharsets.UTF_8));

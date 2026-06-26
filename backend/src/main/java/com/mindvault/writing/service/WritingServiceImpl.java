@@ -7,6 +7,7 @@ import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.knowledge.mapper.KnowledgeMapper;
 import com.mindvault.model.service.ModelConfigService;
 import com.mindvault.systemconfig.service.SystemConfigService;
+import com.mindvault.writing.config.WritingProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -37,17 +38,20 @@ public class WritingServiceImpl implements WritingService {
     private final ModelConfigService modelConfigService;
     private final AiService aiService;
     private final KnowledgeMapper knowledgeMapper;
-    private final SystemConfigService config;
+    private final SystemConfigService systemConfigService;
+    private final WritingProperties writingProperties;
     private final ObjectMapper objectMapper;
 
     public WritingServiceImpl(ModelConfigService modelConfigService,
                               AiService aiService,
                               KnowledgeMapper knowledgeMapper,
-                              SystemConfigService config) {
+                              WritingProperties writingProperties,
+                              SystemConfigService systemConfigService) {
         this.modelConfigService = modelConfigService;
         this.aiService = aiService;
         this.knowledgeMapper = knowledgeMapper;
-        this.config = config;
+        this.writingProperties = writingProperties;
+        this.systemConfigService = systemConfigService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -55,13 +59,13 @@ public class WritingServiceImpl implements WritingService {
         try {
             modelConfigService.getPrimaryChatModel();
         } catch (Exception e) {
-            return config.getString("default.writing.no-model-message", "系统未配置可用模型，请先在设置中添加并启用模型。");
+            return writingProperties.getNoModelMessage();
         }
 
         List<Knowledge> related = findRelatedKnowledge(topic, keywords);
         StringBuilder knowledgeContext = new StringBuilder();
         if (!related.isEmpty()) {
-            int contentTruncate = config.getInt("threshold.writing.content-truncate-length", 500);
+            int contentTruncate = writingProperties.getContentTruncateLength();
             knowledgeContext.append("以下是从知识库中检索到的相关参考内容：\n\n");
             for (Knowledge k : related) {
                 knowledgeContext.append("[标题]: ").append(k.getTitle()).append("\n");
@@ -72,25 +76,25 @@ public class WritingServiceImpl implements WritingService {
             }
         }
 
-        String defaultStyle = config.getString("default.writing.style", "写作风格: 清晰、条理、专业");
+        String defaultStyle = writingProperties.getStyle();
         String styleGuide = style != null && !style.isBlank()
                 ? "写作风格: " + style : defaultStyle;
         String kwGuide = keywords != null && !keywords.isBlank()
                 ? "关键词: " + keywords : "";
 
-        double temperature = config.getDouble("threshold.writing.temperature", 0.7);
-        int maxTokens = config.getInt("threshold.writing.max-tokens", 4096);
+        double temperature = writingProperties.getTemperature();
+        int maxTokens = writingProperties.getMaxTokens();
         String knowledgePart = !related.isEmpty() ? knowledgeContext.toString()
                 : "（知识库中没有直接相关的参考内容，请基于你的知识进行创作）\n\n";
-        String prompt = PromptRegistry.WRITING_ARTICLE.resolve(config, styleGuide, kwGuide, topic, knowledgePart);
+        String prompt = PromptRegistry.WRITING_ARTICLE.resolve(systemConfigService, styleGuide, kwGuide, topic, knowledgePart);
 
         String result = aiService.call(prompt, temperature, maxTokens, "WRITING");
-        return result != null ? result : config.getString("default.writing.fallback-message", "文章生成失败，请稍后重试。");
+        return result != null ? result : writingProperties.getFallbackMessage();
     }
 
     private List<Knowledge> findRelatedKnowledge(String topic, String keywords) {
         Set<String> searchTerms = new LinkedHashSet<>();
-        int minTermLen = config.getInt("threshold.writing.min-term-length", 1);
+        int minTermLen = writingProperties.getMinTermLength();
         if (topic != null) {
             Arrays.stream(topic.split("[\\s,，、]+"))
                     .filter(s -> s.length() >= minTermLen)
@@ -114,7 +118,7 @@ public class WritingServiceImpl implements WritingService {
             }
         }
 
-        int maxResults = config.getInt("threshold.writing.max-related-results", 5);
+        int maxResults = writingProperties.getMaxRelatedResults();
         return results.subList(0, Math.min(results.size(), maxResults));
     }
 }

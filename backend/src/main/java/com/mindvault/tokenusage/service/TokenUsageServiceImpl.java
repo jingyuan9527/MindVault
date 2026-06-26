@@ -2,7 +2,7 @@ package com.mindvault.tokenusage.service;
 
 import com.mindvault.common.config.MindVaultProperties;
 import com.mindvault.model.entity.ModelConfig;
-import com.mindvault.systemconfig.service.SystemConfigService;
+import com.mindvault.tokenusage.config.TokenUsageProperties;
 import com.mindvault.tokenusage.entity.TokenUsage;
 import com.mindvault.tokenusage.mapper.TokenUsageMapper;
 import org.slf4j.Logger;
@@ -23,12 +23,12 @@ public class TokenUsageServiceImpl implements TokenUsageService {
 
     private final TokenUsageMapper mapper;
     private final MindVaultProperties properties;
-    private final SystemConfigService config;
+    private final TokenUsageProperties tokenUsageProperties;
 
-    public TokenUsageServiceImpl(TokenUsageMapper mapper, MindVaultProperties properties, SystemConfigService config) {
+    public TokenUsageServiceImpl(TokenUsageMapper mapper, MindVaultProperties properties, TokenUsageProperties tokenUsageProperties) {
         this.mapper = mapper;
         this.properties = properties;
-        this.config = config;
+        this.tokenUsageProperties = tokenUsageProperties;
     }
 
     @Override
@@ -95,7 +95,7 @@ public class TokenUsageServiceImpl implements TokenUsageService {
 
     @Scheduled(cron = "0 30 3 * * ?")
     public void scheduledTokenAggregation() {
-        if (!config.getBool("task.token-usage.enabled", true)) return;
+        if (!tokenUsageProperties.isTaskEnabled()) return;
         log.info("开始执行定时 Token 用量统计...");
         try {
             LocalDate yesterday = LocalDate.now().minusDays(1);
@@ -123,7 +123,7 @@ public class TokenUsageServiceImpl implements TokenUsageService {
         }
         if (prices == null) return BigDecimal.ZERO;
 
-        double divisor = config.getDouble("threshold.tokenusage.calc-divisor", 1000.0);
+        double divisor = tokenUsageProperties.getCalcDivisor();
         BigDecimal promptCost = BigDecimal.valueOf(promptTokens / divisor).multiply(prices[0]);
         BigDecimal completionCost = BigDecimal.valueOf(completionTokens / divisor).multiply(prices[1]);
         return promptCost.add(completionCost).setScale(6, RoundingMode.HALF_UP);

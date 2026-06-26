@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindvault.ai.client.AiModelFactory;
 import com.mindvault.ai.client.AiService;
 import com.mindvault.ai.prompt.PromptRegistry;
+import com.mindvault.knowledge.config.SearchProperties;
 import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.model.service.ModelConfigService;
 import com.mindvault.systemconfig.service.SystemConfigService;
@@ -25,19 +26,22 @@ public class SearchEnhanceServiceImpl implements SearchEnhanceService {
     private final ModelConfigService modelConfigService;
     private final AiService aiService;
     private final AiModelFactory aiModelFactory;
-    private final SystemConfigService config;
+    private final SystemConfigService systemConfigService;
+    private final SearchProperties searchProperties;
     private final ObjectMapper objectMapper;
 
     public SearchEnhanceServiceImpl(KnowledgeService knowledgeService,
                                     ModelConfigService modelConfigService,
                                     AiService aiService,
                                     AiModelFactory aiModelFactory,
-                                    SystemConfigService config) {
+                                    SystemConfigService systemConfigService,
+                                    SearchProperties searchProperties) {
         this.knowledgeService = knowledgeService;
         this.modelConfigService = modelConfigService;
         this.aiService = aiService;
         this.aiModelFactory = aiModelFactory;
-        this.config = config;
+        this.systemConfigService = systemConfigService;
+        this.searchProperties = searchProperties;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -82,9 +86,9 @@ public class SearchEnhanceServiceImpl implements SearchEnhanceService {
             return null;
         }
 
-        String prompt = PromptRegistry.SEARCH_QUERY_REWRITE.resolve(config, query);
-        double temperature = config.getDouble("threshold.search.rewrite-temperature", 0.2);
-        int maxTokens = config.getInt("threshold.search.rewrite-max-tokens", 100);
+        String prompt = PromptRegistry.SEARCH_QUERY_REWRITE.resolve(systemConfigService, query);
+        double temperature = searchProperties.getRewriteTemperature();
+        int maxTokens = searchProperties.getRewriteMaxTokens();
 
         return aiService.call(prompt, temperature, maxTokens);
     }
@@ -96,15 +100,15 @@ public class SearchEnhanceServiceImpl implements SearchEnhanceService {
             return null;
         }
 
-        String prompt = PromptRegistry.SEARCH_HYDE.resolve(config, query);
-        double temperature = config.getDouble("threshold.search.hyde-temperature", 0.3);
-        int maxTokens = config.getInt("threshold.search.hyde-max-tokens", 500);
+        String prompt = PromptRegistry.SEARCH_HYDE.resolve(systemConfigService, query);
+        double temperature = searchProperties.getHydeTemperature();
+        int maxTokens = searchProperties.getHydeMaxTokens();
 
         return aiService.call(prompt, temperature, maxTokens);
     }
 
     private String generateEmbeddingForText(String text, ModelConfig embModel) {
-        int embedTruncate = config.getInt("threshold.search.hyde-embedding-truncate", 8000);
+        int embedTruncate = searchProperties.getHydeEmbeddingTruncate();
         if (text.length() > embedTruncate) text = text.substring(0, embedTruncate);
         try {
             EmbeddingModel springAiModel = aiModelFactory.buildEmbeddingModel(embModel);
@@ -137,18 +141,18 @@ public class SearchEnhanceServiceImpl implements SearchEnhanceService {
             String content = (String) item.getOrDefault("content", "");
             String summary = (String) item.getOrDefault("summary", "");
             String display = summary != null && !summary.isBlank() ? summary : content;
-            int truncateLen = config.getInt("threshold.search.rerank-truncate-length", 300);
+            int truncateLen = searchProperties.getRerankTruncateLength();
             if (display.length() > truncateLen) display = display.substring(0, truncateLen);
             sb.append("--- 结果 ").append(i + 1).append(" ---\n");
             sb.append("标题: ").append(title).append("\n");
             sb.append("内容: ").append(display).append("\n\n");
         }
 
-        String prompt = PromptRegistry.SEARCH_RERANK.resolve(config, query, sb.toString());
+        String prompt = PromptRegistry.SEARCH_RERANK.resolve(systemConfigService, query, sb.toString());
 
         try {
-            double rerankTemp = config.getDouble("threshold.search.rerank-temperature", 0.1);
-            int rerankMaxTokens = config.getInt("threshold.search.rerank-max-tokens", 200);
+            double rerankTemp = searchProperties.getRerankTemperature();
+            int rerankMaxTokens = searchProperties.getRerankMaxTokens();
             String content = aiService.call(prompt, rerankTemp, rerankMaxTokens);
 
             if (content != null) {

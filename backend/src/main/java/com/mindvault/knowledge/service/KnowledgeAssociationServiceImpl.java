@@ -2,7 +2,7 @@ package com.mindvault.knowledge.service;
 
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.knowledge.mapper.KnowledgeMapper;
-import com.mindvault.systemconfig.service.SystemConfigService;
+import com.mindvault.knowledge.config.AssociationProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -18,14 +18,14 @@ public class KnowledgeAssociationServiceImpl implements KnowledgeAssociationServ
 
     private final KnowledgeMapper mapper;
     private final KnowledgeService knowledgeService;
-    private final SystemConfigService config;
+    private final AssociationProperties associationProperties;
 
     public KnowledgeAssociationServiceImpl(KnowledgeMapper mapper,
                                             KnowledgeService knowledgeService,
-                                            SystemConfigService config) {
+                                            AssociationProperties associationProperties) {
         this.mapper = mapper;
         this.knowledgeService = knowledgeService;
-        this.config = config;
+        this.associationProperties = associationProperties;
     }
 
     @Override
@@ -70,13 +70,13 @@ public class KnowledgeAssociationServiceImpl implements KnowledgeAssociationServ
     @Scheduled(cron = "0 0 2 * * ?")
     @Override
     public void scheduledAssociationDiscovery() {
-        if (!config.getBool("task.association.enabled", true)) return;
+        if (!associationProperties.isEnabled()) return;
         log.info("开始执行定时知识关联发现...");
         List<Knowledge> all = mapper.selectList(null);
         int totalWithEmbedding = 0;
         int totalAssociations = 0;
 
-        int topN = config.getInt("threshold.association.top-n", 6);
+        int topN = associationProperties.getTopN();
         for (Knowledge k : all) {
             if (k.getEmbedding() == null || k.getEmbedding().isBlank()) continue;
             totalWithEmbedding++;

@@ -7,7 +7,7 @@ import com.mindvault.auto.mapper.AutoProcessLogMapper;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.knowledge.mapper.KnowledgeMapper;
 import com.mindvault.knowledge.service.KnowledgeService;
-import com.mindvault.systemconfig.service.SystemConfigService;
+import com.mindvault.auto.config.AutoThresholdProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -33,24 +33,24 @@ public class AggregationServiceImpl implements AggregationService {
     private final KnowledgeMapper knowledgeMapper;
     private final KnowledgeService knowledgeService;
     private final AutoProcessLogMapper logMapper;
-    private final SystemConfigService config;
+    private final AutoThresholdProperties autoThresholdProperties;
     private final ObjectMapper objectMapper;
 
     public AggregationServiceImpl(KnowledgeMapper knowledgeMapper,
                                   KnowledgeService knowledgeService,
                                   AutoProcessLogMapper logMapper,
-                                  SystemConfigService config) {
+                                  AutoThresholdProperties autoThresholdProperties) {
         this.knowledgeMapper = knowledgeMapper;
         this.knowledgeService = knowledgeService;
         this.logMapper = logMapper;
-        this.config = config;
+        this.autoThresholdProperties = autoThresholdProperties;
         this.objectMapper = new ObjectMapper();
     }
 
     /** R3 入口：批量完成 RELATION_DONE → COMPLETED，重建标签云 */
     @Override
     public void processRound3() {
-        int batchSize = config.getInt("threshold.aggregation.batch-size", 50);
+        int batchSize = autoThresholdProperties.getAggregationBatchSize();
         List<Knowledge> pending = knowledgeMapper.findByAutoProcessStatus("RELATION_DONE", batchSize);
         if (pending.isEmpty()) return;
         log.info("R3 聚合分析: 待处理 {} 条", pending.size());
@@ -81,7 +81,7 @@ public class AggregationServiceImpl implements AggregationService {
                 countTags(k.getUserTags(), tagCount);
             }
 
-            int topN = config.getInt("threshold.aggregation.tag-cloud-top-n", 50);
+            int topN = autoThresholdProperties.getTagCloudTopN();
             List<Map.Entry<String, Long>> sorted = tagCount.entrySet().stream()
                     .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
                     .limit(topN)

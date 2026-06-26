@@ -3,7 +3,7 @@ package com.mindvault.agent.tool;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindvault.knowledge.service.KnowledgeService;
 import com.mindvault.knowledge.service.SearchEnhanceService;
-import com.mindvault.systemconfig.service.SystemConfigService;
+import com.mindvault.agent.config.SearchToolProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
@@ -29,15 +29,15 @@ public class SearchKnowledgeTool {
 
     private final KnowledgeService knowledgeService;
     private final SearchEnhanceService searchEnhanceService;
-    private final SystemConfigService config;
+    private final SearchToolProperties searchToolProperties;
     private final ObjectMapper objectMapper;
 
     public SearchKnowledgeTool(KnowledgeService knowledgeService,
                                SearchEnhanceService searchEnhanceService,
-                               SystemConfigService config) {
+                               SearchToolProperties searchToolProperties) {
         this.knowledgeService = knowledgeService;
         this.searchEnhanceService = searchEnhanceService;
-        this.config = config;
+        this.searchToolProperties = searchToolProperties;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -45,14 +45,14 @@ public class SearchKnowledgeTool {
     public String searchKnowledge(
             @ToolParam(description = "搜索关键词") String query,
             @ToolParam(description = "最多返回数量", required = false) Integer limit) {
-        int defaultLimit = config.getInt("tool.search-knowledge.default-limit", 3);
-        int maxLimit = config.getInt("tool.search-knowledge.max-limit", 10);
+        int defaultLimit = searchToolProperties.getDefaultLimit();
+        int maxLimit = searchToolProperties.getMaxLimit();
         int n = limit != null ? Math.min(limit, maxLimit) : defaultLimit;
 
         log.info("Agent 调用 search_knowledge: query={}, limit={}", query, n);
 
         try {
-            String method = config.getString("tool.search-knowledge.search-method", "rewrite");
+            String method = searchToolProperties.getSearchMethod();
             List<Map<String, Object>> results;
             results = switch (method) {
                 case "hyde" -> searchEnhanceService.hydeSearch(query, n);

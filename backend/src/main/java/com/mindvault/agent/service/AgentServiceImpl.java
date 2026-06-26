@@ -2,6 +2,7 @@ package com.mindvault.agent.service;
 
 import com.mindvault.ai.client.AiModelFactory;
 import com.mindvault.ai.prompt.PromptRegistry;
+import com.mindvault.agent.config.AgentProperties;
 import com.mindvault.agent.tool.AddKnowledgeTool;
 import com.mindvault.agent.tool.SearchKnowledgeTool;
 import com.mindvault.common.service.MetricsService;
@@ -40,7 +41,8 @@ public class AgentServiceImpl implements AgentService {
     private final ModelConfigService modelConfigService;
     private final AiModelFactory aiModelFactory;
     private final MetricsService metricsService;
-    private final SystemConfigService config;
+    private final SystemConfigService systemConfigService;
+    private final AgentProperties agentProperties;
 
     private final SearchKnowledgeTool searchTool;
     private final AddKnowledgeTool addTool;
@@ -54,14 +56,16 @@ public class AgentServiceImpl implements AgentService {
                             SearchKnowledgeTool searchTool,
                             AddKnowledgeTool addTool,
                             MetricsService metricsService,
-                            SystemConfigService config,
+                            SystemConfigService systemConfigService,
+                            AgentProperties agentProperties,
                             TokenUsageService tokenUsageService) {
         this.modelConfigService = modelConfigService;
         this.aiModelFactory = aiModelFactory;
         this.searchTool = searchTool;
         this.addTool = addTool;
         this.metricsService = metricsService;
-        this.config = config;
+        this.systemConfigService = systemConfigService;
+        this.agentProperties = agentProperties;
         this.tokenUsageService = tokenUsageService;
     }
 
@@ -81,7 +85,7 @@ public class AgentServiceImpl implements AgentService {
             sb.append("- ").append(tc.getToolDefinition().name())
                     .append(": ").append(tc.getToolDefinition().description()).append("\n");
         }
-        systemPrompt = PromptRegistry.AGENT_SYSTEM.resolve(config, sb.toString().strip());
+        systemPrompt = PromptRegistry.AGENT_SYSTEM.resolve(systemConfigService, sb.toString().strip());
     }
 
     /**
@@ -96,7 +100,7 @@ public class AgentServiceImpl implements AgentService {
             ModelConfig model = modelConfigService.getPrimaryChatModel();
             ChatModel chatModel = aiModelFactory.buildChatModel(model);
 
-            double temperature = config.getDouble("threshold.agent.default-temperature", 0.7);
+            double temperature = agentProperties.getDefaultTemperature();
             Timer.Sample sample = metricsService.startLlmCall();
 
             Prompt prompt = new Prompt(
@@ -118,7 +122,7 @@ public class AgentServiceImpl implements AgentService {
             return content;
         } catch (Exception e) {
             log.error("Agent 处理消息失败: {}", e.getMessage(), e);
-            return config.getString("default.agent.error-message", "抱歉，处理您的消息时遇到了问题，请稍后重试。");
+            return agentProperties.getErrorMessage();
         }
     }
 
@@ -133,7 +137,7 @@ public class AgentServiceImpl implements AgentService {
     public void processMessageStream(String userMessage, StreamCallback callback) {
         try {
             ModelConfig model = modelConfigService.getPrimaryChatModel();
-            double temperature = config.getDouble("threshold.agent.default-temperature", 0.7);
+            double temperature = agentProperties.getDefaultTemperature();
             ChatModel chatModel = aiModelFactory.buildChatModel(model, temperature);
 
             Prompt prompt = new Prompt(
@@ -157,7 +161,7 @@ public class AgentServiceImpl implements AgentService {
             );
         } catch (Exception e) {
             log.error("Agent 流式处理失败: {}", e.getMessage(), e);
-            callback.onError(config.getString("default.agent.error-message", "抱歉，处理您的消息时遇到了问题，请稍后重试。"));
+            callback.onError(agentProperties.getErrorMessage());
         }
     }
 

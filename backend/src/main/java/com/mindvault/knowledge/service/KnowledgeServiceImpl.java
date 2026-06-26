@@ -8,7 +8,7 @@ import com.mindvault.knowledge.mapper.KnowledgeMapper;
 import com.mindvault.knowledge.service.strategy.SearchStrategy;
 import com.mindvault.operationlog.service.OperationLogService;
 import com.mindvault.review.service.ReviewService;
-import com.mindvault.systemconfig.service.SystemConfigService;
+import com.mindvault.knowledge.config.KnowledgeProperties;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +29,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     private final AutoProcessOrchestrator autoProcessOrchestrator;
     private final ReviewService reviewService;
     private final KnowledgeRelationMapper relationMapper;
-    private final SystemConfigService config;
+    private final KnowledgeProperties knowledgeProperties;
     private final List<SearchStrategy> searchStrategies;
 
     public KnowledgeServiceImpl(KnowledgeMapper mapper,
@@ -37,14 +37,14 @@ public class KnowledgeServiceImpl implements KnowledgeService {
                                 AutoProcessOrchestrator autoProcessOrchestrator,
                                 ReviewService reviewService,
                                 KnowledgeRelationMapper relationMapper,
-                                SystemConfigService config,
-                                List<SearchStrategy> searchStrategies) {
+KnowledgeProperties knowledgeProperties,
+        List<SearchStrategy> searchStrategies) {
         this.mapper = mapper;
         this.operationLogService = operationLogService;
         this.autoProcessOrchestrator = autoProcessOrchestrator;
         this.reviewService = reviewService;
         this.relationMapper = relationMapper;
-        this.config = config;
+        this.knowledgeProperties = knowledgeProperties;
         this.searchStrategies = searchStrategies;
     }
 
@@ -54,7 +54,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         LocalDateTime now = LocalDateTime.now();
         knowledge.setCreatedAt(now);
         knowledge.setUpdatedAt(now);
-        knowledge.setAutoProcessStatus(config.getString("default.knowledge.auto-process-status", "PENDING"));
+        knowledge.setAutoProcessStatus(knowledgeProperties.getAutoProcessStatus());
         mapper.insert(knowledge);
         log.info("添加知识: id={}, userTitle={}, type={}", knowledge.getId(), knowledge.getTitle(), knowledge.getContentType());
         operationLogService.log("KNOWLEDGE", "ADD", knowledge.getId(),
@@ -248,9 +248,9 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     @Override
     public void reprocessKnowledge(Long id) {
         Knowledge k = getById(id);
-        k.setAutoProcessStatus(config.getString("default.knowledge.auto-process-status", "PENDING"));
+        k.setAutoProcessStatus(knowledgeProperties.getAutoProcessStatus());
         k.setAiTitle(null);
-        k.setTags(config.getString("default.knowledge.tags-empty-json", "[]"));
+        k.setTags(knowledgeProperties.getTagsEmptyJson());
         k.setSummary(null);
         mapper.updateById(k);
         autoProcessOrchestrator.processAsync(k.getId(), k.getTitle(), k.getContent());

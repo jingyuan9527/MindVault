@@ -7,6 +7,7 @@ import com.mindvault.ai.prompt.PromptRegistry;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.knowledge.mapper.KnowledgeMapper;
 import com.mindvault.operationlog.service.OperationLogService;
+import com.mindvault.auto.config.AutoThresholdProperties;
 import com.mindvault.systemconfig.service.SystemConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,17 +24,20 @@ public class TagServiceImpl implements TagService {
     private static final Logger log = LoggerFactory.getLogger(TagServiceImpl.class);
 
     private final KnowledgeMapper mapper;
-    private final SystemConfigService config;
+    private final AutoThresholdProperties autoThresholdProperties;
+    private final SystemConfigService systemConfigService;
     private final AiService aiService;
     private final OperationLogService operationLogService;
     private final ObjectMapper objectMapper;
 
     public TagServiceImpl(KnowledgeMapper mapper,
-                          SystemConfigService config,
+                          AutoThresholdProperties autoThresholdProperties,
+                          SystemConfigService systemConfigService,
                           AiService aiService,
                           OperationLogService operationLogService) {
         this.mapper = mapper;
-        this.config = config;
+        this.autoThresholdProperties = autoThresholdProperties;
+        this.systemConfigService = systemConfigService;
         this.aiService = aiService;
         this.operationLogService = operationLogService;
         this.objectMapper = new ObjectMapper();
@@ -64,16 +68,16 @@ public class TagServiceImpl implements TagService {
     @Override
     public int batchAiTag(List<Long> ids) {
         int success = 0;
-        int truncateLen = config.getInt("threshold.auto.truncate-length", 2000);
-        double temperature = config.getDouble("threshold.auto.llm-temperature", 0.3);
-        int maxTokens = config.getInt("threshold.auto.tags-max-tokens", 300);
+        int truncateLen = autoThresholdProperties.getTruncateLength();
+        double temperature = autoThresholdProperties.getLlmTemperature();
+        int maxTokens = autoThresholdProperties.getTagsMaxTokens();
         for (Long id : ids) {
             try {
                 Knowledge k = mapper.selectById(id);
                 if (k == null) continue;
                 String content = k.getContent();
                 if (content == null || content.isBlank()) continue;
-                String prompt = PromptRegistry.AUTO_TAGS.resolve(config, displayTitle(k), AiService.truncate(content, truncateLen));
+                String prompt = PromptRegistry.AUTO_TAGS.resolve(systemConfigService, displayTitle(k), AiService.truncate(content, truncateLen));
                 String result = aiService.call(prompt, temperature, maxTokens);
                 if (result == null) continue;
                 String cleaned = result.trim();

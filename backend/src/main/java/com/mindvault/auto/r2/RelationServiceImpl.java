@@ -11,6 +11,7 @@ import com.mindvault.auto.mapper.KnowledgeRelationMapper;
 import com.mindvault.knowledge.entity.Knowledge;
 import com.mindvault.knowledge.mapper.KnowledgeMapper;
 import com.mindvault.knowledge.service.KnowledgeService;
+import com.mindvault.auto.config.RelationProperties;
 import com.mindvault.model.service.ModelConfigService;
 import com.mindvault.systemconfig.service.SystemConfigService;
 import org.slf4j.Logger;
@@ -50,7 +51,8 @@ public class RelationServiceImpl implements RelationService {
     private final ModelConfigService modelConfigService;
     private final AiService aiService;
     private final AutoProcessLogMapper logMapper;
-    private final SystemConfigService config;
+    private final SystemConfigService systemConfigService;
+    private final RelationProperties relationProperties;
     private final ObjectMapper objectMapper;
 
     public RelationServiceImpl(KnowledgeMapper knowledgeMapper,
@@ -59,21 +61,23 @@ public class RelationServiceImpl implements RelationService {
                                ModelConfigService modelConfigService,
                                AiService aiService,
                                AutoProcessLogMapper logMapper,
-                               SystemConfigService config) {
+                               SystemConfigService systemConfigService,
+                               RelationProperties relationProperties) {
         this.knowledgeMapper = knowledgeMapper;
         this.relationMapper = relationMapper;
         this.knowledgeService = knowledgeService;
         this.modelConfigService = modelConfigService;
         this.aiService = aiService;
         this.logMapper = logMapper;
-        this.config = config;
+        this.systemConfigService = systemConfigService;
+        this.relationProperties = relationProperties;
         this.objectMapper = new ObjectMapper();
     }
 
     /** R2 入口：分批处理 TITLE_TAG_DONE 状态的知识，发现关联后更新状态为 RELATION_DONE */
     @Override
     public void processRound2() {
-        int batchSize = config.getInt("threshold.relation.batch-size", 20);
+        int batchSize = relationProperties.getBatchSize();
         List<Knowledge> pending = knowledgeMapper.findByAutoProcessStatus("TITLE_TAG_DONE", batchSize);
         if (pending.isEmpty()) return;
         log.info("R2 关联发现: 待处理 {} 条", pending.size());
@@ -102,7 +106,7 @@ public class RelationServiceImpl implements RelationService {
         String userTitle = k.getTitle();
         String content = k.getContent();
 
-        int candidateLimit = config.getInt("threshold.relation.candidate-limit", 50);
+        int candidateLimit = relationProperties.getCandidateLimit();
         List<Knowledge> candidates = knowledgeMapper.findByAutoProcessStatus("COMPLETED", candidateLimit);
         if (candidates.isEmpty()) return;
 
@@ -110,8 +114,8 @@ public class RelationServiceImpl implements RelationService {
 
         // 1. Semantic similarity (VECTOR)
         if (k.getEmbedding() != null && !k.getEmbedding().isBlank()) {
-            int vectorTopN = config.getInt("threshold.relation.vector-top-n", 10);
-            double simMin = config.getDouble("threshold.relation.similarity-min", 0.5);
+            int vectorTopN = relationProperties.getVectorTopN();
+            double simMin = relationProperties.getSimilarityMin();
             List<Map<String, Object>> similar = knowledgeMapper.findSimilarIds(k.getEmbedding(), vectorTopN);
             for (Map<String, Object> row : similar) {
                 Long relatedId = ((Number) row.get("id")).longValue();
@@ -130,8 +134,8 @@ public class RelationServiceImpl implements RelationService {
         allTags.addAll(userTagSet);
 
         if (!allTags.isEmpty()) {
-            double scorePerTag = config.getDouble("threshold.relation.score-per-tag", 0.25);
-            double tagScoreMax = config.getDouble("threshold.relation.tag-score-max", 1.0);
+            double scorePerTag = relationProperties.getScorePerTag();
+            double tagScoreMax = relationProperties.getTagScoreMax();
             for (Knowledge candidate : all) {
                 if (candidate.getId().equals(k.getId())) continue;
                 Set<String> candidateAiTags = parseTags(candidate.getTags());
@@ -157,7 +161,7 @@ public class RelationServiceImpl implements RelationService {
         }
 
         try {
-            int llmCandidateLimit = config.getInt("threshold.relation.llm-candidate-limit", 10);
+            int llmCandidateLimit = relationProperties.getLlmCandidateLimit();
             List<Map<String, Object>> candidateSummaries = all.stream()
                     .filter(c -> !c.getId().equals(k.getId()))
                     .limit(llmCandidateLimit)
@@ -172,12 +176,12 @@ public class RelationServiceImpl implements RelationService {
 
             if (candidateSummaries.isEmpty()) return;
 
-            int contentTruncate = config.getInt("threshold.relation.content-truncate-length", 1500);
-            double llmTemp = config.getDouble("threshold.relation.llm-temperature", 0.3);
-            int llmMaxTokens = config.getInt("threshold.relation.llm-max-tokens", 500);
-            double llmDefaultScore = config.getDouble("threshold.relation.llm-default-score", 0.75);
+            int contentTruncate = relationProperties.getContentTruncateLength();
+            double llmTemp = relationProperties.getLlmTemperature();
+            int llmMaxTokens = relationProperties.getLlmMaxTokens();
+            double llmDefaultScore = relationProperties.getLlmDefaultScore();
 
-            String prompt = PromptRegistry.RELATION_LLM.resolve(config, userTitle,
+            String prompt = PromptRegistry.RELATION_LLM.resolve(systemConfigService, userTitle,
                     AiService.truncate(content, contentTruncate),
                     objectMapper.writeValueAsString(candidateSummaries));
 

@@ -3,7 +3,7 @@ package com.mindvault.knowledge.service.strategy;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindvault.knowledge.entity.Knowledge;
-import com.mindvault.systemconfig.service.SystemConfigService;
+import com.mindvault.knowledge.config.ImportExportProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -19,11 +19,11 @@ public class CsvExportStrategy implements ExportFormatStrategy {
 
     private static final Logger log = LoggerFactory.getLogger(CsvExportStrategy.class);
 
-    private final SystemConfigService config;
+    private final ImportExportProperties importExportProperties;
     private final ObjectMapper objectMapper;
 
-    public CsvExportStrategy(SystemConfigService config) {
-        this.config = config;
+    public CsvExportStrategy(ImportExportProperties importExportProperties) {
+        this.importExportProperties = importExportProperties;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -36,7 +36,7 @@ public class CsvExportStrategy implements ExportFormatStrategy {
     public byte[] export(List<Knowledge> items) {
         try {
             StringBuilder sb = new StringBuilder();
-            sb.append(config.getString("default.export.csv-header", "标题,内容,类型,摘要,标签,来源,创建时间")).append("\n");
+            sb.append(importExportProperties.getCsvHeader()).append("\n");
             DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
             for (Knowledge k : items) {
                 String tags = "";

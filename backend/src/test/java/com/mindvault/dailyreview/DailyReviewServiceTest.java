@@ -1,6 +1,7 @@
 package com.mindvault.dailyreview;
 
 import com.mindvault.ai.client.AiService;
+import com.mindvault.dailyreview.config.DailyReviewProperties;
 import com.mindvault.dailyreview.entity.DailyReview;
 import com.mindvault.dailyreview.mapper.DailyReviewMapper;
 import com.mindvault.dailyreview.service.DailyReviewService;
@@ -33,6 +34,7 @@ class DailyReviewServiceTest {
     @Mock private AiService aiService;
     @Mock private KnowledgeMapper knowledgeMapper;
     @Mock private DailyReviewMapper mapper;
+    private DailyReviewProperties dailyReviewProperties;
     @Mock private SystemConfigService config;
 
     private DailyReviewService service;
@@ -41,7 +43,8 @@ class DailyReviewServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new DailyReviewServiceImpl(modelConfigService, aiService, knowledgeMapper, mapper, config);
+        dailyReviewProperties = new DailyReviewProperties();
+        service = new DailyReviewServiceImpl(modelConfigService, aiService, knowledgeMapper, mapper, config, dailyReviewProperties);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));

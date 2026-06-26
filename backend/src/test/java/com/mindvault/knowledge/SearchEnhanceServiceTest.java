@@ -6,6 +6,7 @@ import com.mindvault.knowledge.service.SearchEnhanceService;
 import com.mindvault.knowledge.service.SearchEnhanceServiceImpl;
 import com.mindvault.ai.client.AiService;
 import com.mindvault.model.service.ModelConfigService;
+import com.mindvault.knowledge.config.SearchProperties;
 import com.mindvault.systemconfig.service.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,12 +29,13 @@ class SearchEnhanceServiceTest {
     @Mock private AiService aiService;
     @Mock private AiModelFactory aiModelFactory;
     @Mock private SystemConfigService config;
+    @Mock private SearchProperties searchProperties;
 
     private SearchEnhanceService service;
 
     @BeforeEach
     void setUp() {
-        service = new SearchEnhanceServiceImpl(knowledgeService, modelConfigService, aiService, aiModelFactory, config);
+        service = new SearchEnhanceServiceImpl(knowledgeService, modelConfigService, aiService, aiModelFactory, config, searchProperties);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getString(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));

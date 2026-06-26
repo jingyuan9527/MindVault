@@ -47,6 +47,133 @@ mindvault:
   jsoup:
     timeout-ms: 15000
 
+  # AI 自动处理流水线调度配置（R2/R3）
+  # 频率变更需重启生效
+  auto-process:
+    round2:
+      enabled: true
+      fixed-delay-ms: 300000
+    round3:
+      enabled: true
+      fixed-delay-ms: 1800000
+
+  # AI 自动处理流水线阈值参数（R1/R2/R3）
+  auto-threshold:
+    truncate-length: 2000
+    llm-temperature: 0.3
+    title-max-tokens: 100
+    summary-max-tokens: 300
+    tags-max-tokens: 300
+    embedding-truncate-length: 8000
+    aggregation-batch-size: 50
+    tag-cloud-top-n: 50
+
+  # 知识关联发现（R2）阈值参数
+  relation:
+    batch-size: 20
+    candidate-limit: 50
+    vector-top-n: 10
+    similarity-min: 0.5
+    score-per-tag: 0.25
+    tag-score-max: 1.0
+    llm-candidate-limit: 10
+    content-truncate-length: 1500
+    llm-temperature: 0.3
+    llm-max-tokens: 500
+    llm-default-score: 0.75
+
+  # SM-2 间隔复习参数
+  review:
+    initial-interval-days: 1
+    quality-min: 0
+    quality-max: 5
+    failed-interval-days: 1
+    ease-factor-penalty: 0.20
+    first-success-interval: 1
+    second-success-interval: 6
+    ease-factor-adjustment: 0.10
+    min-ease-factor: 1.30
+
+  # 闪卡 AI 生成参数
+  flashcard:
+    truncate-length: 3000
+    temperature: 0.3
+    max-tokens: 1000
+
+  # 每日回顾参数
+  daily-review:
+    task-enabled: true
+    empty-summary: "当日无新增知识。"
+    fallback-summary: "当日知识较多，自动摘要生成失败。"
+    temperature: 0.3
+    max-tokens: 1500
+
+  # AI 写作助手参数
+  writing:
+    no-model-message: "系统未配置可用模型，请先在设置中添加并启用模型。"
+    content-truncate-length: 500
+    style: "写作风格: 清晰、条理、专业"
+    temperature: 0.7
+    max-tokens: 4096
+    fallback-message: "文章生成失败，请稍后重试。"
+    min-term-length: 1
+    max-related-results: 5
+
+  # Agent 参数
+  agent:
+    default-temperature: 0.7
+    error-message: "抱歉，处理您的消息时遇到了问题，请稍后重试。"
+
+  # Agent 搜索工具参数
+  search-tool:
+    default-limit: 3
+    max-limit: 10
+    search-method: "rewrite"
+
+  # 聊天敏感词过滤参数
+  chat:
+    keyword:
+      block-message: "消息包含受限内容，已拦截"
+      blocklist: ""
+      case-sensitive: false
+
+  # Token 用量追踪参数
+  token-usage:
+    task-enabled: true
+    calc-divisor: 1000.0
+
+  # 知识关联（实时查询）参数
+  association:
+    enabled: true
+    top-n: 6
+
+  # 搜索增强参数
+  search:
+    rewrite-temperature: 0.2
+    rewrite-max-tokens: 100
+    hyde-temperature: 0.3
+    hyde-max-tokens: 500
+    hyde-embedding-truncate: 8000
+    rerank-truncate-length: 300
+    rerank-temperature: 0.1
+    rerank-max-tokens: 200
+    fetch-limit-multiplier: 3
+    min-fetch-limit: 20
+    rrf-k: 60.0
+
+  # 导入导出参数
+  import-export:
+    export-version: "0.4.0"
+    max-filename-length: 80
+    markdown-untagged-folder: "未分类"
+    csv-header: "标题,内容,类型,摘要,标签,来源,创建时间"
+    import-default-title: "未命名"
+
+  # 知识库默认值
+  knowledge:
+    auto-process-status: "PENDING"
+    tags-empty-json: "[]"
+
   # LLM 定价配置（单位：元/千 token，格式：[prompt_price, completion_price]）
   pricing:
     models:
