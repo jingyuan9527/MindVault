@@ -1,78 +1,68 @@
 <template>
-  <div class="flex flex-col h-full sidebar-inner">
-    <!-- Header -->
-    <div class="px-5 py-5 flex items-center justify-between shrink-0" style="border-bottom: 1px solid var(--color-border)">
+  <div class="flex flex-col h-full">
+    <!-- Logo -->
+    <div class="px-4 h-16 flex items-center shrink-0 border-bottom">
       <div>
-        <h1 class="font-display text-xl font-bold sidebar-brand">MindVault</h1>
-        <p class="text-xs mt-0.5" style="color: var(--color-text-secondary)">知忆 · AI增强第二大脑</p>
+        <h1 class="font-semibold text-base">MindVault</h1>
+        <p class="text-xs" style="color: var(--color-text-secondary)">知忆</p>
       </div>
-      <n-button text class="lg:hidden !text-secondary" aria-label="关闭菜单" @click="$emit('close')">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <button v-if="!isDesktop" class="close-btn ml-auto" aria-label="关闭菜单" @click="$emit('close')">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
-      </n-button>
+      </button>
     </div>
 
-    <!-- Navigation -->
-    <n-menu
-      :options="menuOptions"
-      :value="activeKey"
-      :collapsed="false"
-      :collapsed-width="0"
-      root-indent="12"
-      class="sidebar-menu shrink-0"
-      @update:value="handleMenuSelect"
-    />
+    <!-- Navigation groups -->
+    <div class="flex-1 overflow-y-auto py-2">
+      <p class="menu-group-label">📝 笔记</p>
+      <router-link v-for="item in groupNotes" :key="item.key" :to="item.key"
+        class="menu-item" :class="{ active: activeKey === item.key }"
+        @click="onNav">
+        <n-icon size="18"><component :is="item.icon" /></n-icon>
+        <span>{{ item.label }}</span>
+      </router-link>
 
-    <!-- Tag cloud -->
-    <div class="px-4 py-3 shrink-0" style="border-top: 1px solid var(--color-border)">
-      <p class="text-xs font-medium mb-2 px-1" style="color: var(--color-text-secondary)">标签云</p>
-      <div class="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto px-1">
-        <router-link
-v-for="tag in tags" :key="tag.name"
-          :to="{ path: '/', query: { tags: tag.name } }"
-          class="px-2 py-0.5 rounded-full text-xs transition-all duration-150 whitespace-nowrap"
-          :style="{
-            background: 'var(--color-accent-light)',
-            color: 'var(--color-accent)',
-            fontSize: Math.min(0.75 + tag.count * 0.04, 1) + 'rem',
-            backdropFilter: 'blur(8px)'
-          }">
-          {{ tag.name }}
-          <span class="ml-0.5 opacity-60">({{ tag.count }})</span>
-        </router-link>
-        <p v-if="!tags.length" class="text-xs px-1" style="color: var(--color-text-secondary)">暂无标签</p>
-      </div>
+      <div class="menu-divider"></div>
+
+      <p class="menu-group-label">🧠 学习</p>
+      <router-link v-for="item in groupLearning" :key="item.key" :to="item.key"
+        class="menu-item" :class="{ active: activeKey === item.key }"
+        @click="onNav">
+        <n-icon size="18"><component :is="item.icon" /></n-icon>
+        <span class="flex-1">{{ item.label }}</span>
+        <n-badge v-if="item.key === '/review' && dueCount > 0" :value="dueCount" :max="99" size="small" />
+      </router-link>
+
+      <div class="menu-divider"></div>
+
+      <p class="menu-group-label">⚙️ 管理</p>
+      <router-link v-for="item in groupAdmin" :key="item.key" :to="item.key"
+        class="menu-item" :class="{ active: activeKey === item.key }"
+        @click="onNav">
+        <n-icon size="18"><component :is="item.icon" /></n-icon>
+        <span>{{ item.label }}</span>
+      </router-link>
     </div>
 
     <!-- Footer -->
-    <div class="mt-auto px-4 py-3 shrink-0" style="border-top: 1px solid var(--color-border)">
-      <div class="flex items-center justify-center gap-2 mb-2">
-        <button
-v-for="t in THEMES" :key="t.id"
-          class="theme-dot"
-          :class="{ active: themeStore.currentTheme === t.id }"
-          :style="{ '--dot-clr': dotColors[t.id] }"
-          :title="t.label"
-          @click="themeStore.setTheme(t.id)"
-        />
-      </div>
+    <div class="shrink-0 px-4 py-3 border-top">
       <div class="flex items-center justify-between">
         <span class="text-xs" style="color: var(--color-text-secondary)">v0.5.1</span>
         <div class="flex items-center gap-1">
-          <n-button text class="!text-secondary" title="切换亮度" @click="themeStore.toggleDark()">
-            <svg v-if="themeStore.isDark" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <button class="footer-btn" aria-label="主题切换" @click="themeStore.toggleDark()">
+            <svg v-if="themeStore.isDark" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
             </svg>
-            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
             </svg>
-          </n-button>
-          <n-button text class="!text-secondary" title="退出登录" @click="handleLogout">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          </button>
+          <button class="footer-btn" aria-label="退出登录" @click="handleLogout">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-          </n-button>
+          </button>
         </div>
       </div>
     </div>
@@ -80,20 +70,18 @@ v-for="t in THEMES" :key="t.id"
 </template>
 
 <script setup>
-import { ref, computed, h, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NIcon, NBadge } from 'naive-ui'
 import {
-  LibraryOutline, ChatboxOutline, CheckmarkCircleOutline,
-  CardOutline, CreateOutline, AnalyticsOutline,
-  DocumentTextOutline, BarChartOutline, CloudDownloadOutline,
-  DesktopOutline, PeopleOutline, SettingsOutline,
-  CogOutline
+  LibraryOutline, ChatboxOutline,
+  CheckmarkCircleOutline, CardOutline, CreateOutline, AnalyticsOutline,
+  PeopleOutline, DocumentTextOutline, BarChartOutline, CloudDownloadOutline,
+  DesktopOutline, SettingsOutline
 } from '@vicons/ionicons5'
-import { useThemeStore, THEMES } from '@/stores/theme'
+import { useThemeStore } from '@/stores/theme'
 import { useAuthStore } from '@/stores/auth'
 import { reviewApi } from '@/api/review'
-import { knowledgeApi } from '@/api/knowledge'
 
 defineEmits(['close'])
 
@@ -102,56 +90,36 @@ const router = useRouter()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
 const dueCount = ref(0)
-const tags = ref([])
+const isDesktop = ref(true)
 let pollTimer = null
 
-const dotColors = {
-  'amber-earth': '#D4856A',
-  'lavender-calm': '#A855F7',
-  'violet-glass': '#8B5CF6',
-}
+const groupNotes = [
+  { label: '知识库', key: '/', icon: LibraryOutline },
+  { label: '对话', key: '/chat', icon: ChatboxOutline },
+]
 
-function renderIcon(icon) {
-  return () => h(NIcon, null, { default: () => h(icon) })
-}
+const groupLearning = [
+  { label: '复习', key: '/review', icon: CheckmarkCircleOutline },
+  { label: '闪卡', key: '/flashcards', icon: CardOutline },
+  { label: '写作', key: '/writing', icon: CreateOutline },
+  { label: '每日回顾', key: '/daily-review', icon: AnalyticsOutline },
+]
 
-function renderLabel(label, badge) {
-  if (!badge) return label
-  return () => h('div', { class: 'flex items-center justify-between w-full' }, [
-    h('span', label),
-    h(NBadge, { value: badge, size: 'small' })
-  ])
-}
-
-const menuOptions = [
-  { label: '知识库', key: '/', icon: renderIcon(LibraryOutline) },
-  { label: '对话', key: '/chat', icon: renderIcon(ChatboxOutline) },
-  {
-    label: () => h('div', { class: 'flex items-center justify-between w-full gap-2' }, [
-      h('span', '复习'),
-      dueCount.value > 0
-        ? h(NBadge, { value: dueCount.value, size: 'small', 'max': 99 })
-        : null
-    ]),
-    key: '/review',
-    icon: renderIcon(CheckmarkCircleOutline)
-  },
-  { label: '知识卡片', key: '/flashcards', icon: renderIcon(CardOutline) },
-  { label: '写作辅助', key: '/writing', icon: renderIcon(CreateOutline) },
-  { label: '每日复盘', key: '/daily-review', icon: renderIcon(AnalyticsOutline) },
-  { label: '操作日志', key: '/operation-logs', icon: renderIcon(DocumentTextOutline) },
-  { label: '用量统计', key: '/token-usage', icon: renderIcon(BarChartOutline) },
-  { label: '数据备份', key: '/backups', icon: renderIcon(CloudDownloadOutline) },
-  { label: '系统监控', key: '/system', icon: renderIcon(DesktopOutline) },
-  { label: '用户管理', key: '/users', icon: renderIcon(PeopleOutline) },
-  { label: '系统配置', key: '/system-config', icon: renderIcon(CogOutline) },
-  { label: '设置', key: '/settings', icon: renderIcon(SettingsOutline) },
+const groupAdmin = [
+  { label: '用户管理', key: '/users', icon: PeopleOutline },
+  { label: '操作日志', key: '/operation-logs', icon: DocumentTextOutline },
+  { label: 'Token 用量', key: '/token-usage', icon: BarChartOutline },
+  { label: '数据备份', key: '/backups', icon: CloudDownloadOutline },
+  { label: '系统监控', key: '/system', icon: DesktopOutline },
+  { label: '设置', key: '/settings', icon: SettingsOutline },
 ]
 
 const activeKey = computed(() => route.path)
 
-function handleMenuSelect(key) {
-  router.push(key)
+function onNav() {
+  if (!isDesktop.value) {
+    // Will be handled by router-link navigation
+  }
 }
 
 function handleLogout() {
@@ -166,67 +134,65 @@ async function loadDueCount() {
   } catch {}
 }
 
-async function loadTags() {
-  try {
-    const res = await knowledgeApi.getTags()
-    tags.value = res.data.data || []
-  } catch {}
+function checkScreen() {
+  isDesktop.value = window.innerWidth >= 1024
 }
 
 onMounted(() => {
-  if (!authStore.isLoggedIn()) return
-  loadDueCount()
-  loadTags()
-  pollTimer = setInterval(loadDueCount, 60000)
+  checkScreen()
+  window.addEventListener('resize', checkScreen)
+  if (authStore.isLoggedIn()) {
+    loadDueCount()
+    pollTimer = setInterval(loadDueCount, 60000)
+  }
 })
 
 onUnmounted(() => {
+  window.removeEventListener('resize', checkScreen)
   if (pollTimer) clearInterval(pollTimer)
 })
 </script>
 
 <style scoped>
-.sidebar-inner {
-  position: relative;
-  z-index: 1;
+.border-bottom {
+  border-bottom: 1px solid var(--color-border);
+}
+.border-top {
+  border-top: 1px solid var(--color-border);
 }
 
-.sidebar-brand {
-  background: var(--gradient-brand);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.sidebar-menu {
-  --n-item-color: var(--color-text-secondary);
-  --n-item-color-hover: var(--color-accent);
-  --n-item-color-active: var(--color-accent);
-  --n-item-text-color: var(--color-text-secondary);
-  --n-item-text-color-hover: var(--color-accent);
-  --n-item-text-color-active: var(--color-accent);
-  --n-arrow-color: var(--color-text-secondary);
-  --n-item-font-size: 14px;
-}
-
-.theme-dot {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  background: var(--dot-clr);
+.close-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
-  opacity: 0.5;
+  transition: all 0.15s ease;
 }
-.theme-dot:hover {
-  opacity: 0.8;
-  transform: scale(1.15);
+.close-btn:hover {
+  background: var(--color-surface);
 }
-.theme-dot.active {
-  opacity: 1;
-  border-color: var(--dot-clr);
-  box-shadow: 0 0 12px var(--dot-clr);
-  transform: scale(1.1);
+
+.footer-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.footer-btn:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 </style>

@@ -49,7 +49,7 @@ describe('KnowledgeView', () => {
       }
     })
     await new Promise(r => setTimeout(r, 50))
-    expect(wrapper.text()).toContain('知识库')
+    expect(wrapper.text()).toContain('还没有笔记')
   })
 
   it('shows empty state when no notes', async () => {

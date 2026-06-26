@@ -1,665 +1,440 @@
 <template>
-  <div class="flex flex-col h-full">
-    <!-- Search & Filter Bar -->
-    <div class="p-4 md:p-5 shrink-0" style="border-bottom: 1px solid var(--color-border)">
-      <div class="flex items-center justify-between mb-3">
-        <div class="flex items-center gap-3">
-          <div class="knowledge-header-icon">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-            </svg>
-          </div>
-          <h2 class="font-display text-xl">知识库</h2>
-          <div class="flex items-center gap-1 p-0.5 rounded-lg" style="background-color: var(--color-bg)">
-            <span v-for="v in viewModes" :key="v.key" :title="v.label" class="cursor-pointer px-1" @click="viewMode = v.key" v-html="v.icon" />
-          </div>
-        </div>
-        <div class="flex items-center gap-1.5">
-          <n-button type="primary" size="small" @click="openAddForm('text')">
-            <template #icon>
+  <div class="knowledge-view">
+    <!-- ===== TOP INPUT MODULE (always visible) ===== -->
+    <div class="input-area" :class="{ 'is-desktop': isDesktop && isLarge }">
+      <div class="input-card">
+        <!-- Toolbar row -->
+        <div class="input-toolbar">
+          <div class="flex items-center gap-2">
+            <button class="tool-btn" :class="{ active: showExtra }" title="更多选项" @click="showExtra = !showExtra">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01" />
               </svg>
-            </template>
-            <span>新建</span>
-          </n-button>
+            </button>
+          </div>
+          <div class="flex items-center gap-2">
+            <button v-if="isDesktop && isLarge" class="tool-btn" :class="{ active: splitView }" title="分栏预览" @click="splitView = !splitView">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7" />
+              </svg>
+            </button>
+            <button class="tool-btn publish-btn" :loading="submitting" @click="publish">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19V5m0 0l-7 7m7-7l7 7" />
+              </svg>
+              <span class="hidden sm:inline ml-1">发布</span>
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div class="flex items-center gap-2">
-        <n-input v-model:value="keywordInput" placeholder="搜索笔记..." clearable class="flex-1" @clear="onKeywordClear">
-          <template #prefix>
-            <svg class="w-4 h-4" style="color: var(--color-text-secondary)" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-            </svg>
-          </template>
-        </n-input>
-        <n-select v-model:value="sortBy" :options="sortOptions" size="small" style="width: 120px" @update:value="onSortChange" />
-      </div>
+        <!-- Textarea + optional preview split -->
+        <div class="input-body" :class="{ split: splitView }">
+          <textarea
+            ref="inputRef"
+            v-model="newContent"
+            class="input-textarea"
+            :placeholder="isMobile ? '写点什么...' : '写下你的想法...'"
+            @input="autoResize"
+            @keydown="handleInputKeydown"
+          />
+          <div v-if="splitView" class="preview-pane">
+            <div class="preview-content" v-html="renderedPreview"></div>
+          </div>
+        </div>
 
-      <div v-if="selectedTags.length" class="flex flex-wrap gap-2 mt-3">
-        <span v-for="tag in selectedTags" :key="tag" style="background-color: var(--color-sage-light); color: var(--color-sage)" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium">
-          #{{ tag }}
-          <svg class="w-3 h-3 cursor-pointer hover:opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" @click="removeTag(tag)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
-        </span>
-        <span class="text-xs self-center" style="color: var(--color-text-secondary)">共 {{ store.total }} 条结果</span>
-        <span class="text-xs self-center cursor-pointer hover:underline ml-1" style="color: var(--color-text-secondary)" @click="clearAllTags">清除</span>
-      </div>
-      <div class="mt-2">
-        <n-select
-          v-model:value="addTagValue"
-          :options="tagOptions"
-          filterable
-          placeholder="添加标签筛选..."
-          size="small"
-          style="max-width: 260px"
-          clearable
-          @update:value="onAddTag"
-        />
-      </div>
-    </div>
-
-    <!-- Batch actions -->
-    <div v-if="selectedIds.length" class="px-3 md:px-5 py-2 flex items-center gap-2 md:gap-3 shrink-0 flex-wrap" style="background-color: var(--color-sage-light); border-bottom: 1px solid var(--color-border)">
-      <span class="text-xs md:text-sm font-medium" style="color: var(--color-sage)">已选 {{ selectedIds.length }} 项</span>
-      <n-button quaternary size="tiny" type="error" @click="batchDelete">
-        <template #icon>
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-        </template>
-        批量删除
-      </n-button>
-      <n-button quaternary size="tiny" @click="showBatchTag = true">
-        <template #icon>
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
-        </template>
-        打标签
-      </n-button>
-      <n-button quaternary size="tiny" @click="batchAiTag" :loading="aiTagging">
-        <template #icon>
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"/></svg>
-        </template>
-        AI 打标签
-      </n-button>
-      <n-button quaternary size="tiny" @click="batchExport">
-        <template #icon>
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        </template>
-        导出
-      </n-button>
-      <n-button quaternary size="tiny" class="ml-auto" @click="clearSelection">取消选择</n-button>
-    </div>
-
-    <!-- Content Area -->
-    <div class="flex-1 overflow-y-auto">
-      <div v-if="store.isLoading && viewMode === 'card'" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4 p-4 md:p-5">
-        <n-card v-for="i in 6" :key="i" size="small">
-          <n-skeleton text :repeat="4" />
-        </n-card>
-      </div>
-      <div v-else-if="store.isLoading && viewMode === 'list'" class="px-4 md:px-5 py-2 space-y-2">
-        <n-card v-for="i in 8" :key="i" size="small">
-          <div class="flex items-center gap-3">
-            <n-skeleton width="16px" height="16px" round />
-            <div class="flex-1">
-              <n-skeleton text :repeat="2" />
+        <!-- Extra options (expandable) -->
+        <div v-if="showExtra" class="input-extra">
+          <input v-model="newTitle" class="extra-input" placeholder="标题（可选）" />
+          <div class="extra-tags">
+            <input v-model="tagInput" class="extra-input flex-1" placeholder="标签，回车添加" @keydown.enter.prevent="addTag" />
+            <div v-if="newTags.length" class="flex flex-wrap gap-1 mt-2">
+              <span v-for="(tag, i) in newTags" :key="i" class="tag-pill">
+                #{{ tag }}
+                <svg class="w-3 h-3 ml-1 cursor-pointer" fill="none" stroke="currentColor" viewBox="0 0 24 24" @click="newTags.splice(i, 1)">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </span>
             </div>
           </div>
-        </n-card>
+        </div>
+
+        <!-- Bottom toolbar -->
+        <div class="input-bottom-toolbar">
+          <button class="tool-btn-sm" title="插入标签" @click="focusInsert('#')">#</button>
+          <button class="tool-btn-sm" title="插入图片" @click="handleImageUpload">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </button>
+          <button class="tool-btn-sm" title="插入代码块" @click="focusInsert('```\n\n```')">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+            </svg>
+          </button>
+          <button class="tool-btn-sm" title="分割线" @click="focusInsert('\n---\n')">&mdash;</button>
+          <span class="text-xs ml-auto" style="color: var(--color-text-secondary)">{{ newContent.length }} 字</span>
+        </div>
       </div>
-      <div v-else-if="store.isLoading" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-3 p-4 md:p-5">
-        <n-card v-for="i in 8" :key="i" size="small">
-          <n-skeleton text :repeat="3" />
-        </n-card>
+    </div>
+
+    <!-- ===== FILTER BAR ===== -->
+    <div class="filter-bar">
+      <div class="flex items-center gap-2 flex-1">
+        <div class="search-wrapper flex-1 max-w-md">
+          <svg class="w-4 h-4 search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input v-model="keyword" class="search-input" placeholder="搜索笔记..." @input="onSearch" />
+          <button v-if="keyword" class="search-clear" @click="keyword = ''; onSearch()">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <select v-model="sortBy" class="sort-select" @change="onSortChange">
+          <option value="createdAt">最新</option>
+          <option value="updatedAt">最近更新</option>
+          <option value="title">标题</option>
+        </select>
+      </div>
+      <div v-if="selectedFilterTags.length" class="flex flex-wrap gap-1.5 mt-2">
+        <span v-for="tag in selectedFilterTags" :key="tag" class="tag-pill tag-pill-active">
+          #{{ tag }}
+          <svg class="w-3 h-3 ml-1 cursor-pointer" fill="none" stroke="currentColor" viewBox="0 0 24 24" @click="removeFilterTag(tag)">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </span>
+        <span class="text-xs self-center cursor-pointer" style="color: var(--color-text-secondary)" @click="selectedFilterTags = []; fetchData()">清除</span>
+      </div>
+    </div>
+
+    <!-- ===== CONTENT FEED ===== -->
+    <div class="feed" ref="feedRef">
+      <!-- Loading skeleton -->
+      <div v-if="isLoading" class="feed-list">
+        <div v-for="i in 5" :key="i" class="skeleton-card p-4 mb-4">
+          <div class="skeleton h-4 w-24 mb-3"></div>
+          <div class="skeleton h-3 w-full mb-2"></div>
+          <div class="skeleton h-3 w-3/4 mb-2"></div>
+          <div class="skeleton h-3 w-1/2"></div>
+        </div>
       </div>
 
-      <div v-else-if="!store.items.length && !store.isLoading" class="flex flex-col items-center justify-center py-16" style="color: var(--color-text-secondary)">
-        <svg class="w-12 h-12 mb-4 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <!-- Empty state -->
+      <div v-else-if="!items.length" class="empty-state">
+        <svg class="w-12 h-12 mb-3" style="color: var(--color-text-secondary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
         </svg>
-        <p class="text-lg font-display font-medium" style="color: var(--color-text-secondary)">{{ hasActiveFilter ? '没有匹配的笔记' : '还没有笔记' }}</p>
-        <p class="text-sm mt-1 opacity-60">{{ hasActiveFilter ? '换个关键词试试？' : '点击右上角「新建」添加第一条知识' }}</p>
+        <p class="text-base font-medium" style="color: var(--color-text-secondary)">{{ hasFilter ? '没有匹配的笔记' : '还没有笔记' }}</p>
+        <p class="text-sm mt-1" style="color: var(--color-text-secondary)">{{ hasFilter ? '换个关键词试试？' : '在上方输入框写下第一条笔记' }}</p>
       </div>
 
-      <div v-else-if="viewMode === 'card'" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4 p-4 md:p-5 stagger-enter">
-        <div v-for="note in store.items" :key="note.id" class="relative">
-          <div class="absolute top-3 left-3 z-10" @click.stop>
-            <n-checkbox :checked="selectedIds.includes(note.id)" size="small" @update:checked="toggleSelect(note.id)" />
-          </div>
-          <NoteCard :note="note" @click="openDetail(note)" @delete="deleteNote" />
-        </div>
-      </div>
-
-      <div v-else-if="viewMode === 'list'">
-        <NoteListItem v-for="note in store.items" :key="note.id" :note="note" :selected="selectedIds.includes(note.id)" @click="openDetail(note)" @toggle-select="toggleSelect" />
-      </div>
-
-      <div v-else class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-3 p-4 md:p-5 stagger-enter">
-        <div v-for="note in store.items" :key="note.id" class="relative">
-          <div class="absolute top-2 left-3 z-10" @click.stop>
-            <n-checkbox :checked="selectedIds.includes(note.id)" size="small" @update:checked="toggleSelect(note.id)" />
-          </div>
-          <n-card size="small" hoverable class="cursor-pointer" :segmented="{ action: 'soft' }" @click="openDetail(note)">
-            <p class="text-sm font-medium truncate">{{ note.aiTitle || note.title }}</p>
-            <div class="text-xs mt-1 leading-relaxed" style="color: var(--color-warm-gray)">
-              <ContentRenderer :content="note.summary || note.content" preview class="line-clamp-2" />
-            </div>
-            <div v-if="gridTags(note).length" class="flex flex-wrap gap-1 mt-2">
-              <n-tag v-for="tag in gridTags(note).slice(0, 2)" :key="tag" size="tiny" type="primary" :bordered="false">#{{ tag }}</n-tag>
-            </div>
-            <template #action>
-              <div class="flex items-center justify-between w-full px-1">
-                <span class="text-xs" style="color: var(--color-text-secondary)">{{ formatDate(note.createdAt) }}</span>
+      <!-- Note cards -->
+      <div v-else class="feed-list">
+        <div
+          v-for="note in items"
+          :key="note.id"
+          class="note-card"
+          :class="{ editing: editingId === note.id }"
+        >
+          <!-- View mode -->
+          <template v-if="editingId !== note.id">
+            <div class="card-header">
+              <span class="card-time">{{ formatTime(note.createdAt) }}</span>
+              <div class="flex flex-wrap gap-1">
+                <span v-for="tag in mergedTags(note)" :key="tag" class="tag-pill">#{{ tag }}</span>
               </div>
-            </template>
-          </n-card>
+            </div>
+            <div class="card-title-row">
+              <h3 class="card-title">{{ note.aiTitle || note.title || '无标题' }}</h3>
+              <span v-if="note.aiTitle && note.title" class="card-original-title">原标题: {{ note.title }}</span>
+            </div>
+            <div class="card-content text-sm leading-relaxed" style="color: var(--color-text)">
+              <ContentRenderer :content="note.content" preview class="line-clamp-4" />
+            </div>
+            <div class="card-actions">
+              <button class="action-btn" title="编辑" @click="startEdit(note)">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+              <button class="action-btn" title="收藏">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+              </button>
+              <button class="action-btn" title="复制" @click="copyContent(note)">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </button>
+              <button class="action-btn action-btn-danger" title="删除" @click="confirmDelete(note)">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          </template>
+
+          <!-- Edit mode (inline) -->
+          <template v-else>
+            <div class="edit-header">
+              <h3 class="font-medium text-sm">编辑笔记</h3>
+              <div class="flex items-center gap-1">
+                <button class="tool-btn-sm" @click="cancelEdit">取消</button>
+                <button class="tool-btn-sm save-btn" @click="saveEdit(note)">保存</button>
+              </div>
+            </div>
+            <input v-model="editTitle" class="edit-input" placeholder="标题（可选）" />
+            <textarea v-model="editContent" class="edit-textarea" rows="6" placeholder="内容..."></textarea>
+            <div class="edit-tags">
+              <TagInput v-model="editTags" placeholder="标签" />
+            </div>
+          </template>
+        </div>
+
+        <!-- Pagination -->
+        <div v-if="totalPages > 1" class="pagination-bar">
+          <div class="flex items-center gap-1">
+            <button class="page-btn" :disabled="page <= 0" @click="goPage(page - 1)">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <span class="text-sm" style="color: var(--color-text-secondary)">{{ page + 1 }} / {{ totalPages }}</span>
+            <button class="page-btn" :disabled="page >= totalPages - 1" @click="goPage(page + 1)">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+          <span class="text-xs" style="color: var(--color-text-secondary)">共 {{ total }} 条</span>
         </div>
       </div>
     </div>
-
-    <!-- Bottom Paginator -->
-    <div v-if="!store.isLoading && store.total > 0" class="px-4 md:px-5 py-2 flex items-center justify-between shrink-0" style="border-top: 1px solid var(--color-border); background-color: var(--color-bg)">
-      <n-pagination
-        :page="currentPage"
-        :page-count="totalPages"
-        :page-size="pageSize"
-        :page-slot="5"
-        :show-size-picker="true"
-        :page-sizes="[20, 50, 100]"
-        @update:page="onPageChange"
-        @update:page-size="onPageSizeChange"
-        size="small"
-      />
-      <span class="text-xs" style="color: var(--color-text-secondary)">共 {{ store.total }} 条</span>
-    </div>
-
-    <!-- Detail / Edit Modal -->
-    <n-modal v-model:show="showDetail" preset="card" class="opaque-modal" style="max-width: 600px; max-height: 80vh; background-color: var(--color-bg) !important;" :bordered="false" size="large" @after-leave="closeDetail">
-      <template v-if="!isEditing && detailNote">
-        <div class="flex items-start justify-between mb-1">
-          <h3 class="font-display text-xl font-bold" style="color: var(--color-text)">{{ detailNote.aiTitle || detailNote.title }}</h3>
-          <div class="flex items-center gap-1.5 shrink-0 ml-4">
-            <n-button quaternary size="tiny" @click="startEditing">
-              <template #icon>
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-              </template>
-            </n-button>
-            <n-button v-if="detailNote.autoProcessStatus === 'COMPLETED' || detailNote.autoProcessStatus === 'RELATION_DONE'" quaternary size="tiny" @click="reprocessNote">
-              <template #icon>
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-              </template>
-            </n-button>
-            <n-button quaternary size="tiny" @click="closeDetail">✕</n-button>
-          </div>
-        </div>
-        <p v-if="detailNote.aiTitle && detailNote.title" class="text-xs mb-2" style="color: var(--color-text-secondary)">原标题: {{ detailNote.title }}</p>
-        <n-space v-if="mergedDetailTags.length" size="small" class="mb-4">
-          <n-tag v-for="tag in mergedDetailTags" :key="tag" size="tiny" type="primary" :bordered="false">#{{ tag }}</n-tag>
-        </n-space>
-        <div class="text-sm leading-relaxed" style="color: var(--color-warm-gray)">
-          <ContentRenderer :content="detailNote.content" />
-        </div>
-        <p v-if="detailNote.sourceUrl" class="mt-4 text-xs">
-          <span style="color: var(--color-text-secondary)">来源: </span>
-          <n-a :href="detailNote.sourceUrl" target="_blank">{{ detailNote.sourceUrl }}</n-a>
-        </p>
-        <div class="mt-4 pt-4 text-xs" style="border-top: 1px solid var(--color-border); color: var(--color-text-secondary)">
-          创建于 {{ formatTime(detailNote.createdAt) }}
-          <span v-if="detailNote.updatedAt !== detailNote.createdAt"> | 更新于 {{ formatTime(detailNote.updatedAt) }}</span>
-        </div>
-        <div v-if="relatedItems.length" class="mt-4 pt-4" style="border-top: 1px solid var(--color-border)">
-          <p class="text-xs font-medium mb-2" style="color: var(--color-text-secondary)">相关笔记</p>
-          <n-space vertical size="small">
-            <div v-for="item in relatedItems" :key="item.id" class="px-3 py-2 rounded-lg cursor-pointer transition-colors duration-150 text-sm hover-sage-bg" style="background-color: var(--color-bg)">
-              <p class="font-medium" style="color: var(--color-text)">{{ item.title }}</p>
-              <p class="text-xs mt-0.5" style="color: var(--color-text-secondary)">相似度 {{ (item.similarity * 100).toFixed(0) }}%</p>
-            </div>
-          </n-space>
-        </div>
-      </template>
-      <template v-else>
-        <div class="flex items-start justify-between mb-4">
-          <h3 class="font-display text-xl font-bold">编辑笔记</h3>
-          <n-button quaternary size="tiny" @click="cancelEditing">✕</n-button>
-        </div>
-        <n-space vertical size="medium">
-          <n-form-item label="标题">
-            <n-input v-model:value="editForm.title" />
-          </n-form-item>
-          <n-form-item label="内容">
-            <n-input v-model:value="editForm.content" type="textarea" rows="8" />
-          </n-form-item>
-          <n-form-item label="标签">
-            <TagInput v-model="editForm.tags" placeholder="输入标签，回车添加" />
-          </n-form-item>
-          <n-form-item label="来源 URL">
-            <n-input v-model:value="editForm.sourceUrl" placeholder="https://" />
-          </n-form-item>
-        </n-space>
-        <div class="flex justify-end gap-2 mt-6">
-          <n-button @click="cancelEditing">取消</n-button>
-          <n-button type="primary" @click="saveEdit">保存</n-button>
-        </div>
-      </template>
-    </n-modal>
-
-    <!-- New Note Modal -->
-    <n-modal v-model:show="showAddForm" preset="card" class="opaque-modal" style="max-width: 520px; background-color: var(--color-bg) !important;" :bordered="false" title="新建笔记" @after-leave="closeAddForm">
-      <n-tabs v-model:value="addTab" type="line" animated>
-        <n-tab-pane v-for="tab in addTabs" :key="tab.key" :name="tab.key" :tab="tab.label">
-          <n-space v-if="tab.key === 'text'" vertical size="medium">
-            <n-input v-model:value="addForm.title" placeholder="输入标题" />
-            <n-input v-model:value="addForm.content" type="textarea" placeholder="输入内容" rows="6" />
-            <TagInput v-model="addForm.tags" placeholder="输入标签，回车添加" />
-          </n-space>
-          <n-space v-if="tab.key === 'url'" vertical size="medium">
-            <n-input v-model:value="addUrl" placeholder="https://example.com/article" />
-            <n-alert v-if="urlError" type="warning" :show-icon="true" closable @close="urlError = ''">{{ urlError }}</n-alert>
-          </n-space>
-          <n-space v-if="tab.key === 'pdf'" vertical size="medium">
-            <input ref="pdfInput" type="file" accept=".pdf" class="hidden" @change="onPdfSelected" />
-            <n-button @click="pdfInput?.click()">选择 PDF 文件</n-button>
-            <p v-if="pdfFileName" class="text-sm" style="color: var(--color-sage)">已选择: {{ pdfFileName }}</p>
-            <n-alert v-if="pdfError" type="warning" :show-icon="true" closable @close="pdfError = ''">{{ pdfError }}</n-alert>
-          </n-space>
-        </n-tab-pane>
-      </n-tabs>
-      <template #footer>
-        <n-space justify="end">
-          <n-button @click="closeAddForm">取消</n-button>
-          <n-button type="primary" :loading="adding" @click="submitAdd">保存</n-button>
-        </n-space>
-      </template>
-    </n-modal>
-
-    <!-- Batch Tag Modal -->
-    <n-modal v-model:show="showBatchTag" preset="card" class="opaque-modal" style="max-width: 400px; background-color: var(--color-bg) !important;" :bordered="false" title="批量打标签">
-      <p class="text-xs mb-3" style="color: var(--color-text-secondary)">为选中的 {{ selectedIds.length }} 条知识添加标签</p>
-      <n-input v-model:value="batchTagInput" placeholder="输入标签名" @keyup.enter="doBatchTag" />
-      <template #footer>
-        <n-space justify="end">
-          <n-button @click="showBatchTag = false">取消</n-button>
-          <n-button type="primary" :disabled="!batchTagInput.trim()" @click="doBatchTag">添加</n-button>
-        </n-space>
-      </template>
-    </n-modal>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { ref, computed, onMounted, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import { knowledgeApi } from '@/api/knowledge'
-import NoteCard from '@/components/knowledge/NoteCard.vue'
-import NoteListItem from '@/components/knowledge/NoteListItem.vue'
 import ContentRenderer from '@/components/common/ContentRenderer.vue'
 import TagInput from '@/components/common/TagInput.vue'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 
 const dialog = useDialog()
 const message = useMessage()
 const store = useKnowledgeStore()
 const route = useRoute()
-const router = useRouter()
+const inputRef = ref(null)
+const feedRef = ref(null)
 
-const keywordInput = ref('')
-const selectedTags = ref([])
-const debounceTimer = ref(null)
+/* Responsive */
+const isDesktop = ref(window.innerWidth >= 1024)
+const isLarge = ref(window.innerWidth >= 1440)
+const isMobile = ref(window.innerWidth < 768)
 
-const pageSize = ref(20)
-const currentPage = ref(1)
+function checkScreen() {
+  isDesktop.value = window.innerWidth >= 1024
+  isLarge.value = window.innerWidth >= 1440
+  isMobile.value = window.innerWidth < 768
+}
 
+/* Input state */
+const newContent = ref('')
+const newTitle = ref('')
+const newTags = ref([])
+const tagInput = ref('')
+const showExtra = ref(false)
+const splitView = ref(false)
+const submitting = ref(false)
+
+/* Filter state */
+const keyword = ref('')
 const sortBy = ref('createdAt')
-const sortOrder = ref('desc')
+const selectedFilterTags = ref([])
+let debounceTimer = null
 
-const tagOptions = ref([])
-const addTagValue = ref(null)
+/* Edit state */
+const editingId = ref(null)
+const editTitle = ref('')
+const editContent = ref('')
+const editTags = ref('[]')
 
-const showDetail = ref(false)
-const detailNote = ref(null)
-const isEditing = ref(false)
-const editForm = ref({ title: '', content: '', tags: '[]', sourceUrl: '' })
-const showAddForm = ref(false)
-const addForm = ref({ title: '', content: '', tags: '[]', sourceUrl: '' })
-const addTab = ref('text')
-const addUrl = ref('')
-const urlError = ref('')
-const pdfFile = ref(null)
-const pdfFileName = ref('')
-const pdfError = ref('')
-const adding = ref(false)
-const relatedItems = ref([])
-const viewMode = ref('card')
-const selectedIds = ref([])
-const showBatchTag = ref(false)
-const batchTagInput = ref('')
-const pdfInput = ref(null)
-const aiTagging = ref(false)
+/* Pagination */
+const page = ref(0)
+const pageSize = ref(20)
 
-const viewModes = [
-  { key: 'card', label: '卡片视图', icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>' },
-  { key: 'list', label: '列表视图', icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>' },
-  { key: 'grid', label: '网格视图', icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/></svg>' }
-]
+const items = computed(() => store.items)
+const total = computed(() => store.total)
+const isLoading = computed(() => store.isLoading)
+const hasFilter = computed(() => keyword.value || selectedFilterTags.value.length > 0)
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
 
-const addTabs = [
-  { key: 'text', label: '文本' },
-  { key: 'url', label: '网页' },
-  { key: 'pdf', label: 'PDF' },
-]
+/* Markdown preview */
+const renderedPreview = computed(() => {
+  if (!newContent.value) return '<p style="color:var(--color-text-secondary)">预览区域</p>'
+  const html = marked.parse(newContent.value, { breaks: true, gfm: true })
+  return DOMPurify.sanitize(html)
+})
 
-const sortOptions = [
-  { label: '创建时间', value: 'createdAt' },
-  { label: '更新时间', value: 'updatedAt' },
-  { label: '标题 A→Z', value: 'title' },
-]
+/* Input helpers */
+function autoResize(e) {
+  const el = e.target
+  el.style.height = 'auto'
+  el.style.height = el.scrollHeight + 'px'
+}
 
-const hasActiveFilter = computed(() => keywordInput.value || selectedTags.value.length > 0)
-const totalPages = computed(() => Math.max(1, Math.ceil(store.total / pageSize.value)))
+function focusInsert(text) {
+  const el = inputRef.value
+  if (!el) return
+  const start = el.selectionStart
+  const end = el.selectionEnd
+  const before = newContent.value.substring(0, start)
+  const after = newContent.value.substring(end)
+  newContent.value = before + text + after
+  nextTick(() => {
+    el.focus()
+    const pos = start + text.length
+    el.setSelectionRange(pos, pos)
+  })
+}
 
+function addTag() {
+  const t = tagInput.value.trim()
+  if (!t || newTags.value.includes(t)) return
+  newTags.value.push(t)
+  tagInput.value = ''
+}
+
+function handleInputKeydown(e) {
+  if (e.ctrlKey && e.key === 'Enter') {
+    publish()
+  }
+}
+
+async function publish() {
+  if (submitting.value || !newContent.value.trim()) {
+    if (!newContent.value.trim()) message.warning('请输入内容')
+    return
+  }
+  submitting.value = true
+  try {
+    await knowledgeApi.add({
+      title: newTitle.value || '',
+      content: newContent.value,
+      userTags: JSON.stringify(newTags.value),
+    })
+    newContent.value = ''
+    newTitle.value = ''
+    newTags.value = []
+    tagInput.value = ''
+    showExtra.value = false
+    if (inputRef.value) inputRef.value.style.height = 'auto'
+    await fetchData()
+    message.success('发布成功')
+  } catch (err) {
+    message.error('发布失败: ' + (err.response?.data?.message || err.message))
+  } finally {
+    submitting.value = false
+  }
+}
+
+function handleImageUpload() {
+  message.info('图片上传功能待实现')
+}
+
+/* Search */
+function onSearch() {
+  page.value = 0
+  clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(fetchData, 300)
+}
+
+function onSortChange() {
+  page.value = 0
+  fetchData()
+}
+
+function removeFilterTag(tag) {
+  selectedFilterTags.value = selectedFilterTags.value.filter(t => t !== tag)
+  fetchData()
+}
+
+/* Data */
 async function fetchData() {
   await store.fetchItems({
-    page: currentPage.value - 1,
+    page: page.value,
     size: pageSize.value,
-    keyword: keywordInput.value || undefined,
-    tags: selectedTags.value.length ? selectedTags.value : undefined,
+    keyword: keyword.value || undefined,
+    tags: selectedFilterTags.value.length ? selectedFilterTags.value : undefined,
     sortBy: sortBy.value,
-    sortOrder: sortOrder.value,
+    sortOrder: 'desc',
   })
 }
 
-function syncUrl() {
-  const query = {}
-  if (keywordInput.value) query.keyword = keywordInput.value
-  if (selectedTags.value.length) query.tags = selectedTags.value.join(',')
-  if (currentPage.value > 1) query.page = String(currentPage.value)
-  if (pageSize.value !== 20) query.size = String(pageSize.value)
-  if (sortBy.value !== 'createdAt') query.sortBy = sortBy.value
-  router.replace({ query })
-}
-
-async function loadAndSync() {
-  await fetchData()
-  syncUrl()
-}
-
-function triggerSearch() {
-  currentPage.value = 1
-  clearTimeout(debounceTimer.value)
-  debounceTimer.value = setTimeout(loadAndSync, 300)
-}
-
-function onKeywordClear() {
-  keywordInput.value = ''
-  triggerSearch()
-}
-
-function addTag(tag) {
-  if (!tag || selectedTags.value.includes(tag)) return
-  selectedTags.value.push(tag)
-  addTagValue.value = null
-  triggerSearch()
-}
-
-function onAddTag(val) {
-  addTag(val)
-}
-
-function removeTag(tag) {
-  selectedTags.value = selectedTags.value.filter(t => t !== tag)
-  triggerSearch()
-}
-
-function clearAllTags() {
-  selectedTags.value = []
-  triggerSearch()
-}
-
-function onPageChange(page) {
-  currentPage.value = page
-  loadAndSync()
-}
-
-function onPageSizeChange(size) {
-  pageSize.value = size
-  currentPage.value = 1
-  loadAndSync()
-}
-
-function onSortChange(val) {
-  sortBy.value = val
-  currentPage.value = 1
-  loadAndSync()
-}
-
-function toggleSelect(id) {
-  const idx = selectedIds.value.indexOf(id)
-  if (idx >= 0) selectedIds.value.splice(idx, 1)
-  else selectedIds.value.push(id)
-}
-
-function clearSelection() {
-  selectedIds.value = []
-}
-
-function openDetail(note) {
-  detailNote.value = note
-  isEditing.value = false
-  showDetail.value = true
-  loadRelated(note.id)
-}
-
-function closeDetail() {
-  showDetail.value = false
-  detailNote.value = null
-  isEditing.value = false
-  relatedItems.value = []
-}
-
-function startEditing() {
-  editForm.value = {
-    title: detailNote.value.title,
-    content: detailNote.value.content,
-    tags: detailNote.value.userTags || detailNote.value.tags || '[]',
-    sourceUrl: detailNote.value.sourceUrl || ''
-  }
-  isEditing.value = true
-}
-
-function cancelEditing() {
-  isEditing.value = false
-}
-
-async function saveEdit() {
-  const updated = await knowledgeApi.update(detailNote.value.id, {
-    title: editForm.value.title,
-    content: editForm.value.content,
-    userTags: editForm.value.tags,
-    sourceUrl: editForm.value.sourceUrl || null
-  })
-  const saved = updated.data.data
-  Object.assign(detailNote.value, saved)
-  isEditing.value = false
+function goPage(p) {
+  if (p < 0 || p >= totalPages.value) return
+  page.value = p
   fetchData()
+  feedRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-function openAddForm(tab) {
-  addForm.value = { title: '', content: '', tags: '[]', sourceUrl: '' }
-  addTab.value = tab || 'text'
-  addUrl.value = ''
-  urlError.value = ''
-  pdfFile.value = null
-  pdfFileName.value = ''
-  pdfError.value = ''
-  showAddForm.value = true
+/* Inline edit */
+function startEdit(note) {
+  editingId.value = note.id
+  editTitle.value = note.title || ''
+  editContent.value = note.content || ''
+  editTags.value = note.userTags || '[]'
 }
 
-function closeAddForm() {
-  showAddForm.value = false
-  adding.value = false
+function cancelEdit() {
+  editingId.value = null
 }
 
-function onPdfSelected(e) {
-  const file = e.target.files[0]
-  if (!file) return
-  if (file.size > 50 * 1024 * 1024) {
-    pdfError.value = '文件超过 50MB 限制'
-    pdfFile.value = null
-    pdfFileName.value = ''
-    return
-  }
-  pdfFile.value = file
-  pdfFileName.value = file.name
-  pdfError.value = ''
-}
-
-async function loadRelated(id) {
+async function saveEdit(note) {
   try {
-    const res = await knowledgeApi.getRelated(id)
-    relatedItems.value = res.data.data || []
-  } catch {}
-}
-
-async function submitAdd() {
-  if (adding.value) return
-  adding.value = true
-  try {
-    if (addTab.value === 'text') {
-      await addNote()
-    } else if (addTab.value === 'url') {
-      await addUrlNote()
-    } else if (addTab.value === 'pdf') {
-      await addPdfNote()
-    }
-  } finally {
-    adding.value = false
-  }
-}
-
-async function addNote() {
-  if (!addForm.value.content) {
-    message.warning('请输入内容')
-    return
-  }
-  await store.add({ title: addForm.value.title, content: addForm.value.content, userTags: addForm.value.tags, sourceUrl: addForm.value.sourceUrl || null })
-  showAddForm.value = false
-  fetchData()
-}
-
-async function addUrlNote() {
-  if (!addUrl.value.trim()) {
-    urlError.value = '请输入网页 URL'
-    return
-  }
-  urlError.value = ''
-  try {
-    await knowledgeApi.parseUrl(addUrl.value.trim())
-    showAddForm.value = false
-    fetchData()
+    await knowledgeApi.update(note.id, {
+      title: editTitle.value,
+      content: editContent.value,
+      userTags: editTags.value,
+    })
+    editingId.value = null
+    await fetchData()
+    message.success('已保存')
   } catch (err) {
-    urlError.value = err.response?.data?.message || 'URL 解析失败'
+    message.error('保存失败: ' + (err.response?.data?.message || err.message))
   }
 }
 
-async function addPdfNote() {
-  if (!pdfFile.value) {
-    pdfError.value = '请选择 PDF 文件'
-    return
-  }
-  pdfError.value = ''
-  try {
-    await knowledgeApi.parsePdf(pdfFile.value)
-    showAddForm.value = false
-    fetchData()
-  } catch (err) {
-    pdfError.value = err.response?.data?.message || 'PDF 解析失败'
-  }
-}
-
-async function reprocessNote() {
-  dialog.warning({
-    title: '重新 AI 处理',
-    content: '确定重新 AI 处理此笔记？AI 标题和标签将被重新生成。',
-    positiveText: '确定',
-    negativeText: '取消',
-    onPositiveClick: async () => {
-      try {
-        await knowledgeApi.reprocess(detailNote.value.id)
-        const res = await knowledgeApi.getById(detailNote.value.id)
-        Object.assign(detailNote.value, res.data.data)
-        fetchData()
-      } catch (err) {
-        console.error('重新处理失败:', err)
-      }
-    }
-  })
-}
-
-async function deleteNote(id) {
+function confirmDelete(note) {
   dialog.warning({
     title: '删除笔记',
-    content: '确定删除此笔记？',
+    content: '确定删除这条笔记吗？',
     positiveText: '确定',
     negativeText: '取消',
     onPositiveClick: async () => {
-      await store.remove(id)
-      if (detailNote.value?.id === id) closeDetail()
-      fetchData()
+      await knowledgeApi.delete(note.id)
+      if (editingId.value === note.id) editingId.value = null
+      await fetchData()
     }
   })
 }
 
-async function batchDelete() {
-  dialog.warning({
-    title: '批量删除',
-    content: `确定删除选中的 ${selectedIds.value.length} 条知识？`,
-    positiveText: '确定',
-    negativeText: '取消',
-    onPositiveClick: async () => {
-      await knowledgeApi.batchDelete(selectedIds.value)
-      clearSelection()
-      fetchData()
-    }
+function copyContent(note) {
+  const text = note.content || ''
+  navigator.clipboard.writeText(text).then(() => {
+    message.success('已复制')
   })
 }
 
-async function doBatchTag() {
-  const tag = batchTagInput.value.trim()
-  if (!tag) return
-  await knowledgeApi.batchTag(selectedIds.value, tag)
-  showBatchTag.value = false
-  batchTagInput.value = ''
-  clearSelection()
-  fetchData()
-}
-
-async function batchAiTag() {
-  aiTagging.value = true
-  try {
-    const res = await knowledgeApi.batchAiTag(selectedIds.value)
-    const data = res.data?.data || {}
-    message.success(`AI 打标完成: ${data.success}/${data.total}`)
-    clearSelection()
-    fetchData()
-  } catch (err) {
-    message.error('AI 打标失败: ' + (err.response?.data?.message || err.message))
-  } finally {
-    aiTagging.value = false
-  }
-}
-
-async function batchExport() {
-  try {
-    const res = await knowledgeApi.batchExport(selectedIds.value)
-    const blob = new Blob([res.data], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `mindvault-export-selected-${new Date().toISOString().slice(0, 10)}.json`
-    a.click()
-    URL.revokeObjectURL(url)
-  } catch (err) {
-    console.error('批量导出失败:', err)
-  }
+function mergedTags(note) {
+  const ai = parseTags(note.tags)
+  const user = parseTags(note.userTags)
+  return [...new Set([...ai, ...user])]
 }
 
 function parseTags(tags) {
@@ -667,70 +442,331 @@ function parseTags(tags) {
   try { return JSON.parse(tags) } catch { return [] }
 }
 
-const mergedDetailTags = computed(() => {
-  if (!detailNote.value) return []
-  const ai = parseTags(detailNote.value.tags)
-  const user = parseTags(detailNote.value.userTags)
-  return [...new Set([...ai, ...user])]
-})
-
-function gridTags(note) {
-  const ai = parseTags(note.tags)
-  const user = parseTags(note.userTags)
-  return [...new Set([...ai, ...user])]
-}
-
 function formatTime(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr)
-  return `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`
+  const now = new Date()
+  const diff = now - d
+  if (diff < 60000) return '刚刚'
+  if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前'
+  if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前'
+  if (diff < 604800000) return Math.floor(diff / 86400000) + '天前'
+  return `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`
 }
 
-function formatDate(dateStr) {
-  if (!dateStr) return ''
-  const d = new Date(dateStr)
-  return `${d.getMonth()+1}/${d.getDate()}`
-}
-
-async function loadTags() {
-  try {
-    const res = await knowledgeApi.getTags()
-    tagOptions.value = (res.data.data || []).map(t => ({
-      label: `${t.name} (${t.count})`,
-      value: t.name
-    }))
-  } catch {}
-}
-
+/* Init */
 function initFromUrl() {
   const q = route.query
-  if (q.keyword) keywordInput.value = q.keyword
-  if (q.tags) selectedTags.value = q.tags.split(',')
-  if (q.page) currentPage.value = parseInt(q.page) || 1
-  if (q.size) pageSize.value = parseInt(q.size) || 20
-  if (q.sortBy) sortBy.value = q.sortBy
+  if (q.keyword) keyword.value = q.keyword
+  if (q.tags) selectedFilterTags.value = q.tags.split(',')
+  if (q.page) page.value = parseInt(q.page) - 1 || 0
 }
 
-watch(keywordInput, () => {
-  triggerSearch()
-})
-
 onMounted(() => {
+  checkScreen()
+  window.addEventListener('resize', checkScreen)
   initFromUrl()
-  loadTags()
   fetchData()
 })
 </script>
 
 <style scoped>
-.knowledge-header-icon {
-  width: 36px; height: 36px; border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  color: white; flex-shrink: 0;
-  background: var(--gradient-brand);
+.knowledge-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
-
-.opaque-modal :deep(.n-card) {
-  background-color: var(--color-bg) !important;
+.input-area {
+  padding: 16px 16px 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--color-bg);
 }
+@media (min-width: 1024px) {
+  .input-area.is-desktop { padding: 24px 24px 0; }
+}
+.input-card {
+  background: var(--color-surface);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+.input-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px 0;
+}
+.tool-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+.tool-btn:hover {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+.tool-btn.active {
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+.publish-btn {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+.publish-btn:hover { background: var(--color-primary-light); }
+.input-body { padding: 4px 12px 8px; }
+.input-body.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.input-textarea {
+  width: 100%;
+  min-height: 52px;
+  max-height: 300px;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 15px;
+  line-height: 1.6;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  padding: 8px 0;
+}
+.input-textarea::placeholder { color: var(--color-placeholder); }
+.preview-pane {
+  border-left: 1px solid var(--color-border);
+  padding-left: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.preview-content { font-size: 14px; line-height: 1.6; color: var(--color-text); }
+.input-extra {
+  padding: 8px 12px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.extra-input {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s ease;
+}
+.extra-input:focus { border-color: var(--color-primary); }
+.extra-input::placeholder { color: var(--color-placeholder); }
+.input-bottom-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px 8px;
+  border-top: 1px solid var(--color-border);
+}
+.tool-btn-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+.tool-btn-sm:hover { background: var(--color-bg); color: var(--color-text); }
+.tool-btn-sm.save-btn {
+  color: var(--color-primary);
+  font-weight: 500;
+  width: auto;
+  padding: 0 10px;
+}
+.filter-bar {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+.search-wrapper { position: relative; display: flex; align-items: center; }
+.search-icon {
+  position: absolute;
+  left: 10px;
+  color: var(--color-text-secondary);
+  pointer-events: none;
+}
+.search-input {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 14px;
+  padding: 7px 32px 7px 34px;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s ease;
+}
+.search-input:focus { border-color: var(--color-primary); }
+.search-input::placeholder { color: var(--color-placeholder); }
+.search-clear {
+  position: absolute;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.search-clear:hover { color: var(--color-text); }
+.sort-select {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  padding: 7px 10px;
+  outline: none;
+  font-family: inherit;
+  cursor: pointer;
+  min-width: 80px;
+}
+.sort-select:focus { border-color: var(--color-primary); }
+.feed { flex: 1; overflow-y: auto; padding: 16px; }
+.feed-list { max-width: 720px; margin: 0 auto; }
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 16px;
+  text-align: center;
+}
+.note-card {
+  background: var(--color-surface);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  padding: 16px;
+  margin-bottom: 16px;
+  transition: all 0.15s ease;
+}
+.note-card:hover { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); }
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.card-time { font-size: 12px; color: var(--color-text-secondary); }
+.card-title-row { margin-bottom: 8px; }
+.card-title { font-size: 16px; font-weight: 600; line-height: 1.4; color: var(--color-text); }
+.card-original-title { display: block; font-size: 12px; color: var(--color-text-secondary); margin-top: 2px; }
+.card-content { color: var(--color-text); line-height: 1.7; }
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+}
+.action-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.action-btn:hover { background: var(--color-bg); color: var(--color-text); }
+.action-btn-danger:hover { color: var(--color-danger); background: rgba(239, 68, 68, 0.08); }
+.edit-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+.edit-input {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 15px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s ease;
+}
+.edit-input:focus { border-color: var(--color-primary); }
+.edit-textarea {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 14px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  outline: none;
+  font-family: inherit;
+  resize: vertical;
+  line-height: 1.6;
+  transition: border-color 0.15s ease;
+}
+.edit-textarea:focus { border-color: var(--color-primary); }
+.edit-tags { margin-top: 4px; }
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+}
+.page-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.page-btn:hover:not(:disabled) { background: var(--color-surface); color: var(--color-text); }
+.page-btn:disabled { opacity: 0.4; cursor: default; }
 </style>
