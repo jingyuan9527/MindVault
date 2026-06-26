@@ -1,8 +1,10 @@
 package com.mindvault.systemconfig;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mindvault.operationlog.OperationLogService;
+import com.mindvault.operationlog.service.OperationLogService;
+import com.mindvault.systemconfig.controller.SystemConfigController;
 import com.mindvault.systemconfig.entity.SystemConfig;
+import com.mindvault.systemconfig.service.SystemConfigService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;

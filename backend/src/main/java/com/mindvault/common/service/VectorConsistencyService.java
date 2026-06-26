@@ -1,6 +1,6 @@
 package com.mindvault.common.service;
 
-import com.mindvault.knowledge.KnowledgeMapper;
+import com.mindvault.knowledge.mapper.KnowledgeMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;

@@ -1,12 +1,16 @@
 package com.mindvault.knowledge;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mindvault.auto.AutoProcessLogMapper;
-import com.mindvault.content.ContentParserService;
+import com.mindvault.auto.mapper.AutoProcessLogMapper;
+import com.mindvault.content.service.ContentParserService;
 import com.mindvault.common.dto.PageResult;
+import com.mindvault.knowledge.controller.KnowledgeController;
 import com.mindvault.knowledge.dto.ImportPreview;
 import com.mindvault.knowledge.dto.ImportPreview.ConflictItem;
 import com.mindvault.knowledge.entity.Knowledge;
+import com.mindvault.knowledge.service.KnowledgeAssociationService;
+import com.mindvault.knowledge.service.KnowledgeService;
+import com.mindvault.knowledge.service.SearchEnhanceService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;

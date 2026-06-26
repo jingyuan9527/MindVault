@@ -2,9 +2,12 @@ package com.mindvault.flashcard;
 
 import com.mindvault.ai.client.AiService;
 import com.mindvault.flashcard.entity.FlashCard;
-import com.mindvault.knowledge.KnowledgeService;
-import com.mindvault.model.ModelConfigService;
-import com.mindvault.systemconfig.SystemConfigService;
+import com.mindvault.flashcard.mapper.FlashCardMapper;
+import com.mindvault.flashcard.service.FlashCardService;
+import com.mindvault.flashcard.service.FlashCardServiceImpl;
+import com.mindvault.knowledge.service.KnowledgeService;
+import com.mindvault.model.service.ModelConfigService;
+import com.mindvault.systemconfig.service.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,7 +34,7 @@ class FlashCardServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new FlashCardService(modelConfigService, aiService, knowledgeService, mapper, config);
+        service = new FlashCardServiceImpl(modelConfigService, aiService, knowledgeService, mapper, config);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));

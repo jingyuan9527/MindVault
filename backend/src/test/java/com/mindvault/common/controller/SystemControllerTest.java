@@ -1,7 +1,7 @@
 package com.mindvault.common.controller;
 
 import com.mindvault.common.service.MetricsService;
-import com.mindvault.model.ModelConfigService;
+import com.mindvault.model.service.ModelConfigService;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

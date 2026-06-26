@@ -1,11 +1,13 @@
 package com.mindvault.writing;
 
 import com.mindvault.ai.client.AiService;
-import com.mindvault.knowledge.KnowledgeMapper;
+import com.mindvault.knowledge.mapper.KnowledgeMapper;
+import com.mindvault.writing.service.WritingService;
+import com.mindvault.writing.service.WritingServiceImpl;
 import com.mindvault.knowledge.entity.Knowledge;
-import com.mindvault.model.ModelConfigService;
+import com.mindvault.model.service.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
-import com.mindvault.systemconfig.SystemConfigService;
+import com.mindvault.systemconfig.service.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,7 +33,7 @@ class WritingServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new WritingService(modelConfigService, aiService, knowledgeMapper, config);
+        service = new WritingServiceImpl(modelConfigService, aiService, knowledgeMapper, config);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));

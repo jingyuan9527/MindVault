@@ -5,14 +5,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindvault.ai.client.AiModelFactory;
 import com.mindvault.ai.client.AiService;
 import com.mindvault.common.service.MetricsService;
-import com.mindvault.model.ModelConfigService;
-import com.mindvault.content.AutoProcessService;
+import com.mindvault.model.service.ModelConfigService;
+import com.mindvault.auto.service.AutoProcessService;
 import com.mindvault.knowledge.dto.ImportPreview;
 import com.mindvault.knowledge.entity.Knowledge;
-import com.mindvault.operationlog.OperationLogService;
-import com.mindvault.relation.KnowledgeRelationMapper;
-import com.mindvault.review.ReviewService;
-import com.mindvault.systemconfig.SystemConfigService;
+import com.mindvault.knowledge.mapper.KnowledgeMapper;
+import com.mindvault.knowledge.service.KnowledgeService;
+import com.mindvault.knowledge.service.KnowledgeServiceImpl;
+import com.mindvault.operationlog.service.OperationLogService;
+import com.mindvault.auto.mapper.KnowledgeRelationMapper;
+import com.mindvault.review.service.ReviewService;
+import com.mindvault.systemconfig.service.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,7 +55,7 @@ class KnowledgeServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new KnowledgeService(mapper, operationLogService, autoProcessService, reviewService, modelConfigService, aiModelFactory, aiService, metricsService, relationMapper, config);
+        service = new KnowledgeServiceImpl(mapper, operationLogService, autoProcessService, reviewService, modelConfigService, aiModelFactory, aiService, metricsService, relationMapper, config);
         objectMapper = new ObjectMapper();
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));

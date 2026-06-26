@@ -1,6 +1,6 @@
 package com.mindvault.agent.tool;
 
-import com.mindvault.knowledge.KnowledgeService;
+import com.mindvault.knowledge.service.KnowledgeService;
 import com.mindvault.knowledge.entity.Knowledge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

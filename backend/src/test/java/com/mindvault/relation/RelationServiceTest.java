@@ -1,13 +1,14 @@
-package com.mindvault.relation;
+package com.mindvault.auto.r2;
 
 import com.mindvault.ai.client.AiService;
-import com.mindvault.auto.AutoProcessLogMapper;
-import com.mindvault.knowledge.KnowledgeMapper;
-import com.mindvault.knowledge.KnowledgeService;
+import com.mindvault.auto.entity.KnowledgeRelation;
+import com.mindvault.auto.mapper.AutoProcessLogMapper;
+import com.mindvault.auto.mapper.KnowledgeRelationMapper;
+import com.mindvault.knowledge.mapper.KnowledgeMapper;
+import com.mindvault.knowledge.service.KnowledgeService;
 import com.mindvault.knowledge.entity.Knowledge;
-import com.mindvault.model.ModelConfigService;
-import com.mindvault.relation.entity.KnowledgeRelation;
-import com.mindvault.systemconfig.SystemConfigService;
+import com.mindvault.model.service.ModelConfigService;
+import com.mindvault.systemconfig.service.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,11 +36,11 @@ class RelationServiceTest {
     @Mock private AutoProcessLogMapper logMapper;
     @Mock private SystemConfigService config;
 
-    private RelationService service;
+    private RelationServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new RelationService(knowledgeMapper, relationMapper, knowledgeService,
+        service = new RelationServiceImpl(knowledgeMapper, relationMapper, knowledgeService,
                 modelConfigService, aiService, logMapper, config);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));

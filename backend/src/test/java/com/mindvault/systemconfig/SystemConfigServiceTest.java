@@ -1,6 +1,9 @@
 package com.mindvault.systemconfig;
 
 import com.mindvault.systemconfig.entity.SystemConfig;
+import com.mindvault.systemconfig.mapper.SystemConfigMapper;
+import com.mindvault.systemconfig.service.SystemConfigService;
+import com.mindvault.systemconfig.service.SystemConfigServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,7 +43,7 @@ class SystemConfigServiceTest {
                 createConfig("test.bool", "true", "bool"),
                 createConfig("test.double", "3.14", "double")
         ));
-        service = new SystemConfigService(mapper);
+        service = new SystemConfigServiceImpl(mapper);
         service.refreshCache();
     }
 

@@ -1,9 +1,11 @@
 package com.mindvault.backup;
 
+import com.mindvault.backup.service.BackupServiceImpl;
+import com.mindvault.backup.service.BackupService;
 import com.mindvault.common.service.MetricsService;
-import com.mindvault.knowledge.KnowledgeService;
-import com.mindvault.operationlog.OperationLogService;
-import com.mindvault.systemconfig.SystemConfigService;
+import com.mindvault.knowledge.service.KnowledgeService;
+import com.mindvault.operationlog.service.OperationLogService;
+import com.mindvault.systemconfig.service.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,14 +29,14 @@ class BackupServiceTest {
     @Mock private MetricsService metricsService;
     @Mock private SystemConfigService config;
 
-    private BackupService service;
+    private BackupServiceImpl service;
 
     @TempDir
     Path tempDir;
 
     @BeforeEach
     void setUp() {
-        service = new BackupService(knowledgeService, operationLogService, metricsService, config);
+        service = new BackupServiceImpl(knowledgeService, operationLogService, metricsService, config);
         ReflectionTestUtils.setField(service, "backupDir", tempDir.toString());
         ReflectionTestUtils.setField(service, "retentionDays", 7);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));

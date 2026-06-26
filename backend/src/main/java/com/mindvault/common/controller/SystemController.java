@@ -1,7 +1,7 @@
 package com.mindvault.common.controller;
 
 import com.mindvault.common.dto.ApiResponse;
-import com.mindvault.model.ModelConfigService;
+import com.mindvault.model.service.ModelConfigService;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;

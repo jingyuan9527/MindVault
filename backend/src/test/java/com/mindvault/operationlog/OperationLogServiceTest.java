@@ -2,6 +2,9 @@ package com.mindvault.operationlog;
 
 import com.mindvault.common.dto.PageResult;
 import com.mindvault.operationlog.entity.OperationLog;
+import com.mindvault.operationlog.mapper.OperationLogMapper;
+import com.mindvault.operationlog.service.OperationLogService;
+import com.mindvault.operationlog.service.OperationLogServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,7 +30,7 @@ class OperationLogServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new OperationLogService(mapper);
+        service = new OperationLogServiceImpl(mapper);
     }
 
     @Test

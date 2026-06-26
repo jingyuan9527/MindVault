@@ -1,9 +1,12 @@
 package com.mindvault.knowledge;
 
 import com.mindvault.ai.client.AiModelFactory;
+import com.mindvault.knowledge.service.KnowledgeService;
+import com.mindvault.knowledge.service.SearchEnhanceService;
+import com.mindvault.knowledge.service.SearchEnhanceServiceImpl;
 import com.mindvault.ai.client.AiService;
-import com.mindvault.model.ModelConfigService;
-import com.mindvault.systemconfig.SystemConfigService;
+import com.mindvault.model.service.ModelConfigService;
+import com.mindvault.systemconfig.service.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,7 +33,7 @@ class SearchEnhanceServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new SearchEnhanceService(knowledgeService, modelConfigService, aiService, aiModelFactory, config);
+        service = new SearchEnhanceServiceImpl(knowledgeService, modelConfigService, aiService, aiModelFactory, config);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getString(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));

@@ -1,7 +1,9 @@
 package com.mindvault.dailyreview;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mindvault.dailyreview.controller.DailyReviewController;
 import com.mindvault.dailyreview.entity.DailyReview;
+import com.mindvault.dailyreview.service.DailyReviewService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;

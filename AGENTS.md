@@ -52,6 +52,57 @@ cd docker && docker compose up -d --build
 - **Proxy**: Nginx (frontend container) proxies `/api/` → `http://backend:8080`
 - **Ports**: Backend `:8080`, Frontend `:3000`, DB `:5432`
 
+## SOLID 设计决策（2024-06-26 烧烤共识）
+
+以下为基于 SOLID 原则的 8 项重构共识，后续开发应遵循：
+
+### 1. 包归属
+| 当前 | 目标 | 原因 |
+|------|------|------|
+| `AutoProcessService` 在 `content` 包 | → `auto` 包 | AI 处理非内容解析，与 `AutoProcessLog` 实体同包 |
+| `KnowledgeAssociationService` 在 `knowledge` 包 | 保持 | 实时相似查询是知识查看体验的一部分，非持久化关联 |
+| `KeywordBlockingService` 在 `chat` 包 | 保持 | 敏感词过滤是聊天特有功能 |
+| R1/R2/R3 + 调度器横跨 `auto/relation/scheduler` | → 统一到 `auto` 包，按子包 `r1/`, `r2/`, `r3/` 拆分 | 自动处理流水线是一个完整领域 |
+
+### 2. 单一职责（SRP）
+- `KnowledgeService`（849 行）拆出 2 个新服务：
+  - **`ImportExportService`** — JSON/Markdown/CSV 导入导出、格式转义、预览
+  - **`TagService`** — 标签 CRUD、批量打标签、AI 批量打标签、标签合并
+  - `KnowledgeService` 保留 CRUD + 搜索 + 编排
+
+### 3. 依赖倒置 + 接口隔离（DIP + ISP）
+- **所有 Service 抽取接口**：每个业务模块的 Service 层 = `XxxService`（接口）+ `XxxServiceImpl`（实现）
+- Controller 和 Service 间依赖接口而非具体类
+
+### 4. 开闭原则（OCP）— 策略模式
+- **搜索**：`SearchStrategy` 接口 → `HybridSearchStrategy`, `KeywordSearchStrategy`, `VectorSearchStrategy` 等实现，`SearchService` 按条件自动选择
+- **导出**：`ExportFormatStrategy` 接口 → `JsonExportStrategy`, `MarkdownExportStrategy`, `CsvExportStrategy` 实现，新增格式只需加新实现类
+
+### 5. 包结构统一
+所有业务模块对齐 `auth` 的 5 子包结构：
+```
+com.mindvault.xxx/
+├── controller/
+├── service/
+├── mapper/
+├── entity/
+└── dto/
+```
+
+### 6. 强类型配置绑定
+- 替换全局 `SystemConfigService` 的字符串 key 模式
+- 每个模块有自己的 `@ConfigurationProperties` 类（如 `KnowledgeProperties`, `SearchProperties`, `ReviewProperties`）
+- 仅在需要运行时修改且无固定 schema 的场景保留 `SystemConfigService`
+
+### 7. 调度器重写
+- 移除 `AutoProcessScheduler` 的 `volatile` 手动节流
+- 改用 `@Scheduled(fixedRateString = "${...}")` + 强类型配置类
+- 频率变更需重启生效（而非运行时热更新）
+
+### 8. 循环依赖解耦
+- `KnowledgeService` ↔ `AutoProcessService` 的 `@Lazy` 循环依赖通过拆分职责消除
+- 新增 `AutoProcessOrchestrator`（在 `auto` 包）作为 R1 的单一协调入口
+
 ## Package Map (backend)
 | Package | Responsibility |
 |---------|---------------|

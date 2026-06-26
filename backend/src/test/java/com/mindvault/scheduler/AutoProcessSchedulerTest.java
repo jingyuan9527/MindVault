@@ -1,8 +1,8 @@
-package com.mindvault.scheduler;
+package com.mindvault.auto.scheduler;
 
-import com.mindvault.relation.AggregationService;
-import com.mindvault.relation.RelationService;
-import com.mindvault.systemconfig.SystemConfigService;
+import com.mindvault.auto.r2.RelationService;
+import com.mindvault.auto.r3.AggregationService;
+import com.mindvault.systemconfig.service.SystemConfigService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

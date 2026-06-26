@@ -1,9 +1,9 @@
 package com.mindvault.ai.client;
 
 import com.mindvault.common.service.MetricsService;
-import com.mindvault.model.ModelConfigService;
+import com.mindvault.model.service.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
-import com.mindvault.tokenusage.TokenUsageService;
+import com.mindvault.tokenusage.service.TokenUsageService;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

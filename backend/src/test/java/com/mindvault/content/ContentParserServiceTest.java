@@ -1,7 +1,9 @@
 package com.mindvault.content;
 
 import com.mindvault.common.config.MindVaultProperties;
-import com.mindvault.content.ContentParserService.ParseResult;
+import com.mindvault.content.service.ContentParserService;
+import com.mindvault.content.service.ContentParserServiceImpl;
+import com.mindvault.content.service.ContentParserService.ParseResult;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -17,12 +19,12 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ContentParserServiceTest {
 
-    private ContentParserService service;
+    private ContentParserServiceImpl service;
 
     @BeforeEach
     void setUp() {
         MindVaultProperties props = new MindVaultProperties();
-        service = new ContentParserService(props);
+        service = new ContentParserServiceImpl(props);
     }
 
     private byte[] createMinimalPdf(String text) {

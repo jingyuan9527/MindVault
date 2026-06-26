@@ -1,9 +1,11 @@
 package com.mindvault.relation;
 
-import com.mindvault.auto.AutoProcessLogMapper;
-import com.mindvault.knowledge.KnowledgeMapper;
-import com.mindvault.knowledge.KnowledgeService;
-import com.mindvault.systemconfig.SystemConfigService;
+import com.mindvault.auto.mapper.AutoProcessLogMapper;
+import com.mindvault.auto.r3.AggregationService;
+import com.mindvault.auto.r3.AggregationServiceImpl;
+import com.mindvault.knowledge.mapper.KnowledgeMapper;
+import com.mindvault.knowledge.service.KnowledgeService;
+import com.mindvault.systemconfig.service.SystemConfigService;
 import com.mindvault.knowledge.entity.Knowledge;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,7 +31,7 @@ class AggregationServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new AggregationService(knowledgeMapper, knowledgeService, logMapper, config);
+        service = new AggregationServiceImpl(knowledgeMapper, knowledgeService, logMapper, config);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));

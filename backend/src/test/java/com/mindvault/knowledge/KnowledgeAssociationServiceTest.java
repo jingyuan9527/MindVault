@@ -1,7 +1,11 @@
 package com.mindvault.knowledge;
 
 import com.mindvault.knowledge.entity.Knowledge;
-import com.mindvault.systemconfig.SystemConfigService;
+import com.mindvault.knowledge.mapper.KnowledgeMapper;
+import com.mindvault.knowledge.service.KnowledgeAssociationService;
+import com.mindvault.knowledge.service.KnowledgeAssociationServiceImpl;
+import com.mindvault.knowledge.service.KnowledgeService;
+import com.mindvault.systemconfig.service.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,7 +37,7 @@ class KnowledgeAssociationServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new KnowledgeAssociationService(mapper, knowledgeService, config);
+        service = new KnowledgeAssociationServiceImpl(mapper, knowledgeService, config);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));

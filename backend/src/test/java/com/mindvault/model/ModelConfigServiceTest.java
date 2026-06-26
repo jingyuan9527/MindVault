@@ -2,7 +2,9 @@ package com.mindvault.model;
 
 import com.mindvault.ai.client.AiModelFactory;
 import com.mindvault.model.entity.ModelConfig;
-import com.mindvault.operationlog.OperationLogService;
+import com.mindvault.model.mapper.ModelConfigMapper;
+import com.mindvault.model.service.ModelConfigServiceImpl;
+import com.mindvault.operationlog.service.OperationLogService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,14 +34,14 @@ class ModelConfigServiceTest {
     @Mock
     private AiModelFactory aiModelFactory;
 
-    private ModelConfigService service;
+    private ModelConfigServiceImpl service;
 
     @Captor
     private ArgumentCaptor<ModelConfig> configCaptor;
 
     @BeforeEach
     void setUp() {
-        service = new ModelConfigService(mapper, operationLogService, aiModelFactory);
+        service = new ModelConfigServiceImpl(mapper, operationLogService, aiModelFactory);
     }
 
     private ModelConfig createConfig(Long id, String provider, String modelName, String modelType, Boolean isPrimary) {

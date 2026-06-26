@@ -1,9 +1,12 @@
 package com.mindvault.tokenusage;
 
 import com.mindvault.common.config.MindVaultProperties;
-import com.mindvault.systemconfig.SystemConfigService;
+import com.mindvault.systemconfig.service.SystemConfigService;
 import com.mindvault.model.entity.ModelConfig;
 import com.mindvault.tokenusage.entity.TokenUsage;
+import com.mindvault.tokenusage.mapper.TokenUsageMapper;
+import com.mindvault.tokenusage.service.TokenUsageService;
+import com.mindvault.tokenusage.service.TokenUsageServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,7 +57,7 @@ class TokenUsageServiceTest {
         openai.put("gpt-4o", new BigDecimal[]{BigDecimal.valueOf(0.005), BigDecimal.valueOf(0.015)});
         pricing.put("OPENAI", openai);
         props.getPricing().setModels(pricing);
-        service = new TokenUsageService(mapper, props, config);
+        service = new TokenUsageServiceImpl(mapper, props, config);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));

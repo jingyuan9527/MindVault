@@ -1,6 +1,6 @@
 package com.mindvault.ai.prompt;
 
-import com.mindvault.systemconfig.SystemConfigService;
+import com.mindvault.systemconfig.service.SystemConfigService;
 
 import java.util.function.Function;
 

@@ -1,0 +1,233 @@
+package com.mindvault.model.service;
+
+import com.mindvault.ai.client.AiModelFactory;
+import com.mindvault.model.entity.ModelConfig;
+import com.mindvault.model.mapper.ModelConfigMapper;
+import com.mindvault.operationlog.service.OperationLogService;
+import com.openai.client.OpenAIClient;
+import com.openai.client.OpenAIClientImpl;
+import com.openai.core.ClientOptions;
+import com.openai.models.models.Model;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.ollama.api.OllamaApi;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClient;
+
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Service
+public class ModelConfigServiceImpl implements ModelConfigService {
+
+    private static final Logger log = LoggerFactory.getLogger(ModelConfigServiceImpl.class);
+
+    private final ModelConfigMapper mapper;
+    private final OperationLogService operationLogService;
+    private final AiModelFactory aiModelFactory;
+
+    public ModelConfigServiceImpl(ModelConfigMapper mapper,
+                                  OperationLogService operationLogService,
+                                  AiModelFactory aiModelFactory) {
+        this.mapper = mapper;
+        this.operationLogService = operationLogService;
+        this.aiModelFactory = aiModelFactory;
+    }
+
+    @Transactional
+    @Override
+    public ModelConfig addConfig(ModelConfig config) {
+        LocalDateTime now = LocalDateTime.now();
+        config.setCreatedAt(now);
+        config.setUpdatedAt(now);
+        mapper.insert(config);
+        log.info("添加模型配置: provider={}, model={}, type={}",
+                config.getProvider(), config.getModelName(), config.getModelType());
+        operationLogService.log("MODEL", "ADD", config.getId(),
+                "添加模型 " + config.getProvider() + "/" + config.getModelName());
+        return config;
+    }
+
+    @Override
+    public List<ModelConfig> listAll() {
+        return mapper.selectList(null);
+    }
+
+    @Transactional
+    @Override
+    public ModelConfig setPrimary(Long id) {
+        ModelConfig config = Optional.ofNullable(mapper.selectById(id))
+                .orElseThrow(() -> new IllegalArgumentException("模型配置不存在: " + id));
+
+        List<ModelConfig> sameTypePrimary = mapper.selectList(null).stream()
+                .filter(mc -> mc.getIsPrimary() && config.getModelType().equals(mc.getModelType()))
+                .toList();
+        for (ModelConfig old : sameTypePrimary) {
+            old.setIsPrimary(false);
+            old.setUpdatedAt(LocalDateTime.now());
+            mapper.updateById(old);
+        }
+
+        config.setIsPrimary(true);
+        config.setUpdatedAt(LocalDateTime.now());
+        mapper.updateById(config);
+
+        log.info("设置主模型: id={}, provider={}, model={}", id,
+                config.getProvider(), config.getModelName());
+        operationLogService.log("MODEL", "SET_PRIMARY", id,
+                "设置主模型 " + config.getProvider() + "/" + config.getModelName());
+        return config;
+    }
+
+    @Override
+    public ModelConfig getPrimaryChatModel() {
+        return mapper.findByModelTypeAndIsPrimaryTrue("CHAT")
+                .orElseThrow(() -> new RuntimeException("未配置主模型，请在设置中添加并设置主模型"));
+    }
+
+    @Override
+    public List<ModelConfig> getAvailableChatModels() {
+        return mapper.findByModelTypeAndIsEnabledTrueOrderByPriorityDesc("CHAT");
+    }
+
+    @Override
+    public List<ModelConfig> getAvailableEmbeddingModels() {
+        return mapper.findByModelTypeAndIsEnabledTrueOrderByPriorityDesc("EMBEDDING");
+    }
+
+    @Transactional
+    @Override
+    public ModelConfig updatePriority(Long id, int priority) {
+        ModelConfig config = Optional.ofNullable(mapper.selectById(id))
+                .orElseThrow(() -> new IllegalArgumentException("模型配置不存在: " + id));
+        config.setPriority(priority);
+        config.setUpdatedAt(LocalDateTime.now());
+        mapper.updateById(config);
+        log.info("更新模型优先级: id={}, priority={}", id, priority);
+        operationLogService.log("MODEL", "UPDATE_PRIORITY", id,
+                "更新模型 " + config.getProvider() + "/" + config.getModelName() + " 优先级为 " + priority);
+        return config;
+    }
+
+    @Override
+    public List<String> fetchAvailableModels(String provider, String apiKey, String baseUrl) {
+        String upper = provider.toUpperCase();
+        try {
+            return switch (upper) {
+                case "OLLAMA" -> fetchOllamaModels(baseUrl);
+                case "ANTHROPIC" -> fetchAnthropicModels(apiKey, baseUrl);
+                default -> fetchOpenAiCompatibleModels(upper, apiKey, baseUrl);
+            };
+        } catch (Exception e) {
+            log.warn("拉取模型列表失败: provider={}, error={}", provider, e.getMessage());
+            return List.of();
+        }
+    }
+
+    private List<String> fetchOllamaModels(String baseUrl) {
+        String url = baseUrl != null ? baseUrl : "http://localhost:11434";
+        OllamaApi api = OllamaApi.builder().baseUrl(url).build();
+        return api.listModels().models().stream()
+                .map(OllamaApi.Model::name)
+                .collect(Collectors.toList());
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> fetchAnthropicModels(String apiKey, String baseUrl) {
+        String modelUrl = (baseUrl != null ? baseUrl : "https://api.anthropic.com") + "/v1/models";
+        String json = RestClient.builder()
+                .baseUrl(modelUrl)
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .defaultHeader("x-api-key", apiKey)
+                .defaultHeader("anthropic-version", "2023-06-01")
+                .build()
+                .get()
+                .retrieve()
+                .body(String.class);
+        List<String> models = new ArrayList<>();
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper localMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            Map<String, Object> root = localMapper.readValue(json, Map.class);
+            if (root.containsKey("data")) {
+                List<Map<String, Object>> data = (List<Map<String, Object>>) root.get("data");
+                for (Map<String, Object> item : data) {
+                    if (item.get("id") instanceof String id) models.add(id);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("解析 Anthropic 模型列表 JSON 失败: {}", e.getMessage());
+        }
+        return models;
+    }
+
+    private List<String> fetchOpenAiCompatibleModels(String provider, String apiKey, String baseUrl) {
+        String url = resolveBaseUrl(provider, baseUrl);
+        ClientOptions options = ClientOptions.Companion.builder()
+                .baseUrl(url)
+                .apiKey(apiKey)
+                .build();
+        OpenAIClient client = new OpenAIClientImpl(options);
+        return client.models().list().data().stream()
+                .map(Model::id)
+                .collect(Collectors.toList());
+    }
+
+    private static String resolveBaseUrl(String provider, String baseUrl) {
+        String effective = (baseUrl != null && !baseUrl.isBlank()) ? baseUrl : null;
+        return switch (provider) {
+            case "ALIYUN" -> effective != null ? effective : AiModelFactory.ALIYUN_DEFAULT_BASE_URL;
+            case "DEEPSEEK" -> effective != null ? effective : AiModelFactory.DEEPSEEK_DEFAULT_BASE_URL;
+            case "OPENAI" -> effective != null ? effective : AiModelFactory.OPENAI_DEFAULT_BASE_URL;
+            case "SILICONFLOW" -> effective != null ? effective : AiModelFactory.SILICONFLOW_DEFAULT_BASE_URL;
+            default -> effective;
+        };
+    }
+
+    @Transactional
+    @Override
+    public void deleteConfig(Long id) {
+        ModelConfig config = Optional.ofNullable(mapper.selectById(id))
+                .orElseThrow(() -> new IllegalArgumentException("模型配置不存在: " + id));
+        mapper.deleteById(id);
+        log.info("删除模型配置: id={}", id);
+        operationLogService.log("MODEL", "DELETE", id,
+                "删除模型 " + config.getProvider() + "/" + config.getModelName());
+    }
+
+    @Override
+    public boolean testConnection(Long id) {
+        ModelConfig config = Optional.ofNullable(mapper.selectById(id))
+                .orElseThrow(() -> new IllegalArgumentException("模型配置不存在: " + id));
+
+        if (config.getApiKey() == null || config.getApiKey().isBlank()) {
+            log.warn("测试模型连接失败: API Key 为空, id={}", id);
+            return false;
+        }
+
+        try {
+            if ("EMBEDDING".equals(config.getModelType())) {
+                EmbeddingModel embeddingModel = aiModelFactory.buildEmbeddingModel(config);
+                embeddingModel.embed("Hi");
+            } else {
+                ChatModel chatModel = aiModelFactory.buildChatModel(config);
+                chatModel.call("Hi");
+            }
+            log.info("测试模型连接成功: id={}, provider={}, model={}, type={}",
+                    id, config.getProvider(), config.getModelName(), config.getModelType());
+            operationLogService.log("MODEL", "TEST", id,
+                    "测试模型 " + config.getProvider() + "/" + config.getModelName() + ": 成功");
+            return true;
+        } catch (Exception e) {
+            log.warn("测试模型连接失败: id={}, error={}", id, e.getMessage());
+            operationLogService.log("MODEL", "TEST", id,
+                    "测试模型 " + config.getProvider() + "/" + config.getModelName() + ": " + e.getMessage());
+            return false;
+        }
+    }
+}

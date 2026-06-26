@@ -2,10 +2,13 @@ package com.mindvault.dailyreview;
 
 import com.mindvault.ai.client.AiService;
 import com.mindvault.dailyreview.entity.DailyReview;
-import com.mindvault.knowledge.KnowledgeMapper;
+import com.mindvault.dailyreview.mapper.DailyReviewMapper;
+import com.mindvault.dailyreview.service.DailyReviewService;
+import com.mindvault.dailyreview.service.DailyReviewServiceImpl;
+import com.mindvault.knowledge.mapper.KnowledgeMapper;
 import com.mindvault.knowledge.entity.Knowledge;
-import com.mindvault.model.ModelConfigService;
-import com.mindvault.systemconfig.SystemConfigService;
+import com.mindvault.model.service.ModelConfigService;
+import com.mindvault.systemconfig.service.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,7 +41,7 @@ class DailyReviewServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new DailyReviewService(modelConfigService, aiService, knowledgeMapper, mapper, config);
+        service = new DailyReviewServiceImpl(modelConfigService, aiService, knowledgeMapper, mapper, config);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));

@@ -1,7 +1,9 @@
 package com.mindvault.flashcard;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mindvault.flashcard.controller.FlashCardController;
 import com.mindvault.flashcard.entity.FlashCard;
+import com.mindvault.flashcard.service.FlashCardService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;

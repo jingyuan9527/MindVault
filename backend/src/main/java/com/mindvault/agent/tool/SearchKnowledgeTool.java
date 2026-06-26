@@ -1,9 +1,9 @@
 package com.mindvault.agent.tool;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mindvault.knowledge.KnowledgeService;
-import com.mindvault.knowledge.SearchEnhanceService;
-import com.mindvault.systemconfig.SystemConfigService;
+import com.mindvault.knowledge.service.KnowledgeService;
+import com.mindvault.knowledge.service.SearchEnhanceService;
+import com.mindvault.systemconfig.service.SystemConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;

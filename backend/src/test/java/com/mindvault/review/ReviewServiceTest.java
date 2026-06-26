@@ -1,10 +1,12 @@
 package com.mindvault.review;
 
-import com.mindvault.knowledge.KnowledgeService;
+import com.mindvault.knowledge.service.KnowledgeService;
 import com.mindvault.knowledge.entity.Knowledge;
-import com.mindvault.operationlog.OperationLogService;
+import com.mindvault.operationlog.service.OperationLogService;
 import com.mindvault.review.entity.ReviewSchedule;
-import com.mindvault.systemconfig.SystemConfigService;
+import com.mindvault.review.mapper.ReviewScheduleMapper;
+import com.mindvault.review.service.ReviewServiceImpl;
+import com.mindvault.systemconfig.service.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,13 +33,13 @@ class ReviewServiceTest {
     @Mock private OperationLogService operationLogService;
     @Mock private SystemConfigService config;
 
-    private ReviewService service;
+    private ReviewServiceImpl service;
 
     @Captor private ArgumentCaptor<ReviewSchedule> scheduleCaptor;
 
     @BeforeEach
     void setUp() {
-        service = new ReviewService(mapper, knowledgeService, operationLogService, config);
+        service = new ReviewServiceImpl(mapper, knowledgeService, operationLogService, config);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));
     }

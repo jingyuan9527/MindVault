@@ -1,7 +1,7 @@
 package com.mindvault.common;
 
 import com.mindvault.common.service.VectorConsistencyService;
-import com.mindvault.knowledge.KnowledgeMapper;
+import com.mindvault.knowledge.mapper.KnowledgeMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;

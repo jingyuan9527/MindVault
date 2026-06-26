@@ -5,7 +5,7 @@ import com.mindvault.auth.config.UserContext;
 import com.mindvault.common.annotation.OperationLog;
 import com.mindvault.common.service.SnapshotProvider;
 import com.mindvault.common.service.RequestHelper;
-import com.mindvault.operationlog.OperationLogService;
+import com.mindvault.operationlog.service.OperationLogService;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;

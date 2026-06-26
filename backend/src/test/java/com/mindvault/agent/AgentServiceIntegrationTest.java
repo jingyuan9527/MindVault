@@ -1,15 +1,17 @@
 package com.mindvault.agent;
 
+import com.mindvault.agent.service.AgentService;
+import com.mindvault.agent.service.AgentServiceImpl;
 import com.mindvault.agent.tool.AddKnowledgeTool;
 import com.mindvault.agent.tool.SearchKnowledgeTool;
 import com.mindvault.ai.client.AiModelFactory;
 import com.mindvault.common.service.MetricsService;
-import com.mindvault.knowledge.KnowledgeService;
-import com.mindvault.knowledge.SearchEnhanceService;
-import com.mindvault.model.ModelConfigService;
+import com.mindvault.knowledge.service.KnowledgeService;
+import com.mindvault.knowledge.service.SearchEnhanceService;
+import com.mindvault.model.service.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
-import com.mindvault.systemconfig.SystemConfigService;
-import com.mindvault.tokenusage.TokenUsageService;
+import com.mindvault.systemconfig.service.SystemConfigService;
+import com.mindvault.tokenusage.service.TokenUsageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -58,8 +60,8 @@ class AgentServiceIntegrationTest {
         lenient().when(metricsService.startLlmCall()).thenReturn(null);
     }
 
-    private AgentService createService() {
-        AgentService s = new AgentService(modelConfigService, aiModelFactory, searchTool, addTool,
+    private AgentServiceImpl createService() {
+        AgentServiceImpl s = new AgentServiceImpl(modelConfigService, aiModelFactory, searchTool, addTool,
                 metricsService, config, tokenUsageService);
         s.init();
         return s;

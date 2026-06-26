@@ -1,5 +1,6 @@
 package com.mindvault.content;
 
+import com.mindvault.content.service.ContentParserServiceImpl;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.mindvault.common.config.MindVaultProperties;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,13 +18,13 @@ class ContentParserServiceIntegrationTest {
             .options(wireMockConfig().dynamicPort())
             .build();
 
-    private ContentParserService service;
+    private ContentParserServiceImpl service;
     private String baseUrl;
 
     @BeforeEach
     void setUp() {
         MindVaultProperties props = new MindVaultProperties();
-        service = new ContentParserService(props);
+        service = new ContentParserServiceImpl(props);
         baseUrl = "http://localhost:" + wireMock.getPort();
     }
 

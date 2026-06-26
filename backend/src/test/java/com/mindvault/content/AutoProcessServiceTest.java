@@ -1,14 +1,16 @@
 package com.mindvault.content;
 
-import com.mindvault.auto.AutoProcessLogMapper;
+import com.mindvault.auto.mapper.AutoProcessLogMapper;
+import com.mindvault.auto.service.AutoProcessService;
+import com.mindvault.auto.service.AutoProcessServiceImpl;
 import com.mindvault.auto.entity.AutoProcessLog;
 import com.mindvault.ai.client.AiModelFactory;
 import com.mindvault.ai.client.AiService;
-import com.mindvault.knowledge.KnowledgeService;
+import com.mindvault.knowledge.service.KnowledgeService;
 import com.mindvault.knowledge.entity.Knowledge;
-import com.mindvault.model.ModelConfigService;
+import com.mindvault.model.service.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
-import com.mindvault.systemconfig.SystemConfigService;
+import com.mindvault.systemconfig.service.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,7 +37,7 @@ class AutoProcessServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new AutoProcessService(modelConfigService, aiService, aiModelFactory, knowledgeService, logMapper, config);
+        service = new AutoProcessServiceImpl(modelConfigService, aiService, aiModelFactory, knowledgeService, logMapper, config);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getLong(anyString(), anyLong())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));

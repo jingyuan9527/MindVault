@@ -1,6 +1,8 @@
 package com.mindvault.chat;
 
-import com.mindvault.systemconfig.SystemConfigService;
+import com.mindvault.chat.service.KeywordBlockingService;
+import com.mindvault.chat.service.KeywordBlockingServiceImpl;
+import com.mindvault.systemconfig.service.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,7 +25,7 @@ class KeywordBlockingServiceTest {
     void setUp() {
         lenient().when(config.getString(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getBool(anyString(), anyBoolean())).thenAnswer(i -> i.getArgument(1));
-        service = new KeywordBlockingService(config);
+        service = new KeywordBlockingServiceImpl(config);
     }
 
     @Test

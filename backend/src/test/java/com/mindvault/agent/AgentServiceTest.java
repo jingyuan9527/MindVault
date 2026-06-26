@@ -1,15 +1,17 @@
 package com.mindvault.agent;
 
+import com.mindvault.agent.service.AgentService;
+import com.mindvault.agent.service.AgentServiceImpl;
 import com.mindvault.agent.tool.AddKnowledgeTool;
 import com.mindvault.agent.tool.SearchKnowledgeTool;
 import com.mindvault.ai.client.AiModelFactory;
 import com.mindvault.common.service.MetricsService;
-import com.mindvault.knowledge.KnowledgeService;
-import com.mindvault.knowledge.SearchEnhanceService;
-import com.mindvault.model.ModelConfigService;
+import com.mindvault.knowledge.service.KnowledgeService;
+import com.mindvault.knowledge.service.SearchEnhanceService;
+import com.mindvault.model.service.ModelConfigService;
 import com.mindvault.model.entity.ModelConfig;
-import com.mindvault.systemconfig.SystemConfigService;
-import com.mindvault.tokenusage.TokenUsageService;
+import com.mindvault.systemconfig.service.SystemConfigService;
+import com.mindvault.tokenusage.service.TokenUsageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,7 +39,7 @@ class AgentServiceTest {
     void setUp() {
         SearchKnowledgeTool searchTool = new SearchKnowledgeTool(knowledgeService, searchEnhanceService, config);
         AddKnowledgeTool addTool = new AddKnowledgeTool(knowledgeService);
-        service = new AgentService(modelConfigService, aiModelFactory, searchTool, addTool,
+        service = new AgentServiceImpl(modelConfigService, aiModelFactory, searchTool, addTool,
                 metricsService, config, tokenUsageService);
         lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(i -> i.getArgument(1));
         lenient().when(config.getDouble(anyString(), anyDouble())).thenAnswer(i -> i.getArgument(1));

@@ -1,10 +1,16 @@
 package com.mindvault.chat;
 
-import com.mindvault.agent.AgentService;
+import com.mindvault.agent.service.AgentService;
 import com.mindvault.chat.entity.ChatMessage;
 import com.mindvault.chat.entity.ChatSession;
-import com.mindvault.knowledge.KnowledgeService;
-import com.mindvault.operationlog.OperationLogService;
+import com.mindvault.chat.mapper.ChatMessageMapper;
+import com.mindvault.chat.mapper.ChatSessionMapper;
+import com.mindvault.chat.service.ChatService;
+import com.mindvault.chat.service.ChatServiceImpl;
+import com.mindvault.chat.service.KeywordBlockingService;
+import com.mindvault.chat.service.KeywordBlockingServiceImpl;
+import com.mindvault.knowledge.service.KnowledgeService;
+import com.mindvault.operationlog.service.OperationLogService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,7 +43,7 @@ class ChatServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ChatService(sessionMapper, messageMapper, agentService,
+        service = new ChatServiceImpl(sessionMapper, messageMapper, agentService,
                 operationLogService, knowledgeService, keywordBlockingService);
     }
 
