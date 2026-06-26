@@ -28,13 +28,13 @@ cd docker && docker compose up -d --build
 ## Commands
 | Task | Command |
 |------|---------|
-| Backend tests (295 total) | `cd backend && mvn test` |
+| Backend tests (326 total) | `cd backend && mvn test` |
 | Single test class | `cd backend && mvn test -Dtest=KnowledgeControllerTest` |
-| Frontend tests (85 total) | `cd frontend && npx vitest run` |
+| Frontend tests (88 total) | `cd frontend && npx vitest run` |
 | Build backend jar | `cd backend && mvn clean package -DskipTests` |
 | Build frontend | `cd frontend && npm run build` |
 | Docker rebuild+deploy | `cd docker && docker compose up -d --build` |
-| Login as admin (Docker) | `curl -X POST localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' -d '{"username":"admin","password":"mindvault123"}'` |
+| Login as admin (Docker) | `curl -X POST localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' -d '{"username":"admin","password":"admin"}'` |
 | Create API token | `curl -X POST localhost:8080/api/v1/auth/tokens -H 'Authorization: Bearer <session>' -H 'Content-Type: application/json' -d '{"name":"ext","expireDays":365}'` |
 | List API tokens | `curl localhost:8080/api/v1/auth/tokens -H 'Authorization: Bearer <token>'` |
 | Delete API token | `curl -X DELETE localhost:8080/api/v1/auth/tokens/{id} -H 'Authorization: Bearer <token>'` |
@@ -55,7 +55,7 @@ cd docker && docker compose up -d --build
 | `agent` | LLM calling with failover, tool execution |
 | `auth` | User auth, login, API tokens, session manager, auth filter, admin initializer, user management (admin) |
 | `auto` | Auto-processing pipeline (R1: aiTitle/aiTags/summary/embedding via @Async; R3: AggregationService for tag cloud + stats) |
-| `model` | Model config CRUD (OpenAI/DeepSeek/Alibaba/Ollama) |
+| `model` | Model config CRUD (OpenAI/DeepSeek/Alibaba/SiliconFlow/Ollama) |
 | `content` | URL (Jsoup) and PDF (PDFBox) parsing → markdown |
 | `review` | SM-2 spaced repetition scheduling |
 | `relation` | Round 2 association discovery (semantic + tag + LLM) |
@@ -91,7 +91,7 @@ The pipeline processes each knowledge entry in three automated rounds:
 | R3 | Aggregation | `AggregationService` | Rebuilds tag cloud, refreshes stats, completes processing; sets status → `COMPLETED` | `AutoProcessScheduler` every 30 minutes |
 
 ## Spring AI 2.0 Conventions
-- **AiModelFactory** (`ai.client`): Builds `ChatModel` / `EmbeddingModel` dynamically from `ModelConfig` entities. OpenAI/DeepSeek/Alibaba → `OpenAiChatModel` (all OpenAI-compatible API), Ollama → `OllamaChatModel`. Supports overloaded `buildChatModel(ModelConfig, Double temperature)`.
+- **AiModelFactory** (`ai.client`): Builds `ChatModel` / `EmbeddingModel` dynamically from `ModelConfig` entities. OpenAI/DeepSeek/Alibaba/SiliconFlow → `OpenAiChatModel` (all OpenAI-compatible API), Ollama → `OllamaChatModel`. Supports overloaded `buildChatModel(ModelConfig, Double temperature)`. Empty/blank `baseUrl` strings are treated as null (falls back to provider default).
 - **PromptRegistry** (`ai.prompt`): 11 prompt templates as enum constants. Each template resolved via `SystemConfig` overrides with `config.getPrompt(key, defaultTemplate)`.
 - **LlmFailoverService**: Uses `ChatModel.call(new Prompt(new UserMessage(text), options))` instead of RestClient. Failover/retry/metrics preserved.
 - **AgentService**: Uses `ChatModel.call(prompt)` / `ChatModel.stream(prompt).toStream().forEach(...)` directly (not via LlmFailoverService, needs multi-message arrays). Don't pass `ChatOptions` in the `Prompt` — set all options on the model builder via `AiModelFactory`.
@@ -102,14 +102,14 @@ The pipeline processes each knowledge entry in three automated rounds:
 ## Testing Notes
 - `ModelApiIntegrationTest` runs real API calls against `agnes-2.0-flash` (~29s for 5 tests). Skipped when env var absent.
 - Frontend tests use `happy-dom` environment, `@vue/test-utils`, and `vitest`.
-- Frontend test count: 85 tests across 19 files.
+- Frontend test count: 88 tests across 19 files.
 - Naive UI hooks (`useDialog`, `useMessage`, `useNotification`) are auto-imported by `unplugin-auto-import` in dev/build but NOT in vitest. The setup file (`__tests__/setup.js`) provides them on `globalThis` for views that use them without explicit import. Views that explicitly `import { useDialog } from 'naive-ui'` (e.g. FlashCardView) need a `vi.mock('naive-ui', ...)` in their test file.
 - Test data SQL (10 knowledge entries) in init script — rerun manually if DB is reset.
 - Auth is disabled in tests via `mindvault.auth.enabled=false` in `src/test/resources/application.properties`.
 
 ## Feature Progress
 
-### Backend (API — 70 endpoints)
+### Backend (API — 78 endpoints)
 | Module | Backend | Controller Test | Service Test | Coverage |
 |--------|---------|:-:|:-:|:-:|
 | 知识库 Knowledge | CRUD + 搜索 + 导入导出 + 标签 + URL/PDF 解析 + AI自动处理(R1) | ✅ | ✅ | 54% |
@@ -127,9 +127,9 @@ The pipeline processes each knowledge entry in three automated rounds:
 | Agent | LLM failover + 熔断 + 工具调用 | ❌² | ✅ | 57% |
 | 内容解析 Content | Jsoup 网页 + PDFBox PDF | ❌¹ | ✅ | 68% |
 | 认证 Auth | 登录 + Token 管理 + 密码修改 | ✅ | ✅ | — |
-| 系统配置 SystemConfig | 动态 KV 配置 + 定时任务管理 | ✅ | ✅ | 34% |
+| 系统配置 SystemConfig | 模块导航 + 内联编辑 + 定时任务 + 默认值还原 + 审计溯源 | ✅ | ✅ | 34% |
 | 用户管理 User | 列表 + 启用/禁用 | ✅ | ✅ | 36% |
-| **Total** | **18 模块 / 70 接口** | **13/18** | **17/18** | **53%** |
+| **Total** | **18 模块 / 78 接口** | **13/18** | **17/18** | **53%** |
 
 ### Frontend (14 routes)
 | Route | View | Responsive | Tests | Design Polish |
@@ -146,7 +146,7 @@ The pipeline processes each knowledge entry in three automated rounds:
 | `/backups` | 数据备份 — 时间线布局 | ✅ | ✅ | ✅ v0.10 |
 | `/system` | 系统监控 — 图标统计卡 + 内存/磁盘进度条 | ✅ | ✅ | ✅ v0.10 |
 | `/users` | 用户管理 — 首字母头像 + 角色/状态标签 | ✅ | ✅ | ✅ v0.10 |
-| `/settings` | 模型配置 + Token 管理 | ✅ | ✅ | ✅ v0.10 |
+| `/settings` | 模型配置 + 嵌入模型 + Token 管理 | ✅ | ✅ | ✅ v0.10 |
 | `/system-config` | 系统配置 + 定时任务管理 | ✅ | ✅ | ✅ v0.10 |
 
 ¹ 功能通过 `KnowledgeController` 或调度器暴露，无独立 Controller。测试覆盖在 `KnowledgeControllerTest` 中。  
@@ -186,6 +186,7 @@ The pipeline processes each knowledge entry in three automated rounds:
 - Dockerfiles: `Dockerfile.backend` (multi-stage Maven build), `Dockerfile.frontend` (node build → nginx)
 - v0.4 migration: `docker/migration-v0.4.sql` (creates knowledge_relation, auto_process_log tables; adds new columns to knowledge)
 - v0.5 migration: `docker/migration-v0.5.sql` (creates system_config table with ~120 default config items for prompts/crons/thresholds/defaults)
+- v0.6 migration: `docker/migration-v0.6-operationlog.sql` (operation_log partition + archive; entity_id → VARCHAR(64))
 - Networks: `mindvault` bridge
 - Health checks: DB (`pg_isready`), Backend (`GET /api/v1/system/health`), Frontend (`wget http://localhost:80/`)
 - Admin user auto-created on first boot via env vars: `MINDVAULT_ADMIN_USERNAME` / `MINDVAULT_ADMIN_PASSWORD`

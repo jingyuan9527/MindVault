@@ -59,4 +59,10 @@ describe('SettingsView', () => {
     expect(wrapper.text()).toContain('数据导入/导出')
     expect(wrapper.text()).toContain('数据备份')
   })
+
+  it('renders embedding model section', () => {
+    const wrapper = mount(SettingsView)
+    expect(wrapper.text()).toContain('嵌入模型')
+    expect(wrapper.text()).toContain('暂无嵌入模型配置')
+  })
 })

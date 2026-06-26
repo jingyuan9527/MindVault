@@ -10,6 +10,7 @@ import com.openai.models.models.Model;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.ollama.api.OllamaApi;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -169,11 +170,13 @@ public class ModelConfigService {
     }
 
     private static String resolveBaseUrl(String provider, String baseUrl) {
+        String effective = (baseUrl != null && !baseUrl.isBlank()) ? baseUrl : null;
         return switch (provider) {
-            case "ALIYUN" -> baseUrl != null ? baseUrl : AiModelFactory.ALIYUN_DEFAULT_BASE_URL;
-            case "DEEPSEEK" -> baseUrl != null ? baseUrl : AiModelFactory.DEEPSEEK_DEFAULT_BASE_URL;
-            case "OPENAI" -> baseUrl != null ? baseUrl : AiModelFactory.OPENAI_DEFAULT_BASE_URL;
-            default -> baseUrl;
+            case "ALIYUN" -> effective != null ? effective : AiModelFactory.ALIYUN_DEFAULT_BASE_URL;
+            case "DEEPSEEK" -> effective != null ? effective : AiModelFactory.DEEPSEEK_DEFAULT_BASE_URL;
+            case "OPENAI" -> effective != null ? effective : AiModelFactory.OPENAI_DEFAULT_BASE_URL;
+            case "SILICONFLOW" -> effective != null ? effective : AiModelFactory.SILICONFLOW_DEFAULT_BASE_URL;
+            default -> effective;
         };
     }
 
@@ -197,10 +200,15 @@ public class ModelConfigService {
         }
 
         try {
-            ChatModel chatModel = aiModelFactory.buildChatModel(config);
-            chatModel.call("Hi");
-            log.info("测试模型连接成功: id={}, provider={}, model={}",
-                    id, config.getProvider(), config.getModelName());
+            if ("EMBEDDING".equals(config.getModelType())) {
+                EmbeddingModel embeddingModel = aiModelFactory.buildEmbeddingModel(config);
+                embeddingModel.embed("Hi");
+            } else {
+                ChatModel chatModel = aiModelFactory.buildChatModel(config);
+                chatModel.call("Hi");
+            }
+            log.info("测试模型连接成功: id={}, provider={}, model={}, type={}",
+                    id, config.getProvider(), config.getModelName(), config.getModelType());
             operationLogService.log("MODEL", "TEST", id,
                     "测试模型 " + config.getProvider() + "/" + config.getModelName() + ": 成功");
             return true;

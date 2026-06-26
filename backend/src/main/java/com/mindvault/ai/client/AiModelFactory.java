@@ -24,6 +24,7 @@ public class AiModelFactory {
     public static final String ALIYUN_DEFAULT_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
     public static final String DEEPSEEK_DEFAULT_BASE_URL = "https://api.deepseek.com/v1";
     public static final String OPENAI_DEFAULT_BASE_URL = "https://api.openai.com/v1";
+    public static final String SILICONFLOW_DEFAULT_BASE_URL = "https://api.siliconflow.cn/v1";
 
     public ChatModel buildChatModel(ModelConfig config) {
         return buildChatModel(config, null);
@@ -36,7 +37,7 @@ public class AiModelFactory {
         String modelName = config.getModelName();
 
         if ("OLLAMA".equals(provider)) {
-            String url = baseUrl != null ? baseUrl : "http://localhost:11434";
+            String url = (baseUrl != null && !baseUrl.isBlank()) ? baseUrl : "http://localhost:11434";
             OllamaApi api = OllamaApi.builder().baseUrl(url).build();
             OllamaChatOptions.Builder opts = OllamaChatOptions.builder().model(modelName);
             if (temperature != null) opts.temperature(temperature);
@@ -64,7 +65,7 @@ public class AiModelFactory {
         String modelName = config.getModelName();
 
         if ("OLLAMA".equals(provider)) {
-            String url = baseUrl != null ? baseUrl : "http://localhost:11434";
+            String url = (baseUrl != null && !baseUrl.isBlank()) ? baseUrl : "http://localhost:11434";
             OllamaApi api = OllamaApi.builder().baseUrl(url).build();
             return OllamaEmbeddingModel.builder()
                     .ollamaApi(api)
@@ -85,20 +86,24 @@ public class AiModelFactory {
     }
 
     private String resolveChatBaseUrl(String provider, String baseUrl) {
+        String effective = (baseUrl != null && !baseUrl.isBlank()) ? baseUrl : null;
         return switch (provider) {
-            case "ALIYUN" -> baseUrl != null ? baseUrl : ALIYUN_DEFAULT_BASE_URL;
-            case "DEEPSEEK" -> baseUrl != null ? baseUrl : DEEPSEEK_DEFAULT_BASE_URL;
-            case "OPENAI" -> baseUrl != null ? baseUrl : OPENAI_DEFAULT_BASE_URL;
-            default -> baseUrl;
+            case "ALIYUN" -> effective != null ? effective : ALIYUN_DEFAULT_BASE_URL;
+            case "DEEPSEEK" -> effective != null ? effective : DEEPSEEK_DEFAULT_BASE_URL;
+            case "OPENAI" -> effective != null ? effective : OPENAI_DEFAULT_BASE_URL;
+            case "SILICONFLOW" -> effective != null ? effective : SILICONFLOW_DEFAULT_BASE_URL;
+            default -> effective;
         };
     }
 
     private String resolveEmbeddingBaseUrl(String provider, String baseUrl) {
+        String effective = (baseUrl != null && !baseUrl.isBlank()) ? baseUrl : null;
         return switch (provider) {
-            case "ALIYUN" -> baseUrl != null ? baseUrl : ALIYUN_DEFAULT_BASE_URL;
-            case "DEEPSEEK" -> baseUrl != null ? baseUrl : DEEPSEEK_DEFAULT_BASE_URL;
-            case "OPENAI" -> baseUrl != null ? baseUrl : OPENAI_DEFAULT_BASE_URL;
-            default -> baseUrl;
+            case "ALIYUN" -> effective != null ? effective : ALIYUN_DEFAULT_BASE_URL;
+            case "DEEPSEEK" -> effective != null ? effective : DEEPSEEK_DEFAULT_BASE_URL;
+            case "OPENAI" -> effective != null ? effective : OPENAI_DEFAULT_BASE_URL;
+            case "SILICONFLOW" -> effective != null ? effective : SILICONFLOW_DEFAULT_BASE_URL;
+            default -> effective;
         };
     }
 }

@@ -24,12 +24,12 @@
       </template>
 
       <!-- Desktop NDataTable -->
-      <div v-if="models.length" class="hidden md:block">
-        <n-data-table :columns="modelColumns" :data="models" :bordered="false" :single-line="false" size="small" />
+      <div v-if="chatModels.length" class="hidden md:block">
+        <n-data-table :columns="modelColumns" :data="chatModels" :bordered="false" :single-line="false" size="small" />
       </div>
 
       <!-- Mobile cards -->
-      <div v-if="models.length" class="md:hidden space-y-3">
+      <div v-if="chatModels.length" class="md:hidden space-y-3">
         <div
 v-for="(m, idx) in models" :key="m.id"
           class="p-3 rounded-lg"
@@ -59,7 +59,52 @@ class="px-2 py-0.5 text-xs rounded shrink-0"
         </div>
       </div>
 
-      <p v-else class="text-sm py-4" style="color: var(--color-text-secondary)">暂无模型配置，点击上方按钮添加</p>
+      <p v-else class="text-sm py-4" style="color: var(--color-text-secondary)">暂无对话模型配置，点击上方按钮添加</p>
+    </n-card>
+
+    <n-card size="small" class="mb-4 md:mb-6">
+      <template #header>
+        <div class="flex items-center justify-between w-full">
+          <span class="font-display text-base md:text-lg">嵌入模型</span>
+          <n-button type="primary" size="small" @click="showEmbeddingAddForm = true">+ 添加嵌入模型</n-button>
+        </div>
+      </template>
+
+      <div v-if="embeddingModels.length" class="hidden md:block">
+        <n-data-table :columns="modelColumns" :data="embeddingModels" :bordered="false" :single-line="false" size="small" />
+      </div>
+
+      <div v-if="embeddingModels.length" class="md:hidden space-y-3">
+        <div
+v-for="(m, idx) in embeddingModels" :key="m.id"
+          class="p-3 rounded-lg"
+          :style="{ backgroundColor: 'var(--color-bg)' }">
+          <div class="flex items-start justify-between mb-2">
+            <div>
+              <span class="text-sm font-medium" style="color: var(--color-text)">{{ m.provider }}</span>
+              <span
+v-if="m.isPrimary" class="ml-2 px-1.5 py-0.5 text-xs rounded"
+                :style="{ backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' }">主模型</span>
+            </div>
+            <span
+class="px-2 py-0.5 text-xs rounded shrink-0"
+              :style="m.isEnabled ? { backgroundColor: 'var(--color-sage-light)', color: 'var(--color-sage)' } : { backgroundColor: '#f0eeeb', color: 'var(--color-text-secondary)' }">
+              {{ m.isEnabled ? '启用' : '禁用' }}
+            </span>
+          </div>
+          <p class="text-xs mb-1" style="color: var(--color-text)">{{ m.modelName }}</p>
+          <p class="text-xs mb-2" style="color: var(--color-warm-gray)">{{ m.modelType }} · 优先级 {{ m.priority }}</p>
+          <n-space size="small">
+            <n-button text size="tiny" :disabled="idx === 0" @click="movePriority(m.id, m.priority - 1)">上移</n-button>
+            <n-button text size="tiny" :disabled="idx === embeddingModels.length - 1" @click="movePriority(m.id, m.priority + 1)">下移</n-button>
+            <n-button v-if="!m.isPrimary" text size="tiny" type="primary" @click="setPrimary(m.id)">设为主模型</n-button>
+            <n-button text size="tiny" @click="testConnection(m.id)">测试</n-button>
+            <n-button text size="tiny" type="error" @click="deleteModel(m.id)">删除</n-button>
+          </n-space>
+        </div>
+      </div>
+
+      <p v-else class="text-sm py-4" style="color: var(--color-text-secondary)">暂无嵌入模型配置，点击上方按钮添加</p>
     </n-card>
 
     <section class="card p-4 md:p-6 mt-4 md:mt-6">
@@ -230,6 +275,28 @@ size="tiny" :disabled="!form.apiKey" :loading="fetching" :style="{ backgroundCol
         </n-space>
       </template>
     </n-modal>
+
+    <n-modal v-model:show="showEmbeddingAddForm" preset="card" class="opaque-modal" style="max-width: 400px; background-color: var(--color-bg) !important;" :bordered="false" title="添加嵌入模型">
+      <n-space vertical size="medium">
+        <n-select v-model:value="embeddingForm.provider" :options="embeddingProviderOptions" @update:value="onEmbeddingProviderChange" />
+        <n-input v-model:value="embeddingForm.apiKey" type="password" placeholder="sk-..." />
+        <n-input v-model:value="embeddingForm.baseUrl" placeholder="https://api.siliconflow.cn/v1" />
+        <div>
+          <n-button
+size="tiny" :disabled="!embeddingForm.apiKey" :loading="embeddingFetching" :style="{ backgroundColor: 'var(--color-sage-light)', borderColor: 'var(--color-sage-light)', color: 'var(--color-sage)' }"
+            class="mb-2"
+            @click="fetchEmbeddingModels">从远端拉取模型列表</n-button>
+          <n-select v-if="embeddingFetchedModels.length" v-model:value="embeddingForm.modelName" :options="embeddingFetchedOptions" placeholder="请选择一个模型" />
+          <n-input v-else v-model:value="embeddingForm.modelName" placeholder="如 BAAI/bge-m3（或先拉取列表）" />
+        </div>
+      </n-space>
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="showEmbeddingAddForm = false">取消</n-button>
+          <n-button type="primary" @click="addEmbeddingModel">保存</n-button>
+        </n-space>
+      </template>
+    </n-modal>
   </div>
   </div>
 </template>
@@ -247,6 +314,13 @@ const message = useMessage()
 const models = ref([])
 const showAddForm = ref(false)
 const form = ref({ provider: 'ALIYUN', modelName: '', apiKey: '', baseUrl: '' })
+const showEmbeddingAddForm = ref(false)
+const embeddingForm = ref({ provider: 'SILICONFLOW', modelName: 'BAAI/bge-m3', apiKey: '', baseUrl: '', modelType: 'EMBEDDING' })
+const embeddingFetching = ref(false)
+const embeddingFetchedModels = ref([])
+const embeddingFetchedOptions = computed(() =>
+  embeddingFetchedModels.value.map(m => ({ label: m, value: m }))
+)
 const fetching = ref(false)
 const fetchedModelList = ref([])
 const exporting = ref(false)
@@ -273,8 +347,19 @@ const providerOptions = [
   { label: 'DeepSeek', value: 'DEEPSEEK' },
   { label: 'OpenAI', value: 'OPENAI' },
   { label: 'Anthropic', value: 'ANTHROPIC' },
+  { label: '硅基流动 (SiliconFlow)', value: 'SILICONFLOW' },
   { label: 'Ollama（本地）', value: 'OLLAMA' },
 ]
+
+const embeddingProviderOptions = providerOptions.filter(p => p.value !== 'ANTHROPIC')
+
+const embeddingModels = computed(() =>
+  models.value.filter(m => m.modelType === 'EMBEDDING')
+)
+
+const chatModels = computed(() =>
+  models.value.filter(m => m.modelType !== 'EMBEDDING')
+)
 
 const fetchedModelOptions = computed(() =>
   fetchedModelList.value.map(m => ({ label: m, value: m }))
@@ -396,6 +481,37 @@ async function addModel() {
   await modelApi.add(form.value)
   showAddForm.value = false
   form.value = { provider: 'ALIYUN', modelName: '', apiKey: '', baseUrl: '' }
+  await loadModels()
+}
+
+function onEmbeddingProviderChange() {
+  embeddingFetchedModels.value = []
+  embeddingForm.value.modelName = ''
+}
+
+async function fetchEmbeddingModels() {
+  if (!embeddingForm.value.apiKey) return
+  embeddingFetching.value = true
+  embeddingFetchedModels.value = []
+  try {
+    const res = await modelApi.fetchModels({
+      provider: embeddingForm.value.provider,
+      apiKey: embeddingForm.value.apiKey,
+      baseUrl: embeddingForm.value.baseUrl || undefined
+    })
+    embeddingFetchedModels.value = res.data.data || []
+  } catch {
+    embeddingFetchedModels.value = []
+  } finally {
+    embeddingFetching.value = false
+  }
+}
+
+async function addEmbeddingModel() {
+  const payload = { ...embeddingForm.value, modelType: 'EMBEDDING' }
+  await modelApi.add(payload)
+  showEmbeddingAddForm.value = false
+  embeddingForm.value = { provider: 'SILICONFLOW', modelName: 'BAAI/bge-m3', apiKey: '', baseUrl: '', modelType: 'EMBEDDING' }
   await loadModels()
 }
 
