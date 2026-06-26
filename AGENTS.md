@@ -1,5 +1,11 @@
 # MindVault — Agent Guide
 
+## 三条铁律
+
+1. **没有完成标准，不写代码** — 开工前必须有明确的 Done Criteria（测试用例 / 手工验收清单 / 肉眼确认的行为判定），有清晰的 done/not-done 分界线。
+2. **先写验证，再写实现** — 优先 TDD：80%+ 业务逻辑通过设计分离做到可低成本自动化测试，确难测的场景以手工验收清单兜底，但不逃避可测性设计。
+3. **一个 Commit 一个功能点，小到可独立回滚** — 不混入不同用户可见功能的代码，同一功能点内的内部重构属于该功能 commit 的一部分。
+
 ## Workflow Preferences
 This project follows an iterative delivery pattern:
 
@@ -70,6 +76,8 @@ cd docker && docker compose up -d --build
 | `aspect` | OperationLogAspect — auto-logging around @OperationLog methods |
 
 ## Key Conventions
+- **Commit messages**: 使用中文，清晰描述本次改动的内容和目的。
+- **Backend code comments**: 完整注释 — 类职责、方法逻辑、复杂分支、边界条件均需注释说明。
 - **Controller tests**: `@WebMvcTest` + `@MockBean` pattern, no real DB. Example: `KnowledgeControllerTest.java`
 - **Integration tests**: Use `application-test.yml` with H2 in PostgreSQL mode. Requires `MINDVAULT_TEST_API_KEY` env var for model API tests (auto-skipped if missing).
 - **Secrets**: `application-test.yml` and `application-local.yml` are gitignored. Template at `application-test.yml.example`.
