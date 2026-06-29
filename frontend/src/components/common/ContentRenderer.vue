@@ -58,9 +58,16 @@ const plainText = computed(() => {
   margin-bottom: 0.5em;
   line-height: 1.3;
 }
-.content-renderer :deep(h1) { font-size: 1.25rem; }
-.content-renderer :deep(h2) { font-size: 1.1rem; }
-.content-renderer :deep(h3) { font-size: 1rem; }
+.content-renderer :deep(h1) {
+  font-size: 1.5rem;
+  border-bottom: 2px solid var(--color-border);
+  padding-bottom: 0.3em;
+}
+.content-renderer :deep(h2) {
+  font-size: 1.2rem;
+  color: var(--color-text);
+}
+.content-renderer :deep(h3) { font-size: 1.05rem; }
 .content-renderer :deep(ul),
 .content-renderer :deep(ol) {
   padding-left: 1.5em;
@@ -91,14 +98,14 @@ const plainText = computed(() => {
   font-size: inherit;
 }
 .content-renderer :deep(blockquote) {
-  border-left: 3px solid var(--color-sage, #a3b18a);
+  border-left: 3px solid var(--color-primary);
   padding-left: 1em;
   margin-left: 0;
   margin-bottom: 0.75em;
   opacity: 0.85;
 }
 .content-renderer :deep(a) {
-  color: var(--color-sage, #a3b18a);
+  color: var(--color-primary);
   text-decoration: underline;
 }
 .content-renderer :deep(table) {

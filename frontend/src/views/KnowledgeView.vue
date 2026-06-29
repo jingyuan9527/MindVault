@@ -79,32 +79,34 @@
 
     <!-- ===== FILTER BAR ===== -->
     <div class="filter-bar">
-      <div class="flex items-center gap-2 flex-1">
-        <div class="search-wrapper flex-1 max-w-md">
-          <svg class="w-4 h-4 search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input v-model="keyword" class="search-input" placeholder="搜索笔记..." @input="onSearch" />
-          <button v-if="keyword" class="search-clear" @click="keyword = ''; onSearch()">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="filter-inner">
+        <div class="flex items-center gap-2 flex-1">
+          <div class="search-wrapper flex-1">
+            <svg class="w-4 h-4 search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input v-model="keyword" class="search-input" placeholder="搜索笔记..." @input="onSearch" />
+            <button v-if="keyword" class="search-clear" @click="keyword = ''; onSearch()">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <select v-model="sortBy" class="sort-select" @change="onSortChange">
+            <option value="createdAt">最新</option>
+            <option value="updatedAt">最近更新</option>
+            <option value="title">标题</option>
+          </select>
+        </div>
+        <div v-if="selectedFilterTags.length" class="flex flex-wrap gap-1.5 mt-2">
+          <span v-for="tag in selectedFilterTags" :key="tag" class="tag-pill tag-pill-active">
+            #{{ tag }}
+            <svg class="w-3 h-3 ml-1 cursor-pointer" fill="none" stroke="currentColor" viewBox="0 0 24 24" @click="removeFilterTag(tag)">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
             </svg>
-          </button>
+          </span>
+          <span class="text-xs self-center cursor-pointer" style="color: var(--color-text-secondary)" @click="selectedFilterTags = []; fetchData()">清除</span>
         </div>
-        <select v-model="sortBy" class="sort-select" @change="onSortChange">
-          <option value="createdAt">最新</option>
-          <option value="updatedAt">最近更新</option>
-          <option value="title">标题</option>
-        </select>
-      </div>
-      <div v-if="selectedFilterTags.length" class="flex flex-wrap gap-1.5 mt-2">
-        <span v-for="tag in selectedFilterTags" :key="tag" class="tag-pill tag-pill-active">
-          #{{ tag }}
-          <svg class="w-3 h-3 ml-1 cursor-pointer" fill="none" stroke="currentColor" viewBox="0 0 24 24" @click="removeFilterTag(tag)">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </span>
-        <span class="text-xs self-center cursor-pointer" style="color: var(--color-text-secondary)" @click="selectedFilterTags = []; fetchData()">清除</span>
       </div>
     </div>
 
@@ -484,6 +486,7 @@ onMounted(() => {
   z-index: 10;
   background: var(--color-bg);
 }
+.input-card { max-width: 720px; margin: 0 auto; }
 @media (min-width: 1024px) {
   .input-area.is-desktop { padding: 24px 24px 0; }
 }
@@ -601,9 +604,11 @@ onMounted(() => {
   width: auto;
   padding: 0 10px;
 }
-.filter-bar {
+.filter-bar { padding: 0; border-bottom: 1px solid var(--color-border); }
+.filter-inner {
+  max-width: 720px;
+  margin: 0 auto;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--color-border);
 }
 .search-wrapper { position: relative; display: flex; align-items: center; }
 .search-icon {
