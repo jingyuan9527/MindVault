@@ -45,7 +45,11 @@ const stubs = {
     template: '<div class="mock-list-item" :class="{ highlighted }" @click="$emit(\'click\', note)" />',
     props: ['note', 'selected', 'highlighted'],
   },
-  NoteEditorModal: { template: '<div class="mock-editor" v-if="visible" />', props: ['visible', 'note'] },
+  NoteEditorModal: {
+    template: '<div class="mock-editor" v-if="visible"><button class="mock-editor-save" @click="$emit(\'saved\')" /></div>',
+    props: ['visible', 'note'],
+    emits: ['saved'],
+  },
   SearchResultItem: {
     name: 'SearchResultItem',
     template: '<div class="mock-search-item" :class="{ selected }" @click="$emit(\'click\', result)" />',
@@ -313,5 +317,42 @@ describe('KnowledgeView', () => {
     await flush()
 
     expect(wrapper.find('.mock-drawer').exists()).toBe(false)
+  })
+
+  // ===== Drawer + Modal coexistence tests =====
+
+  it('refreshes drawer note content after saving edit from drawer', async () => {
+    mockListWithNotes(sampleNotes)
+    knowledgeApi.getById.mockResolvedValue({ data: { data: { id: 1, title: 'Updated', content: 'New content' } } })
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+
+    await wrapper.find('.mock-list-item').trigger('click')
+    await flush()
+    knowledgeApi.getById.mockClear()
+
+    await wrapper.find('.mock-edit-btn').trigger('click')
+    await flush()
+    await wrapper.find('.mock-editor-save').trigger('click')
+    await flush()
+
+    expect(knowledgeApi.getById).toHaveBeenCalledWith(1)
+    const drawer = wrapper.findComponent({ name: 'NoteDrawer' })
+    expect(drawer.props('note').title).toBe('Updated')
+  })
+
+  it('keeps drawer open after saving edit from drawer', async () => {
+    mockListWithNotes(sampleNotes)
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+
+    await wrapper.find('.mock-list-item').trigger('click')
+    await flush()
+    await wrapper.find('.mock-edit-btn').trigger('click')
+    await flush()
+    await wrapper.find('.mock-editor-save').trigger('click')
+    await flush()
+
+    expect(wrapper.find('.mock-drawer').exists()).toBe(true)
   })
 })

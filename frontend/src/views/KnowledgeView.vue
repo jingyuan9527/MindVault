@@ -298,9 +298,17 @@ function openEditModal(note) {
   showEditor.value = true
 }
 
-function onNoteSaved() {
+async function onNoteSaved() {
   fetchData()
   loadTags()
+  if (drawerVisible.value && drawerNote.value) {
+    try {
+      const res = await knowledgeApi.getById(drawerNote.value.id)
+      drawerNote.value = res.data.data
+    } catch {
+      // keep old note if fetch fails
+    }
+  }
 }
 
 /* Drawer actions */
