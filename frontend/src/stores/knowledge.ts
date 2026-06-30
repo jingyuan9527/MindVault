@@ -6,6 +6,9 @@ export const useKnowledgeStore = defineStore('knowledge', {
     items: [] as any[],
     total: 0,
     isLoading: false,
+    searchResults: [] as any[],
+    searchTotal: 0,
+    isSearching: false,
   }),
 
   actions: {
@@ -32,6 +35,20 @@ export const useKnowledgeStore = defineStore('knowledge', {
         this.total = data.total || 0
       } finally {
         this.isLoading = false
+      }
+    },
+    async search(params: { keyword: string; topN?: number; offset?: number }) {
+      this.isSearching = true
+      try {
+        const res = await knowledgeApi.search(params.keyword, {
+          topN: params.topN ?? 20,
+          offset: params.offset ?? 0,
+        })
+        const data = res.data.data || []
+        this.searchResults = data
+        this.searchTotal = data.length
+      } finally {
+        this.isSearching = false
       }
     },
     async add(data) {

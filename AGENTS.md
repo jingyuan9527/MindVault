@@ -36,7 +36,7 @@ cd docker && docker compose up -d --build
 |------|---------|
 | Backend tests (326 total) | `cd backend && mvn test` |
 | Single test class | `cd backend && mvn test -Dtest=KnowledgeControllerTest` |
-| Frontend tests (88 total) | `cd frontend && npx vitest run` |
+| Frontend tests (101 total) | `cd frontend && npx vitest run` |
 | Build backend jar | `cd backend && mvn clean package -DskipTests` |
 | Build frontend | `cd frontend && npm run build` |
 | Docker rebuild+deploy | `cd docker && docker compose up -d --build` |
@@ -155,17 +155,21 @@ The pipeline processes each knowledge entry in three automated rounds. Scheduler
 ## Testing Notes
 - `ModelApiIntegrationTest` runs real API calls against `agnes-2.0-flash` (~29s for 5 tests). Skipped when env var absent.
 - Frontend tests use `happy-dom` environment, `@vue/test-utils`, and `vitest`.
-- Frontend test count: 88 tests across 19 files.
+- Frontend test count: 101 tests across 20 files.
 - Naive UI hooks (`useDialog`, `useMessage`, `useNotification`) are auto-imported by `unplugin-auto-import` in dev/build but NOT in vitest. The setup file (`__tests__/setup.js`) provides them on `globalThis` for views that use them without explicit import. Views that explicitly `import { useDialog } from 'naive-ui'` (e.g. FlashCardView) need a `vi.mock('naive-ui', ...)` in their test file.
 - Test data SQL (10 knowledge entries) in init script — rerun manually if DB is reset.
 - Auth is disabled in tests via `mindvault.auth.enabled=false` in `src/test/resources/application.properties`.
+
+## Known Issues
+- **pgvector 类型不匹配**: `knowledge.embedding` 列为 `vector` 类型，但 MyBatis 写入时用 `varchar` 表达式，导致 R1 嵌入向量存储失败（`ERROR: column "embedding" is of type vector but expression is of type character varying`）。影响：语义检索退化为关键字搜索，相似度分缺失。前端 `SearchResultItem` 对缺失 similarity 优雅降级（隐藏分数）。修复需为 `vector` 类型注册自定义 MyBatis TypeHandler。
+- **前端健康检查误报**: `docker-compose.yml` 中 frontend healthcheck 用 `wget http://localhost:80/`，Alpine 里 `localhost` 解析到 IPv6 `::1`，而 nginx 只监听 IPv4 `0.0.0.0:80`，导致容器状态恒为 `unhealthy`。实际服务正常（HTTP 200）。修复：改用 `127.0.0.1`。
 
 ## Feature Progress
 
 ### Backend (API — 80 endpoints)
 | Module | Backend | Controller Test | Service Test | Coverage |
 |--------|---------|:-:|:-:|:-:|
-| 知识库 Knowledge | CRUD + 搜索（3 种）+ 导入导出 + 标签 + URL/PDF 解析 + AI自动处理(R1) | ✅ | ✅ | 54% |
+| 知识库 Knowledge | CRUD + 搜索（3 种 + offset 分页）+ 导入导出 + 标签 + URL/PDF 解析 + AI自动处理(R1) | ✅ | ✅ | 54% |
 | 聊天 Chat | 会话 + 消息 + SSE 流式 | ✅ | ✅ | 49% |
 | 模型配置 Model Config | CRUD + 主模型 + 优先级 + 测试连接 + 拉取列表 | ✅ | ✅ | 36% |
 | 复习 Review | SM-2 调度 + 到期查询 + 执行复习 | ✅ | ✅ | 99% |
@@ -189,7 +193,7 @@ The pipeline processes each knowledge entry in three automated rounds. Scheduler
 | Route | View | Responsive | Tests | Design Polish |
 |-------|------|:-:|:-:|:-:|
 | `/login` | 登录页面 — 品牌英雄式布局 + 渐变图标 + 背景光晕 | ✅ | ✅ | ✅ v0.10 |
-| `/` | 知识库列表 + 搜索 + 导入导出 + AI标题 + 合并标签 | ✅ | ✅ | ✅ v0.10 |
+| `/` | 知识库列表 + 语义检索（自动切换浏览/检索） + 导入导出 + AI标题 + 合并标签 | ✅ | ✅ | ✅ v0.10 |
 | `/chat` | AI 对话 — 头部渐变 + 快捷建议 + 清空按钮 | ✅ | ✅ | ✅ v0.10 |
 | `/review` | 间隔复习 — 进度条 + 圆点指示器 + 分色质量按钮 | ✅ | ✅ | ✅ v0.10 |
 | `/flashcards` | 闪卡展示 — CSS 3D 翻转动画 + 难度色标 | ✅ | ✅ | ✅ v0.10 |
@@ -231,9 +235,9 @@ The pipeline processes each knowledge entry in three automated rounds. Scheduler
 - **Fonts**: Outfit (headings), Inter (body), JetBrains Mono (mono)
 - **Key effects**: `backdrop-filter: blur(20px)`, animated background glows per-theme, `--gradient-brand` for brand elements
 
-### To Do — 知识库页面布局优化（2024-06-30 拷问定稿）
+### To Do — 知识库页面布局优化（2026-06-30 拷问定稿）
 
-**痛点**: A 信息密度低（一屏看不到几条）+ B 发现效率差（关联笔记零露出、标签藏下拉）+ 检索缺失（前端只走 list 端点 keyword 过滤，后端 3 套语义检索未接入）。
+**痛点**: A 信息密度低（一屏看不到几条）+ B 发现效率差（关联笔记零露出、标签藏下拉）+ ~~检索缺失（前端只走 list 端点 keyword 过滤，后端 3 套语义检索未接入）~~（✅ todo #1+#2 已接入语义检索 + offset 分页）。
 
 **布局骨架**: header（搜索+深度开关+密度+排序+新建）→ 标签 pill 横条 → 列表/卡片 feed → 右侧抽屉。
 
@@ -249,7 +253,7 @@ The pipeline processes each knowledge entry in three automated rounds. Scheduler
 
 **原子 todo（每条一个 commit，带完成标准）**:
 1. [high] ✅ 后端: 检索接口加 offset（hybridSearch/searchWithRewrite/hydeSearch）— offset 用例证明第二 tier 不重复
-2. [high] 前端: 接入语义检索（自动切换端点 + 检索结果行 snippet+相似度分）
+2. [high] ✅ 前端: 接入语义检索（自动切换端点 + 检索结果行 snippet+相似度分）— 相似度分依赖 embedding 存储（pgvector 类型不匹配为已知遗留 bug，组件对缺失 similarity 优雅降级）
 3. [medium] 前端: 密度切换（紧凑列表默认/卡片，复用 NoteListItem）
 4. [high] 前端: 右侧抽屉（预览+关联+图遍历返回栈+列表高亮同步）
 5. [medium] 前端: 抽屉/modal 并存（完整编辑入口+保存回流）

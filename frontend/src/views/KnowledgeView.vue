@@ -53,6 +53,25 @@
         </div>
       </div>
 
+      <div v-else-if="isSearchMode" class="search-results">
+        <div v-if="searchResults.length" class="search-results-list">
+          <SearchResultItem
+            v-for="result in searchResults"
+            :key="result.id"
+            :result="result"
+            :keyword="keyword"
+            @click="openEditModal(result)"
+          />
+        </div>
+        <div v-else class="empty-state">
+          <svg class="w-14 h-14 mb-3" style="color: var(--color-text-secondary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <p class="text-base font-medium" style="color: var(--color-text-secondary)">没有匹配的笔记</p>
+          <p class="text-sm mt-1" style="color: var(--color-text-secondary)">换个关键词试试？</p>
+        </div>
+      </div>
+
       <div v-else-if="!items.length" class="empty-state">
         <svg class="w-14 h-14 mb-3" style="color: var(--color-text-secondary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
@@ -117,6 +136,7 @@ import { useKnowledgeStore } from '@/stores/knowledge'
 import { knowledgeApi } from '@/api/knowledge'
 import NoteCard from '@/components/knowledge/NoteCard.vue'
 import NoteEditorModal from '@/components/knowledge/NoteEditorModal.vue'
+import SearchResultItem from '@/components/knowledge/SearchResultItem.vue'
 
 const dialog = useDialog()
 const message = useMessage()
@@ -146,20 +166,29 @@ const editingNote = ref(null)
 /* Computed */
 const items = computed(() => store.items)
 const total = computed(() => store.total)
-const isLoading = computed(() => store.isLoading)
+const searchResults = computed(() => store.searchResults)
+const isLoading = computed(() => store.isLoading || store.isSearching)
+const isSearchMode = computed(() => keyword.value.trim().length > 0)
 const hasFilter = computed(() => keyword.value || selectedTagFilter.value.length > 0)
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
 
 /* Data fetching */
 async function fetchData() {
-  await store.fetchItems({
-    page: page.value,
-    size: pageSize.value,
-    keyword: keyword.value || undefined,
-    tags: selectedTagFilter.value.length ? selectedTagFilter.value : undefined,
-    sortBy: sortBy.value,
-    sortOrder: 'desc',
-  })
+  if (isSearchMode.value) {
+    await store.search({
+      keyword: keyword.value.trim(),
+      topN: pageSize.value,
+      offset: 0,
+    })
+  } else {
+    await store.fetchItems({
+      page: page.value,
+      size: pageSize.value,
+      tags: selectedTagFilter.value.length ? selectedTagFilter.value : undefined,
+      sortBy: sortBy.value,
+      sortOrder: 'desc',
+    })
+  }
 }
 
 async function loadTags() {
@@ -369,6 +398,16 @@ onMounted(async () => {
   gap: 16px;
   max-width: 1200px;
   margin: 0 auto;
+}
+.search-results {
+  max-width: 900px;
+  margin: 0 auto;
+}
+.search-results-list {
+  background: var(--color-surface);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
 }
 @media (max-width: 640px) {
   .feed-grid {

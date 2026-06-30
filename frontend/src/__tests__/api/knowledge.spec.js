@@ -39,9 +39,14 @@ describe('knowledgeApi', () => {
     expect(api.get).toHaveBeenCalledWith('/knowledge/5')
   })
 
-  it('search calls GET with encoded query', () => {
+  it('search calls GET /knowledge/search with q param', () => {
     knowledgeApi.search('test query')
-    expect(api.get).toHaveBeenCalledWith('/knowledge/search?q=test%20query')
+    expect(api.get).toHaveBeenCalledWith('/knowledge/search', { params: { q: 'test query' } })
+  })
+
+  it('search passes optional topN and offset params', () => {
+    knowledgeApi.search('test', { topN: 20, offset: 10 })
+    expect(api.get).toHaveBeenCalledWith('/knowledge/search', { params: { q: 'test', topN: 20, offset: 10 } })
   })
 
   it('update calls PUT /knowledge/:id', () => {
