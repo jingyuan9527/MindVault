@@ -95,32 +95,41 @@ public class KnowledgeController {
     public ApiResponse<?> search(
             @Parameter(description = "搜索关键词") @RequestParam String q,
             @Parameter(description = "返回条数") @RequestParam(defaultValue = "5") int topN,
+            @Parameter(description = "偏移量（加载更多）") @RequestParam(defaultValue = "0") int offset,
             @Parameter(description = "标签过滤（可选）") @RequestParam(required = false) String tag) {
+        int safeOffset = Math.max(0, offset);
         if (tag != null && !tag.isBlank()) {
-            return ApiResponse.success(knowledgeService.searchByKeywordWithTag(q, topN, tag));
+            List<Knowledge> tagged = knowledgeService.searchByKeywordWithTag(q, topN + safeOffset, tag);
+            return ApiResponse.success(tagged.stream().skip(safeOffset).limit(topN).toList());
         }
-        List<Map<String, Object>> results = knowledgeService.hybridSearch(q, topN * 2);
-        List<Map<String, Object>> reranked = searchEnhanceService.rerankResults(q, results, topN);
-        return ApiResponse.success(reranked);
+        int poolSize = topN * 2 + safeOffset;
+        int rerankLimit = topN + safeOffset;
+        List<Map<String, Object>> results = knowledgeService.hybridSearch(q, poolSize);
+        List<Map<String, Object>> reranked = searchEnhanceService.rerankResults(q, results, rerankLimit);
+        return ApiResponse.success(reranked.stream().skip(safeOffset).limit(topN).toList());
     }
 
     @Operation(summary = "HyDE 搜索", description = "基于假设文档嵌入的增强语义搜索")
     @GetMapping("/search/hyde")
     public ApiResponse<?> searchHyde(
             @Parameter(description = "搜索关键词") @RequestParam String q,
-            @Parameter(description = "返回条数") @RequestParam(defaultValue = "5") int topN) {
-        List<Map<String, Object>> results = searchEnhanceService.hydeSearch(q, topN * 2);
-        List<Map<String, Object>> reranked = searchEnhanceService.rerankResults(q, results, topN);
-        return ApiResponse.success(reranked);
+            @Parameter(description = "返回条数") @RequestParam(defaultValue = "5") int topN,
+            @Parameter(description = "偏移量（加载更多）") @RequestParam(defaultValue = "0") int offset) {
+        int safeOffset = Math.max(0, offset);
+        int poolSize = topN * 2 + safeOffset;
+        int rerankLimit = topN + safeOffset;
+        List<Map<String, Object>> results = searchEnhanceService.hydeSearch(q, poolSize);
+        List<Map<String, Object>> reranked = searchEnhanceService.rerankResults(q, results, rerankLimit);
+        return ApiResponse.success(reranked.stream().skip(safeOffset).limit(topN).toList());
     }
 
     @Operation(summary = "查询改写搜索", description = "LLM 改写查询后进行语义搜索")
     @GetMapping("/search/rewrite")
     public ApiResponse<?> searchWithRewrite(
             @Parameter(description = "搜索关键词") @RequestParam String q,
-            @Parameter(description = "返回条数") @RequestParam(defaultValue = "5") int topN) {
-        List<Map<String, Object>> results = searchEnhanceService.searchWithRewrite(q, topN);
-        return ApiResponse.success(results);
+            @Parameter(description = "返回条数") @RequestParam(defaultValue = "5") int topN,
+            @Parameter(description = "偏移量（加载更多）") @RequestParam(defaultValue = "0") int offset) {
+        return ApiResponse.success(searchEnhanceService.searchWithRewrite(q, topN, Math.max(0, offset)));
     }
 
     @Operation(summary = "相关知识", description = "基于向量相似度获取相关知识推荐")

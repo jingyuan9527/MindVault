@@ -231,8 +231,33 @@ The pipeline processes each knowledge entry in three automated rounds. Scheduler
 - **Fonts**: Outfit (headings), Inter (body), JetBrains Mono (mono)
 - **Key effects**: `backdrop-filter: blur(20px)`, animated background glows per-theme, `--gradient-brand` for brand elements
 
-### To Do
-- （无待办 — 全部完成）
+### To Do — 知识库页面布局优化（2024-06-30 拷问定稿）
+
+**痛点**: A 信息密度低（一屏看不到几条）+ B 发现效率差（关联笔记零露出、标签藏下拉）+ 检索缺失（前端只走 list 端点 keyword 过滤，后端 3 套语义检索未接入）。
+
+**布局骨架**: header（搜索+深度开关+密度+排序+新建）→ 标签 pill 横条 → 列表/卡片 feed → 右侧抽屉。
+
+**关键决策**:
+- 检索形态: 单一界面自动切换（空=浏览走 list 端点，有词=检索走 hybridSearch；深度开关走 rewrite+rerank）
+- 检索结果: 密集列表行（标题+命中 snippet 高亮+相似度分+标签），与浏览态卡片/列表形态区分作为模式信号
+- 密度: 切换器（紧凑列表默认 / 卡片），复用 `NoteListItem.vue` 骨架
+- 发现: 右侧抽屉（预览+关联+轻操作），点关联=图遍历（返回栈回溯），列表同步滚动高亮当前笔记；长文编辑走 `NoteEditorModal`（从抽屉唤起，并存）
+- 标签: header 下方 pill 横条（替代 n-select 下拉），浏览态筛选/检索态收紧搜索
+- 分页: 浏览态"加载更多"追加（真分页）；检索态 offset 追加封顶 top 60 后提示精炼
+- 新建: header"+新建"按钮 + N/Cmd+N 快捷键，砍 FAB
+- 移动端: 分级降级（手机 header 只留搜索+新建图标，余下收溢出菜单，强制列表，抽屉全屏；平板≥768px 恢复）
+
+**原子 todo（每条一个 commit，带完成标准）**:
+1. [high] ✅ 后端: 检索接口加 offset（hybridSearch/searchWithRewrite/hydeSearch）— offset 用例证明第二 tier 不重复
+2. [high] 前端: 接入语义检索（自动切换端点 + 检索结果行 snippet+相似度分）
+3. [medium] 前端: 密度切换（紧凑列表默认/卡片，复用 NoteListItem）
+4. [high] 前端: 右侧抽屉（预览+关联+图遍历返回栈+列表高亮同步）
+5. [medium] 前端: 抽屉/modal 并存（完整编辑入口+保存回流）
+6. [medium] 前端: header 重设计（条件渲染：检索态隐藏排序、深度开关仅有词时出现）
+7. [medium] 前端: 标签 pill 横条（替代下拉，浏览筛选/检索收紧）
+8. [medium] 前端: 加载更多分页（浏览真分页追加/检索 offset 追加封顶 60）
+9. [low] 前端: 新建入口+快捷键（砍 FAB，N/Cmd+N，空状态文案）
+10. [low] 前端: 移动端响应式（分级降级，溢出菜单，强制列表，全屏抽屉）
 
 ## Docker Deployment
 - Three containers: `db` (pgvector), `backend` (JDK 21), `frontend` (Nginx)

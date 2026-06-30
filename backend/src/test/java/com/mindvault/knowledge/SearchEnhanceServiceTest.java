@@ -94,6 +94,26 @@ class SearchEnhanceServiceTest {
     }
 
     @Test
+    void searchWithRewrite_withOffset_shouldFallbackAndSkipSecondTier() {
+        // rewrite 不可用 → fallback 走 hybridSearch(query, topN+offset=4)，再 skip offset=2 → 返回 [C,D]
+        when(modelConfigService.getPrimaryChatModel()).thenThrow(new RuntimeException("no model"));
+        when(knowledgeService.hybridSearch("test", 4)).thenReturn(List.of(
+                Map.of("id", 1L, "title", "A"),
+                Map.of("id", 2L, "title", "B"),
+                Map.of("id", 3L, "title", "C"),
+                Map.of("id", 4L, "title", "D")
+        ));
+
+        List<Map<String, Object>> result = service.searchWithRewrite("test", 2, 2);
+
+        assertEquals(2, result.size());
+        assertEquals("C", result.get(0).get("title"));
+        assertEquals("D", result.get(1).get("title"));
+        // 第二 tier 与第一 tier (offset=0 → [A,B]) 无重叠
+        verify(knowledgeService).hybridSearch("test", 4);
+    }
+
+    @Test
     void rerankResults_shouldReturnOriginalWhenNull() {
         List<Map<String, Object>> result = service.rerankResults("query", null, 5);
         assertNull(result);

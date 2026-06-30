@@ -69,14 +69,23 @@ public class SearchEnhanceServiceImpl implements SearchEnhanceService {
 
     @Override
     public List<Map<String, Object>> searchWithRewrite(String query, int topN) {
+        return searchWithRewrite(query, topN, 0);
+    }
+
+    @Override
+    public List<Map<String, Object>> searchWithRewrite(String query, int topN, int offset) {
+        int safeOffset = Math.max(0, offset);
+        int poolSize = topN + safeOffset;
         String rewritten = rewriteQuery(query);
         if (rewritten == null || rewritten.isBlank()) {
-            return knowledgeService.hybridSearch(query, topN);
+            // 改写不可用：直接取候选池后 skip
+            List<Map<String, Object>> pool = knowledgeService.hybridSearch(query, poolSize);
+            return pool.stream().skip(safeOffset).limit(topN).toList();
         }
         log.info("查询重写: '{}' → '{}'", query, rewritten);
-        List<Map<String, Object>> results = knowledgeService.hybridSearch(rewritten, topN);
-        List<Map<String, Object>> reranked = rerankResults(rewritten, results, topN);
-        return reranked;
+        List<Map<String, Object>> results = knowledgeService.hybridSearch(rewritten, poolSize);
+        List<Map<String, Object>> reranked = rerankResults(rewritten, results, poolSize);
+        return reranked.stream().skip(safeOffset).limit(topN).toList();
     }
 
     private String rewriteQuery(String query) {

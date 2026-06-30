@@ -180,13 +180,82 @@ class KnowledgeControllerTest {
 
     @Test
     void searchWithRewrite_shouldReturnResults() throws Exception {
-        when(searchEnhanceService.searchWithRewrite("test", 5)).thenReturn(List.of(
+        when(searchEnhanceService.searchWithRewrite("test", 5, 0)).thenReturn(List.of(
                 Map.of("id", 1L, "title", "RewriteResult")
         ));
 
         mockMvc.perform(get("/api/v1/knowledge/search/rewrite?q=test"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].title").value("RewriteResult"));
+    }
+
+    @Test
+    void search_withOffset_shouldReturnSecondTier() throws Exception {
+        // topN=2, offset=2 → pool = topN*2+offset = 6, rerank limit = topN+offset = 4
+        when(knowledgeService.hybridSearch("test", 6)).thenReturn(List.of(
+                Map.of("id", 1L, "title", "Pool1"),
+                Map.of("id", 2L, "title", "Pool2"),
+                Map.of("id", 3L, "title", "Pool3"),
+                Map.of("id", 4L, "title", "Pool4"),
+                Map.of("id", 5L, "title", "Pool5"),
+                Map.of("id", 6L, "title", "Pool6")
+        ));
+        when(searchEnhanceService.rerankResults(any(), anyList(), eq(4))).thenReturn(List.of(
+                Map.of("id", 1L, "title", "A"),
+                Map.of("id", 2L, "title", "B"),
+                Map.of("id", 3L, "title", "C"),
+                Map.of("id", 4L, "title", "D")
+        ));
+
+        mockMvc.perform(get("/api/v1/knowledge/search?q=test&topN=2&offset=2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].title").value("C"))
+                .andExpect(jsonPath("$.data[1].title").value("D"));
+
+        verify(knowledgeService).hybridSearch("test", 6);
+        verify(searchEnhanceService).rerankResults(eq("test"), anyList(), eq(4));
+    }
+
+    @Test
+    void searchHyde_withOffset_shouldReturnSecondTier() throws Exception {
+        when(searchEnhanceService.hydeSearch("test", 6)).thenReturn(List.of(
+                Map.of("id", 1L, "title", "Pool1"),
+                Map.of("id", 2L, "title", "Pool2"),
+                Map.of("id", 3L, "title", "Pool3"),
+                Map.of("id", 4L, "title", "Pool4")
+        ));
+        when(searchEnhanceService.rerankResults(any(), anyList(), eq(4))).thenReturn(List.of(
+                Map.of("id", 1L, "title", "A"),
+                Map.of("id", 2L, "title", "B"),
+                Map.of("id", 3L, "title", "C"),
+                Map.of("id", 4L, "title", "D")
+        ));
+
+        mockMvc.perform(get("/api/v1/knowledge/search/hyde?q=test&topN=2&offset=2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].title").value("C"))
+                .andExpect(jsonPath("$.data[1].title").value("D"));
+
+        verify(searchEnhanceService).hydeSearch("test", 6);
+        verify(searchEnhanceService).rerankResults(eq("test"), anyList(), eq(4));
+    }
+
+    @Test
+    void searchWithRewrite_withOffset_shouldReturnSecondTier() throws Exception {
+        when(searchEnhanceService.searchWithRewrite("test", 2, 2)).thenReturn(List.of(
+                Map.of("id", 3L, "title", "C"),
+                Map.of("id", 4L, "title", "D")
+        ));
+
+        mockMvc.perform(get("/api/v1/knowledge/search/rewrite?q=test&topN=2&offset=2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].title").value("C"))
+                .andExpect(jsonPath("$.data[1].title").value("D"));
+
+        verify(searchEnhanceService).searchWithRewrite("test", 2, 2);
     }
 
     @Test
