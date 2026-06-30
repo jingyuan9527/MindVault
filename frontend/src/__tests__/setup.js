@@ -30,7 +30,7 @@ for (const name of NAIVE_COMPONENTS) {
       bordered: Boolean,
       hoverable: Boolean,
       closable: Boolean,
-      value: [String, Number],
+      value: [String, Number, Array],
       modelValue: [String, Number, Array, Boolean],
       show: Boolean,
       preset: String,

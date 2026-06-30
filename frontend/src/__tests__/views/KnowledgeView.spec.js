@@ -42,9 +42,7 @@ describe('KnowledgeView', () => {
       global: {
         stubs: {
           NoteCard: { template: '<div class="mock-card" />', props: ['note'] },
-          NoteListItem: { template: '<div class="mock-item" />', props: ['note', 'selected'] },
-          ContentRenderer: { template: '<div class="mock-render" />', props: ['content', 'preview'] },
-          TagInput: { template: '<div class="mock-tag" />' },
+          NoteEditorModal: { template: '<div class="mock-editor" />' },
         }
       }
     })
@@ -57,9 +55,7 @@ describe('KnowledgeView', () => {
       global: {
         stubs: {
           NoteCard: { template: '<div class="mock-card" />' },
-          NoteListItem: { template: '<div class="mock-item" />' },
-          ContentRenderer: { template: '<div class="mock-render" />' },
-          TagInput: { template: '<div class="mock-tag" />' },
+          NoteEditorModal: { template: '<div class="mock-editor" />' },
         }
       }
     })
