@@ -503,4 +503,80 @@ describe('KnowledgeView', () => {
 
     expect(knowledgeApi.search).toHaveBeenCalledWith('设计', expect.objectContaining({ tag: 'java' }))
   })
+
+  // ===== Load more pagination tests =====
+
+  it('shows load more button when more items exist in browse mode', async () => {
+    const notes = Array.from({ length: 20 }, (_, i) => ({ id: i + 1, title: `N${i+1}`, content: 'C', tags: '[]', userTags: '[]', createdAt: '2024-06-15T10:00:00Z' }))
+    knowledgeApi.list.mockResolvedValue({ data: { data: { records: notes, total: 50 } } })
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+    expect(wrapper.find('.load-more-btn').exists()).toBe(true)
+  })
+
+  it('does not show load more button when all items loaded', async () => {
+    const notes = Array.from({ length: 5 }, (_, i) => ({ id: i + 1, title: `N${i+1}`, content: 'C', tags: '[]', userTags: '[]', createdAt: '2024-06-15T10:00:00Z' }))
+    knowledgeApi.list.mockResolvedValue({ data: { data: { records: notes, total: 5 } } })
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+    expect(wrapper.find('.load-more-btn').exists()).toBe(false)
+  })
+
+  it('clicking load more appends items in browse mode', async () => {
+    const p1 = Array.from({ length: 20 }, (_, i) => ({ id: i + 1, title: `N${i+1}`, content: 'C', tags: '[]', userTags: '[]', createdAt: '2024-06-15T10:00:00Z' }))
+    const p2 = Array.from({ length: 20 }, (_, i) => ({ id: i + 21, title: `N${i+21}`, content: 'C', tags: '[]', userTags: '[]', createdAt: '2024-06-15T10:00:00Z' }))
+    knowledgeApi.list.mockResolvedValueOnce({ data: { data: { records: p1, total: 50 } } })
+    knowledgeApi.list.mockResolvedValueOnce({ data: { data: { records: p2, total: 50 } } })
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+    expect(wrapper.findAll('.mock-list-item')).toHaveLength(20)
+
+    await wrapper.find('.load-more-btn').trigger('click')
+    await flush()
+
+    expect(wrapper.findAll('.mock-list-item')).toHaveLength(40)
+    expect(knowledgeApi.list).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1 }))
+  })
+
+  it('shows load more in search mode when more results may exist', async () => {
+    const results = Array.from({ length: 20 }, (_, i) => ({ id: i + 1, title: `R${i+1}`, content: 'C', similarity: 0.8 }))
+    knowledgeApi.search.mockResolvedValue({ data: { data: results } })
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+    await wrapper.find('.search-input').setValue('test')
+    await wrapper.find('.search-btn').trigger('click')
+    await flush()
+    expect(wrapper.find('.load-more-btn').exists()).toBe(true)
+  })
+
+  it('hides load more and shows refine hint when search reaches 60 cap', async () => {
+    const results = Array.from({ length: 60 }, (_, i) => ({ id: i + 1, title: `R${i+1}`, content: 'C', similarity: 0.8 }))
+    knowledgeApi.search.mockResolvedValue({ data: { data: results } })
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+    await wrapper.find('.search-input').setValue('test')
+    await wrapper.find('.search-btn').trigger('click')
+    await flush()
+    expect(wrapper.find('.load-more-btn').exists()).toBe(false)
+    expect(wrapper.find('.search-capped-hint').exists()).toBe(true)
+  })
+
+  it('clicking load more appends results in search mode with offset', async () => {
+    const p1 = Array.from({ length: 20 }, (_, i) => ({ id: i + 1, title: `R${i+1}`, content: 'C', similarity: 0.8 }))
+    const p2 = Array.from({ length: 5 }, (_, i) => ({ id: i + 21, title: `R${i+21}`, content: 'C', similarity: 0.7 }))
+    knowledgeApi.search.mockResolvedValueOnce({ data: { data: p1 } })
+    knowledgeApi.search.mockResolvedValueOnce({ data: { data: p2 } })
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+    await wrapper.find('.search-input').setValue('test')
+    await wrapper.find('.search-btn').trigger('click')
+    await flush()
+    knowledgeApi.search.mockClear()
+
+    await wrapper.find('.load-more-btn').trigger('click')
+    await flush()
+
+    expect(knowledgeApi.search).toHaveBeenCalledWith('test', expect.objectContaining({ offset: 20 }))
+    expect(wrapper.findAll('.mock-search-item')).toHaveLength(25)
+  })
 })

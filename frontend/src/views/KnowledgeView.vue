@@ -135,23 +135,15 @@
             @delete="confirmDelete(note)"
           />
         </template>
+      </div>
 
-        <div v-if="totalPages > 1" class="pagination-bar col-span-full">
-          <div class="flex items-center gap-1">
-            <button class="page-btn" :disabled="page <= 0" @click="goPage(page - 1)">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <span class="text-sm" style="color: var(--color-text-secondary)">{{ page + 1 }} / {{ totalPages }}</span>
-            <button class="page-btn" :disabled="page >= totalPages - 1" @click="goPage(page + 1)">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-          <span class="text-xs" style="color: var(--color-text-secondary)">共 {{ total }} 条</span>
-        </div>
+      <!-- Load more footer -->
+      <div v-if="!isLoading && hasContent" class="feed-footer">
+        <button v-if="hasMore" class="load-more-btn" :disabled="isLoadingMore" @click="loadMore">
+          {{ isLoadingMore ? '加载中...' : '加载更多' }}
+        </button>
+        <p v-else-if="searchCapped" class="search-capped-hint">结果过多（已达 60 条上限），请精炼关键词</p>
+        <p v-else class="feed-end-hint">共 {{ isSearchMode ? searchResults.length : total }} 条</p>
       </div>
     </div>
 
@@ -214,6 +206,14 @@ const sortOptions = [
 /* Pagination */
 const page = ref(0)
 const pageSize = ref(20)
+const isLoadingMore = ref(false)
+
+const hasMore = computed(() => {
+  if (isSearchMode.value) return store.searchHasMore
+  return store.items.length < store.total
+})
+const searchCapped = computed(() => isSearchMode.value && store.searchResults.length >= 60)
+const hasContent = computed(() => isSearchMode.value ? store.searchResults.length > 0 : store.items.length > 0)
 
 /* Density */
 const density = ref(localStorage.getItem('knowledge-density') || 'list')
@@ -248,7 +248,6 @@ const isLoading = computed(() => store.isLoading || store.isSearching)
 const isSearchMode = computed(() => keyword.value.trim().length > 0)
 const hasFilter = computed(() => keyword.value || selectedTagFilter.value)
 const selectedNoteId = computed(() => drawerNote.value?.id ?? null)
-const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
 
 /* Data fetching */
 async function fetchData() {
@@ -284,11 +283,33 @@ async function loadTags() {
   }
 }
 
-function goPage(p) {
-  if (p < 0 || p >= totalPages.value) return
-  page.value = p
-  fetchData()
-  feedRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
+async function loadMore() {
+  if (isLoadingMore.value) return
+  isLoadingMore.value = true
+  try {
+    if (isSearchMode.value) {
+      await store.search({
+        keyword: keyword.value.trim(),
+        topN: pageSize.value,
+        offset: store.searchResults.length,
+        deep: deepSearch.value,
+        tag: selectedTagFilter.value || undefined,
+        append: true,
+      })
+    } else {
+      const nextPage = Math.floor(store.items.length / pageSize.value)
+      await store.fetchItems({
+        page: nextPage,
+        size: pageSize.value,
+        tags: selectedTagFilter.value ? [selectedTagFilter.value] : undefined,
+        sortBy: sortBy.value,
+        sortOrder: 'desc',
+        append: true,
+      })
+    }
+  } finally {
+    isLoadingMore.value = false
+  }
 }
 
 /* Search */
@@ -676,33 +697,39 @@ onMounted(async () => {
   text-align: center;
 }
 
-/* ===== Pagination ===== */
-.pagination-bar {
+/* ===== Load more footer ===== */
+.feed-footer {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 0;
-}
-.page-btn {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
   justify-content: center;
-  border-radius: 6px;
-  color: var(--color-text-secondary);
-  background: transparent;
-  border: none;
+  align-items: center;
+  padding: 16px 0;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.load-more-btn {
+  padding: 8px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  border: 1px solid var(--color-primary);
   cursor: pointer;
   transition: all 0.15s ease;
+  font-family: inherit;
 }
-.page-btn:hover:not(:disabled) {
-  background: var(--color-surface);
-  color: var(--color-text);
+.load-more-btn:hover:not(:disabled) {
+  opacity: 0.9;
 }
-.page-btn:disabled {
-  opacity: 0.4;
+.load-more-btn:disabled {
+  opacity: 0.5;
   cursor: default;
+}
+.search-capped-hint,
+.feed-end-hint {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin: 0;
 }
 
 /* ===== FAB ===== */

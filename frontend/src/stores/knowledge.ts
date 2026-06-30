@@ -9,6 +9,7 @@ export const useKnowledgeStore = defineStore('knowledge', {
     searchResults: [] as any[],
     searchTotal: 0,
     isSearching: false,
+    searchHasMore: false,
   }),
 
   actions: {
@@ -19,8 +20,9 @@ export const useKnowledgeStore = defineStore('knowledge', {
       tags?: string[]
       sortBy?: string
       sortOrder?: string
+      append?: boolean
     } = {}) {
-      this.isLoading = true
+      if (!params.append) this.isLoading = true
       try {
         const res = await knowledgeApi.list({
           page: params.page ?? 0,
@@ -31,14 +33,18 @@ export const useKnowledgeStore = defineStore('knowledge', {
           sortOrder: params.sortOrder || 'desc',
         })
         const data = res.data.data || { records: [], total: 0 }
-        this.items = data.records || []
+        if (params.append) {
+          this.items = [...this.items, ...(data.records || [])]
+        } else {
+          this.items = data.records || []
+        }
         this.total = data.total || 0
       } finally {
         this.isLoading = false
       }
     },
-    async search(params: { keyword: string; topN?: number; offset?: number; deep?: boolean; tag?: string }) {
-      this.isSearching = true
+    async search(params: { keyword: string; topN?: number; offset?: number; deep?: boolean; tag?: string; append?: boolean }) {
+      if (!params.append) this.isSearching = true
       try {
         const api = params.deep ? knowledgeApi.searchRewrite : knowledgeApi.search
         const res = await api(params.keyword, {
@@ -47,8 +53,13 @@ export const useKnowledgeStore = defineStore('knowledge', {
           ...(params.tag ? { tag: params.tag } : {}),
         })
         const data = res.data.data || []
-        this.searchResults = data
-        this.searchTotal = data.length
+        if (params.append) {
+          this.searchResults = [...this.searchResults, ...data]
+        } else {
+          this.searchResults = data
+        }
+        this.searchTotal = this.searchResults.length
+        this.searchHasMore = data.length >= (params.topN ?? 20) && this.searchResults.length < 60
       } finally {
         this.isSearching = false
       }
