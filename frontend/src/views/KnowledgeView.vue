@@ -23,38 +23,46 @@
           <button class="search-btn" @click="onSearch">搜索</button>
         </div>
 
-        <n-select
-          v-if="!isSearchMode"
-          v-model:value="sortBy"
-          :options="sortOptions"
-          class="sort-select"
-          @update:value="onSortChange"
-        />
+        <template v-if="!isMobile">
+          <n-select
+            v-if="!isSearchMode"
+            v-model:value="sortBy"
+            :options="sortOptions"
+            class="sort-select"
+            @update:value="onSortChange"
+          />
 
-        <button
-          v-if="isSearchMode"
-          class="deep-toggle"
-          :class="{ active: deepSearch }"
-          @click="toggleDeepSearch"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          <button
+            v-if="isSearchMode"
+            class="deep-toggle"
+            :class="{ active: deepSearch }"
+            @click="toggleDeepSearch"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+            <span>深度检索</span>
+          </button>
+
+          <div class="density-toggle">
+            <button class="density-list" :class="{ active: density === 'list' }" title="紧凑列表" @click="setDensity('list')">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <button class="density-card" :class="{ active: density === 'card' }" title="卡片" @click="setDensity('card')">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+            </button>
+          </div>
+        </template>
+
+        <button v-if="isMobile" class="more-btn" @click="showOverflow = !showOverflow">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01" />
           </svg>
-          <span>深度检索</span>
         </button>
-
-        <div class="density-toggle">
-          <button class="density-list" :class="{ active: density === 'list' }" title="紧凑列表" @click="setDensity('list')">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-          <button class="density-card" :class="{ active: density === 'card' }" title="卡片" @click="setDensity('card')">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-            </svg>
-          </button>
-        </div>
 
         <button class="create-btn" @click="openCreateModal">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -75,6 +83,28 @@
         @click="toggleTagFilter(tag.value)"
       >
         #{{ tag.label }}
+      </button>
+    </div>
+
+    <!-- ===== MOBILE OVERFLOW MENU ===== -->
+    <div v-if="isMobile && showOverflow" class="overflow-menu">
+      <n-select
+        v-if="!isSearchMode"
+        v-model:value="sortBy"
+        :options="sortOptions"
+        placeholder="排序"
+        @update:value="onSortChange"
+      />
+      <button
+        v-if="isSearchMode"
+        class="deep-toggle"
+        :class="{ active: deepSearch }"
+        @click="toggleDeepSearch"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+        </svg>
+        <span>深度检索</span>
       </button>
     </div>
 
@@ -121,8 +151,8 @@
         </p>
       </div>
 
-      <div v-else :class="density === 'list' ? 'feed-list' : 'feed-grid'">
-        <template v-if="density === 'list'">
+      <div v-else :class="effectiveDensity === 'list' ? 'feed-list' : 'feed-grid'">
+        <template v-if="effectiveDensity === 'list'">
           <NoteListItem
             v-for="note in items"
             :key="note.id"
@@ -220,6 +250,15 @@ const density = ref(localStorage.getItem('knowledge-density') || 'list')
 function setDensity(d) {
   density.value = d
   localStorage.setItem('knowledge-density', d)
+}
+
+/* Mobile responsive */
+const isMobile = ref(window.innerWidth < 768)
+const showOverflow = ref(false)
+const effectiveDensity = computed(() => isMobile.value ? 'list' : density.value)
+function onResize() {
+  isMobile.value = window.innerWidth < 768
+  if (!isMobile.value) showOverflow.value = false
 }
 
 /* Deep search */
@@ -440,6 +479,7 @@ function initFromUrl() {
 }
 
 onMounted(async () => {
+  window.addEventListener('resize', onResize)
   initFromUrl()
   await loadTags()
   if (route.query.tags) {
@@ -448,6 +488,10 @@ onMounted(async () => {
     selectedTagFilter.value = valid
   }
   fetchData()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', onResize)
 })
 </script>
 
@@ -761,5 +805,60 @@ onMounted(async () => {
 }
 .create-btn:hover {
   opacity: 0.9;
+}
+
+/* ===== Mobile more button + overflow ===== */
+.more-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.more-btn:hover {
+  color: var(--color-text);
+}
+.overflow-menu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+/* ===== Mobile responsive ===== */
+@media (max-width: 767px) {
+  .header-inner {
+    flex-wrap: nowrap;
+  }
+  .search-group {
+    min-width: 0;
+  }
+  .search-btn {
+    display: none;
+  }
+  .create-btn span {
+    display: none;
+  }
+  .create-btn {
+    padding: 6px 10px;
+  }
+  .tag-pill-bar {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tag-pill-bar::-webkit-scrollbar {
+    display: none;
+  }
 }
 </style>

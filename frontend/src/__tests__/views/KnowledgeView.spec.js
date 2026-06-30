@@ -86,6 +86,7 @@ describe('KnowledgeView', () => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
     localStorage.clear()
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1200 })
     knowledgeApi.list.mockResolvedValue({ data: { data: { records: [], total: 0 } } })
     knowledgeApi.search.mockResolvedValue({ data: { data: [] } })
     knowledgeApi.searchRewrite.mockResolvedValue({ data: { data: [] } })
@@ -622,5 +623,40 @@ describe('KnowledgeView', () => {
     const wrapper = mount(KnowledgeView, { global: { stubs } })
     await flush()
     expect(wrapper.text()).toContain('新建')
+  })
+
+  // ===== Mobile responsive tests =====
+
+  it('shows more button on mobile', async () => {
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 375 })
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+    expect(wrapper.find('.more-btn').exists()).toBe(true)
+  })
+
+  it('does not show more button on desktop', async () => {
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+    expect(wrapper.find('.more-btn').exists()).toBe(false)
+  })
+
+  it('clicking more button toggles overflow menu', async () => {
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 375 })
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+    expect(wrapper.find('.overflow-menu').exists()).toBe(false)
+    await wrapper.find('.more-btn').trigger('click')
+    await flush()
+    expect(wrapper.find('.overflow-menu').exists()).toBe(true)
+  })
+
+  it('forces list density on mobile even when card is saved', async () => {
+    localStorage.setItem('knowledge-density', 'card')
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 375 })
+    mockListWithNotes(sampleNotes)
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+    expect(wrapper.find('.mock-list-item').exists()).toBe(true)
+    expect(wrapper.find('.mock-card').exists()).toBe(false)
   })
 })
