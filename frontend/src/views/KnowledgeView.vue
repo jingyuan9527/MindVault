@@ -1,5 +1,5 @@
 <template>
-  <div class="knowledge-view">
+  <div class="knowledge-view" @keydown="handleKeydown">
     <!-- ===== HEADER: search + tag filter + sort ===== -->
     <header class="view-header">
       <div class="header-inner">
@@ -55,6 +55,13 @@
             </svg>
           </button>
         </div>
+
+        <button class="create-btn" @click="openCreateModal">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+          </svg>
+          <span>新建</span>
+        </button>
       </div>
     </header>
 
@@ -110,7 +117,7 @@
           {{ hasFilter ? '没有匹配的笔记' : '还没有笔记' }}
         </p>
         <p class="text-sm mt-1" style="color: var(--color-text-secondary)">
-          {{ hasFilter ? '换个关键词试试？' : '点击右下角 + 写下第一条笔记' }}
+          {{ hasFilter ? '换个关键词试试？' : '点击「新建」或按 N 键写下第一条笔记' }}
         </p>
       </div>
 
@@ -147,13 +154,6 @@
       </div>
     </div>
 
-    <!-- ===== FAB ===== -->
-    <button class="fab" title="新建笔记" @click="openCreateModal">
-      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
-      </svg>
-    </button>
-
     <!-- ===== EDITOR MODAL ===== -->
     <NoteEditorModal
       v-model:visible="showEditor"
@@ -176,7 +176,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import { knowledgeApi } from '@/api/knowledge'
@@ -339,6 +339,15 @@ function onSortChange() {
 function openCreateModal() {
   editingNote.value = null
   showEditor.value = true
+}
+
+function handleKeydown(e) {
+  if (e.key === 'n' || e.key === 'N') {
+    const tag = e.target?.tagName
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+    e.preventDefault()
+    openCreateModal()
+  }
 }
 
 function openEditModal(note) {
@@ -732,35 +741,25 @@ onMounted(async () => {
   margin: 0;
 }
 
-/* ===== FAB ===== */
-.fab {
-  position: fixed;
-  bottom: 32px;
-  right: 32px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  color: #fff;
-  display: flex;
+/* ===== Create button ===== */
+.create-btn {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-  cursor: pointer;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--color-primary);
   border: none;
-  z-index: 50;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
-.fab:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
-}
-@media (max-width: 640px) {
-  .fab {
-    bottom: 20px;
-    right: 20px;
-    width: 48px;
-    height: 48px;
-  }
+.create-btn:hover {
+  opacity: 0.9;
 }
 </style>

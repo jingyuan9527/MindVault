@@ -579,4 +579,48 @@ describe('KnowledgeView', () => {
     expect(knowledgeApi.search).toHaveBeenCalledWith('test', expect.objectContaining({ offset: 20 }))
     expect(wrapper.findAll('.mock-search-item')).toHaveLength(25)
   })
+
+  // ===== Create button + shortcut tests =====
+
+  it('does not render FAB button', async () => {
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+    expect(wrapper.find('.fab').exists()).toBe(false)
+  })
+
+  it('renders create button in header', async () => {
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+    expect(wrapper.find('.create-btn').exists()).toBe(true)
+  })
+
+  it('clicking create button opens editor modal', async () => {
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+    await wrapper.find('.create-btn').trigger('click')
+    await flush()
+    expect(wrapper.find('.mock-editor').exists()).toBe(true)
+  })
+
+  it('pressing N key opens editor when not in input', async () => {
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+    await wrapper.trigger('keydown', { key: 'n' })
+    await flush()
+    expect(wrapper.find('.mock-editor').exists()).toBe(true)
+  })
+
+  it('does not open editor when typing N in search input', async () => {
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+    await wrapper.find('.search-input').trigger('keydown', { key: 'n' })
+    await flush()
+    expect(wrapper.find('.mock-editor').exists()).toBe(false)
+  })
+
+  it('empty state text guides to create button', async () => {
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+    expect(wrapper.text()).toContain('新建')
+  })
 })
