@@ -24,16 +24,6 @@
         </div>
 
         <n-select
-          v-model:value="selectedTagFilter"
-          :options="tagOptions"
-          multiple
-          filterable
-          placeholder="标签筛选"
-          class="tag-select"
-          @update:value="onTagFilterChange"
-        />
-
-        <n-select
           v-if="!isSearchMode"
           v-model:value="sortBy"
           :options="sortOptions"
@@ -67,6 +57,19 @@
         </div>
       </div>
     </header>
+
+    <!-- ===== TAG PILL BAR ===== -->
+    <div v-if="tagOptions.length" class="tag-pill-bar">
+      <button
+        v-for="tag in tagOptions"
+        :key="tag.value"
+        class="tag-pill"
+        :class="{ active: selectedTagFilter === tag.value }"
+        @click="toggleTagFilter(tag.value)"
+      >
+        #{{ tag.label }}
+      </button>
+    </div>
 
     <!-- ===== FEED: card grid ===== -->
     <div class="feed" ref="feedRef">
@@ -199,7 +202,7 @@ const feedRef = ref(null)
 
 /* Filter state */
 const keyword = ref('')
-const selectedTagFilter = ref([])
+const selectedTagFilter = ref(null)
 const tagOptions = ref([])
 const sortBy = ref('createdAt')
 const sortOptions = [
@@ -243,7 +246,7 @@ const total = computed(() => store.total)
 const searchResults = computed(() => store.searchResults)
 const isLoading = computed(() => store.isLoading || store.isSearching)
 const isSearchMode = computed(() => keyword.value.trim().length > 0)
-const hasFilter = computed(() => keyword.value || selectedTagFilter.value.length > 0)
+const hasFilter = computed(() => keyword.value || selectedTagFilter.value)
 const selectedNoteId = computed(() => drawerNote.value?.id ?? null)
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
 
@@ -255,12 +258,13 @@ async function fetchData() {
       topN: pageSize.value,
       offset: 0,
       deep: deepSearch.value,
+      tag: selectedTagFilter.value || undefined,
     })
   } else {
     await store.fetchItems({
       page: page.value,
       size: pageSize.value,
-      tags: selectedTagFilter.value.length ? selectedTagFilter.value : undefined,
+      tags: selectedTagFilter.value ? [selectedTagFilter.value] : undefined,
       sortBy: sortBy.value,
       sortOrder: 'desc',
     })
@@ -299,7 +303,8 @@ function clearSearch() {
   fetchData()
 }
 
-function onTagFilterChange() {
+function toggleTagFilter(tag) {
+  selectedTagFilter.value = selectedTagFilter.value === tag ? null : tag
   page.value = 0
   fetchData()
 }
@@ -433,6 +438,39 @@ onMounted(async () => {
   padding: 12px 16px;
   border-bottom: 1px solid var(--color-border);
 }
+
+/* ===== Tag pill bar ===== */
+.tag-pill-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 8px 16px;
+}
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.tag-pill:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-secondary);
+}
+.tag-pill.active {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
 .header-inner {
   display: flex;
   flex-wrap: wrap;
@@ -511,10 +549,6 @@ onMounted(async () => {
 }
 .search-btn:hover {
   opacity: 0.9;
-}
-.tag-select {
-  min-width: 150px;
-  max-width: 220px;
 }
 .sort-select {
   min-width: 100px;

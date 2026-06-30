@@ -441,4 +441,66 @@ describe('KnowledgeView', () => {
 
     expect(localStorage.getItem('knowledge-deep-search')).toBe('true')
   })
+
+  // ===== Tag pill bar tests =====
+
+  it('does not render tag pill bar when no tags', async () => {
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+    expect(wrapper.find('.tag-pill-bar').exists()).toBe(false)
+  })
+
+  it('renders tag pills below header when tags exist', async () => {
+    knowledgeApi.getTags.mockResolvedValue({ data: { data: ['java', '架构', 'AI'] } })
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+
+    expect(wrapper.find('.tag-pill-bar').exists()).toBe(true)
+    expect(wrapper.findAll('.tag-pill')).toHaveLength(3)
+  })
+
+  it('clicking a tag pill filters by that tag in browse mode', async () => {
+    knowledgeApi.getTags.mockResolvedValue({ data: { data: ['java', '架构'] } })
+    mockListWithNotes(sampleNotes)
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+    knowledgeApi.list.mockClear()
+
+    await wrapper.findAll('.tag-pill')[0].trigger('click')
+    await flush()
+
+    expect(knowledgeApi.list).toHaveBeenCalledWith(expect.objectContaining({ tags: ['java'] }))
+  })
+
+  it('clicking active tag pill deactivates filter', async () => {
+    knowledgeApi.getTags.mockResolvedValue({ data: { data: ['java', '架构'] } })
+    mockListWithNotes(sampleNotes)
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+
+    await wrapper.findAll('.tag-pill')[0].trigger('click')
+    await flush()
+    knowledgeApi.list.mockClear()
+
+    await wrapper.findAll('.tag-pill')[0].trigger('click')
+    await flush()
+
+    expect(knowledgeApi.list).toHaveBeenCalledWith(expect.objectContaining({ tags: undefined }))
+  })
+
+  it('clicking a tag pill in search mode passes tag to search endpoint', async () => {
+    knowledgeApi.getTags.mockResolvedValue({ data: { data: ['java', '架构'] } })
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+
+    await wrapper.find('.search-input').setValue('设计')
+    await wrapper.find('.search-btn').trigger('click')
+    await flush()
+    knowledgeApi.search.mockClear()
+
+    await wrapper.findAll('.tag-pill')[0].trigger('click')
+    await flush()
+
+    expect(knowledgeApi.search).toHaveBeenCalledWith('设计', expect.objectContaining({ tag: 'java' }))
+  })
 })

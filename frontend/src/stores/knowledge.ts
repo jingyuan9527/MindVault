@@ -37,13 +37,14 @@ export const useKnowledgeStore = defineStore('knowledge', {
         this.isLoading = false
       }
     },
-    async search(params: { keyword: string; topN?: number; offset?: number; deep?: boolean }) {
+    async search(params: { keyword: string; topN?: number; offset?: number; deep?: boolean; tag?: string }) {
       this.isSearching = true
       try {
         const api = params.deep ? knowledgeApi.searchRewrite : knowledgeApi.search
         const res = await api(params.keyword, {
           topN: params.topN ?? 20,
           offset: params.offset ?? 0,
+          ...(params.tag ? { tag: params.tag } : {}),
         })
         const data = res.data.data || []
         this.searchResults = data
