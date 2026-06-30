@@ -1,5 +1,5 @@
 <template>
-  <div class="search-result-item" @click="$emit('click', result)">
+  <div class="search-result-item" :class="{ selected }" @click="$emit('click', result)">
     <div class="result-main">
       <div class="result-title-row">
         <span class="result-title">{{ displayTitle }}</span>
@@ -20,6 +20,7 @@ import { computed } from 'vue'
 const props = defineProps({
   result: { type: Object, required: true },
   keyword: { type: String, default: '' },
+  selected: { type: Boolean, default: false },
 })
 defineEmits(['click'])
 
@@ -105,6 +106,10 @@ const highlightedSnippet = computed(() => {
 }
 .search-result-item:hover {
   background: var(--color-surface);
+}
+.search-result-item.selected {
+  background: var(--color-primary-light);
+  border-left: 3px solid var(--color-primary);
 }
 .result-main {
   flex: 1;

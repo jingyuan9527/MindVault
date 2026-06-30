@@ -36,7 +36,7 @@ cd docker && docker compose up -d --build
 |------|---------|
 | Backend tests (326 total) | `cd backend && mvn test` |
 | Single test class | `cd backend && mvn test -Dtest=KnowledgeControllerTest` |
-| Frontend tests (101 total) | `cd frontend && npx vitest run` |
+| Frontend tests (120 total) | `cd frontend && npx vitest run` |
 | Build backend jar | `cd backend && mvn clean package -DskipTests` |
 | Build frontend | `cd frontend && npm run build` |
 | Docker rebuild+deploy | `cd docker && docker compose up -d --build` |
@@ -155,7 +155,7 @@ The pipeline processes each knowledge entry in three automated rounds. Scheduler
 ## Testing Notes
 - `ModelApiIntegrationTest` runs real API calls against `agnes-2.0-flash` (~29s for 5 tests). Skipped when env var absent.
 - Frontend tests use `happy-dom` environment, `@vue/test-utils`, and `vitest`.
-- Frontend test count: 101 tests across 20 files.
+- Frontend test count: 120 tests across 21 files.
 - Naive UI hooks (`useDialog`, `useMessage`, `useNotification`) are auto-imported by `unplugin-auto-import` in dev/build but NOT in vitest. The setup file (`__tests__/setup.js`) provides them on `globalThis` for views that use them without explicit import. Views that explicitly `import { useDialog } from 'naive-ui'` (e.g. FlashCardView) need a `vi.mock('naive-ui', ...)` in their test file.
 - Test data SQL (10 knowledge entries) in init script — rerun manually if DB is reset.
 - Auth is disabled in tests via `mindvault.auth.enabled=false` in `src/test/resources/application.properties`.
@@ -193,7 +193,7 @@ The pipeline processes each knowledge entry in three automated rounds. Scheduler
 | Route | View | Responsive | Tests | Design Polish |
 |-------|------|:-:|:-:|:-:|
 | `/login` | 登录页面 — 品牌英雄式布局 + 渐变图标 + 背景光晕 | ✅ | ✅ | ✅ v0.10 |
-| `/` | 知识库列表 + 语义检索（自动切换浏览/检索） + 导入导出 + AI标题 + 合并标签 | ✅ | ✅ | ✅ v0.10 |
+| `/` | 知识库列表 + 语义检索（自动切换浏览/检索） + 右侧抽屉（预览+关联图遍历+返回栈） + 导入导出 + AI标题 + 合并标签 | ✅ | ✅ | ✅ v0.10 |
 | `/chat` | AI 对话 — 头部渐变 + 快捷建议 + 清空按钮 | ✅ | ✅ | ✅ v0.10 |
 | `/review` | 间隔复习 — 进度条 + 圆点指示器 + 分色质量按钮 | ✅ | ✅ | ✅ v0.10 |
 | `/flashcards` | 闪卡展示 — CSS 3D 翻转动画 + 难度色标 | ✅ | ✅ | ✅ v0.10 |
@@ -255,7 +255,7 @@ The pipeline processes each knowledge entry in three automated rounds. Scheduler
 1. [high] ✅ 后端: 检索接口加 offset（hybridSearch/searchWithRewrite/hydeSearch）— offset 用例证明第二 tier 不重复
 2. [high] ✅ 前端: 接入语义检索（自动切换端点 + 检索结果行 snippet+相似度分）— 相似度分依赖 embedding 存储（pgvector 类型不匹配为已知遗留 bug，组件对缺失 similarity 优雅降级）
 3. [medium] 前端: 密度切换（紧凑列表默认/卡片，复用 NoteListItem）
-4. [high] 前端: 右侧抽屉（预览+关联+图遍历返回栈+列表高亮同步）
+4. [high] ✅ 前端: 右侧抽屉（预览+关联+图遍历返回栈+列表高亮同步）— 新增 NoteDrawer.vue，点击笔记开抽屉而非编辑器，点关联=图遍历（getById 拉全文），返回栈回溯，列表选中高亮
 5. [medium] 前端: 抽屉/modal 并存（完整编辑入口+保存回流）
 6. [medium] 前端: header 重设计（条件渲染：检索态隐藏排序、深度开关仅有词时出现）
 7. [medium] 前端: 标签 pill 横条（替代下拉，浏览筛选/检索收紧）

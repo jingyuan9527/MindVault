@@ -60,7 +60,8 @@
             :key="result.id"
             :result="result"
             :keyword="keyword"
-            @click="openEditModal(result)"
+            :selected="result.id === selectedNoteId"
+            @click="openDrawer(result)"
           />
         </div>
         <div v-else class="empty-state">
@@ -89,7 +90,8 @@
           v-for="note in items"
           :key="note.id"
           :note="note"
-          @click="openEditModal(note)"
+          :selected="note.id === selectedNoteId"
+          @click="openDrawer(note)"
           @edit="openEditModal(note)"
           @delete="confirmDelete(note)"
         />
@@ -126,6 +128,18 @@
       :note="editingNote"
       @saved="onNoteSaved"
     />
+
+    <!-- ===== NOTE DRAWER ===== -->
+    <NoteDrawer
+      :visible="drawerVisible"
+      :note="drawerNote"
+      :related-notes="relatedNotes"
+      :can-go-back="navStack.length > 0"
+      @update:visible="onDrawerVisibleChange"
+      @navigate="navigateToNote"
+      @back="goBack"
+      @edit="editFromDrawer"
+    />
   </div>
 </template>
 
@@ -136,6 +150,7 @@ import { useKnowledgeStore } from '@/stores/knowledge'
 import { knowledgeApi } from '@/api/knowledge'
 import NoteCard from '@/components/knowledge/NoteCard.vue'
 import NoteEditorModal from '@/components/knowledge/NoteEditorModal.vue'
+import NoteDrawer from '@/components/knowledge/NoteDrawer.vue'
 import SearchResultItem from '@/components/knowledge/SearchResultItem.vue'
 
 const dialog = useDialog()
@@ -163,6 +178,12 @@ const pageSize = ref(20)
 const showEditor = ref(false)
 const editingNote = ref(null)
 
+/* Drawer state */
+const drawerVisible = ref(false)
+const drawerNote = ref(null)
+const relatedNotes = ref([])
+const navStack = ref([])
+
 /* Computed */
 const items = computed(() => store.items)
 const total = computed(() => store.total)
@@ -170,6 +191,7 @@ const searchResults = computed(() => store.searchResults)
 const isLoading = computed(() => store.isLoading || store.isSearching)
 const isSearchMode = computed(() => keyword.value.trim().length > 0)
 const hasFilter = computed(() => keyword.value || selectedTagFilter.value.length > 0)
+const selectedNoteId = computed(() => drawerNote.value?.id ?? null)
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
 
 /* Data fetching */
@@ -247,6 +269,56 @@ function openEditModal(note) {
 function onNoteSaved() {
   fetchData()
   loadTags()
+}
+
+/* Drawer actions */
+async function openDrawer(note) {
+  navStack.value = []
+  drawerNote.value = note
+  drawerVisible.value = true
+  await loadRelated(note.id)
+}
+
+async function navigateToNote(related) {
+  if (drawerNote.value) navStack.value.push(drawerNote.value)
+  try {
+    const res = await knowledgeApi.getById(related.id)
+    drawerNote.value = res.data.data
+  } catch {
+    drawerNote.value = { ...related, content: related.summary || '' }
+  }
+  await loadRelated(related.id)
+}
+
+function goBack() {
+  const prev = navStack.value.pop()
+  if (prev) {
+    drawerNote.value = prev
+    loadRelated(prev.id)
+  }
+}
+
+function onDrawerVisibleChange(val) {
+  drawerVisible.value = val
+  if (!val) {
+    drawerNote.value = null
+    relatedNotes.value = []
+    navStack.value = []
+  }
+}
+
+function editFromDrawer() {
+  editingNote.value = drawerNote.value
+  showEditor.value = true
+}
+
+async function loadRelated(id) {
+  try {
+    const res = await knowledgeApi.getRelated(id, 5)
+    relatedNotes.value = res.data?.data || []
+  } catch {
+    relatedNotes.value = []
+  }
 }
 
 /* Delete */

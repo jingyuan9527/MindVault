@@ -1,7 +1,7 @@
 <template>
   <div
     class="note-card"
-    :class="{ editing: isEditing }"
+    :class="{ editing: isEditing, selected }"
     @click="$emit('click', note)"
   >
     <template v-if="!isEditing">
@@ -44,6 +44,7 @@ import ContentRenderer from '@/components/common/ContentRenderer.vue'
 const props = defineProps({
   note: { type: Object, required: true },
   isEditing: { type: Boolean, default: false },
+  selected: { type: Boolean, default: false },
 })
 defineEmits(['click', 'edit', 'delete'])
 
@@ -82,6 +83,10 @@ function formatTime(dateStr) {
   cursor: pointer;
 }
 .note-card:hover { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); }
+.note-card.selected {
+  border: 2px solid var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-light);
+}
 .card-header {
   display: flex;
   align-items: center;
