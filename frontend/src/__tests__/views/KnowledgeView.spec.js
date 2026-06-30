@@ -44,7 +44,7 @@ const stubs = {
   NoteListItem: {
     name: 'NoteListItem',
     template: '<div class="mock-list-item" :class="{ highlighted }" @click="$emit(\'click\', note)" />',
-    props: ['note', 'selected', 'highlighted'],
+    props: ['note', 'highlighted'],
   },
   NoteEditorModal: {
     template: '<div class="mock-editor" v-if="visible"><button class="mock-editor-save" @click="$emit(\'saved\')" /></div>',

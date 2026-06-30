@@ -4,9 +4,6 @@ class="flex items-center px-5 py-3 cursor-pointer transition-colors duration-150
     :class="{ highlighted }"
     style="border-bottom: 1px solid var(--color-border)"
     @click="$emit('click', note)">
-    <div class="flex items-center shrink-0 mr-8" @click.stop>
-      <n-checkbox :checked="selected" size="small" @update:checked="$emit('toggle-select', note.id)" />
-    </div>
     <div class="flex-1 min-w-0">
       <p class="text-sm font-medium truncate" style="color: var(--color-text)">{{ note.aiTitle || note.title }}</p>
       <p v-if="note.aiTitle && note.title" class="text-xs truncate" style="color: var(--color-text-secondary)">原标题: {{ note.title }}</p>
@@ -28,10 +25,9 @@ import ContentRenderer from '@/components/common/ContentRenderer.vue'
 
 const props = defineProps({
   note: Object,
-  selected: Boolean,
   highlighted: { type: Boolean, default: false },
 })
-defineEmits(['click', 'toggle-select'])
+defineEmits(['click'])
 
 const parsedTags = computed(() => {
   if (!props.note.tags) return []
