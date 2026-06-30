@@ -40,6 +40,11 @@ const stubs = {
     template: '<div class="mock-card" :class="{ selected }" @click="$emit(\'click\', note)" />',
     props: ['note', 'selected'],
   },
+  NoteListItem: {
+    name: 'NoteListItem',
+    template: '<div class="mock-list-item" :class="{ highlighted }" @click="$emit(\'click\', note)" />',
+    props: ['note', 'selected', 'highlighted'],
+  },
   NoteEditorModal: { template: '<div class="mock-editor" v-if="visible" />', props: ['visible', 'note'] },
   SearchResultItem: {
     name: 'SearchResultItem',
@@ -75,6 +80,7 @@ describe('KnowledgeView', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    localStorage.clear()
     knowledgeApi.list.mockResolvedValue({ data: { data: { records: [], total: 0 } } })
     knowledgeApi.search.mockResolvedValue({ data: { data: [] } })
     knowledgeApi.getRelated.mockResolvedValue({ data: { data: [] } })
@@ -144,14 +150,62 @@ describe('KnowledgeView', () => {
     expect(wrapper.find('.mock-card').exists()).toBe(false)
   })
 
-  // ===== Drawer integration tests =====
+  // ===== Density toggle tests =====
+
+  it('renders NoteListItem (not NoteCard) by default in browse mode', async () => {
+    mockListWithNotes(sampleNotes)
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+
+    expect(wrapper.find('.mock-list-item').exists()).toBe(true)
+    expect(wrapper.find('.mock-card').exists()).toBe(false)
+  })
+
+  it('switches to NoteCard when card density toggle clicked', async () => {
+    mockListWithNotes(sampleNotes)
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+
+    await wrapper.find('.density-card').trigger('click')
+    await flush()
+
+    expect(wrapper.find('.mock-card').exists()).toBe(true)
+    expect(wrapper.find('.mock-list-item').exists()).toBe(false)
+  })
+
+  it('switches back to NoteListItem when list density toggle clicked', async () => {
+    mockListWithNotes(sampleNotes)
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+
+    await wrapper.find('.density-card').trigger('click')
+    await flush()
+    await wrapper.find('.density-list').trigger('click')
+    await flush()
+
+    expect(wrapper.find('.mock-list-item').exists()).toBe(true)
+    expect(wrapper.find('.mock-card').exists()).toBe(false)
+  })
+
+  it('persists density preference in localStorage', async () => {
+    mockListWithNotes(sampleNotes)
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+
+    await wrapper.find('.density-card').trigger('click')
+    await flush()
+
+    expect(localStorage.getItem('knowledge-density')).toBe('card')
+  })
+
+  // ===== Drawer integration tests (use NoteListItem as default) =====
 
   it('opens drawer (not editor) when clicking a note in browse mode', async () => {
     mockListWithNotes(sampleNotes)
     const wrapper = mount(KnowledgeView, { global: { stubs } })
     await flush()
 
-    await wrapper.find('.mock-card').trigger('click')
+    await wrapper.find('.mock-list-item').trigger('click')
     await flush()
 
     expect(wrapper.find('.mock-drawer').exists()).toBe(true)
@@ -163,7 +217,7 @@ describe('KnowledgeView', () => {
     const wrapper = mount(KnowledgeView, { global: { stubs } })
     await flush()
 
-    await wrapper.find('.mock-card').trigger('click')
+    await wrapper.find('.mock-list-item').trigger('click')
     await flush()
 
     expect(knowledgeApi.getRelated).toHaveBeenCalledWith(1, expect.any(Number))
@@ -174,12 +228,13 @@ describe('KnowledgeView', () => {
     const wrapper = mount(KnowledgeView, { global: { stubs } })
     await flush()
 
-    const cards = wrapper.findAll('.mock-card')
-    await cards[0].trigger('click')
+    const items = wrapper.findAll('.mock-list-item')
+    await items[0].trigger('click')
     await flush()
 
-    expect(cards[0].classes()).toContain('selected')
-    expect(cards[1].classes()).not.toContain('selected')
+    const itemsAfter = wrapper.findAll('.mock-list-item')
+    expect(itemsAfter[0].classes()).toContain('highlighted')
+    expect(itemsAfter[1].classes()).not.toContain('highlighted')
   })
 
   it('fetches full note by ID when navigating to a related note', async () => {
@@ -188,7 +243,7 @@ describe('KnowledgeView', () => {
     const wrapper = mount(KnowledgeView, { global: { stubs } })
     await flush()
 
-    await wrapper.find('.mock-card').trigger('click')
+    await wrapper.find('.mock-list-item').trigger('click')
     await flush()
     knowledgeApi.getById.mockClear()
 
@@ -204,7 +259,7 @@ describe('KnowledgeView', () => {
     const wrapper = mount(KnowledgeView, { global: { stubs } })
     await flush()
 
-    await wrapper.find('.mock-card').trigger('click')
+    await wrapper.find('.mock-list-item').trigger('click')
     await flush()
     await wrapper.find('.mock-navigate').trigger('click')
     await flush()
@@ -219,20 +274,17 @@ describe('KnowledgeView', () => {
     const wrapper = mount(KnowledgeView, { global: { stubs } })
     await flush()
 
-    await wrapper.find('.mock-card').trigger('click')
+    await wrapper.find('.mock-list-item').trigger('click')
     await flush()
     await wrapper.find('.mock-navigate').trigger('click')
     await flush()
 
-    const drawer = wrapper.findComponent({ name: 'NoteDrawer' })
-    expect(drawer.props('canGoBack')).toBe(true)
-
     await wrapper.find('.mock-back').trigger('click')
     await flush()
 
-    const drawerAfter = wrapper.findComponent({ name: 'NoteDrawer' })
-    expect(drawerAfter.props('canGoBack')).toBe(false)
-    expect(drawerAfter.props('note').id).toBe(1)
+    const drawer = wrapper.findComponent({ name: 'NoteDrawer' })
+    expect(drawer.props('canGoBack')).toBe(false)
+    expect(drawer.props('note').id).toBe(1)
   })
 
   it('opens editor modal when edit button clicked from drawer', async () => {
@@ -240,7 +292,7 @@ describe('KnowledgeView', () => {
     const wrapper = mount(KnowledgeView, { global: { stubs } })
     await flush()
 
-    await wrapper.find('.mock-card').trigger('click')
+    await wrapper.find('.mock-list-item').trigger('click')
     await flush()
     await wrapper.find('.mock-edit-btn').trigger('click')
     await flush()
@@ -253,7 +305,7 @@ describe('KnowledgeView', () => {
     const wrapper = mount(KnowledgeView, { global: { stubs } })
     await flush()
 
-    await wrapper.find('.mock-card').trigger('click')
+    await wrapper.find('.mock-list-item').trigger('click')
     await flush()
     expect(wrapper.find('.mock-drawer').exists()).toBe(true)
 

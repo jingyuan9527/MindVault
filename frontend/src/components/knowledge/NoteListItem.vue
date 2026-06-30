@@ -1,6 +1,7 @@
 <template>
   <div
-class="flex items-center px-5 py-3 cursor-pointer transition-colors duration-150 hover:opacity-80 hover-sage-bg"
+class="flex items-center px-5 py-3 cursor-pointer transition-colors duration-150 hover:opacity-80 hover-sage-bg note-list-item"
+    :class="{ highlighted }"
     style="border-bottom: 1px solid var(--color-border)"
     @click="$emit('click', note)">
     <div class="flex items-center shrink-0 mr-8" @click.stop>
@@ -27,7 +28,8 @@ import ContentRenderer from '@/components/common/ContentRenderer.vue'
 
 const props = defineProps({
   note: Object,
-  selected: Boolean
+  selected: Boolean,
+  highlighted: { type: Boolean, default: false },
 })
 defineEmits(['click', 'toggle-select'])
 
@@ -52,3 +54,10 @@ function formatTime(dateStr) {
   return `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`
 }
 </script>
+
+<style scoped>
+.note-list-item.highlighted {
+  background: var(--color-primary-light);
+  border-left: 3px solid var(--color-primary);
+}
+</style>

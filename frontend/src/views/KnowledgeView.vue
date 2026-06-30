@@ -39,6 +39,19 @@
           class="sort-select"
           @update:value="onSortChange"
         />
+
+        <div class="density-toggle">
+          <button class="density-list" :class="{ active: density === 'list' }" title="紧凑列表" @click="setDensity('list')">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <button class="density-card" :class="{ active: density === 'card' }" title="卡片" @click="setDensity('card')">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+            </svg>
+          </button>
+        </div>
       </div>
     </header>
 
@@ -85,16 +98,27 @@
         </p>
       </div>
 
-      <div v-else class="feed-grid">
-        <NoteCard
-          v-for="note in items"
-          :key="note.id"
-          :note="note"
-          :selected="note.id === selectedNoteId"
-          @click="openDrawer(note)"
-          @edit="openEditModal(note)"
-          @delete="confirmDelete(note)"
-        />
+      <div v-else :class="density === 'list' ? 'feed-list' : 'feed-grid'">
+        <template v-if="density === 'list'">
+          <NoteListItem
+            v-for="note in items"
+            :key="note.id"
+            :note="note"
+            :highlighted="note.id === selectedNoteId"
+            @click="openDrawer(note)"
+          />
+        </template>
+        <template v-else>
+          <NoteCard
+            v-for="note in items"
+            :key="note.id"
+            :note="note"
+            :selected="note.id === selectedNoteId"
+            @click="openDrawer(note)"
+            @edit="openEditModal(note)"
+            @delete="confirmDelete(note)"
+          />
+        </template>
 
         <div v-if="totalPages > 1" class="pagination-bar col-span-full">
           <div class="flex items-center gap-1">
@@ -149,6 +173,7 @@ import { useRoute } from 'vue-router'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import { knowledgeApi } from '@/api/knowledge'
 import NoteCard from '@/components/knowledge/NoteCard.vue'
+import NoteListItem from '@/components/knowledge/NoteListItem.vue'
 import NoteEditorModal from '@/components/knowledge/NoteEditorModal.vue'
 import NoteDrawer from '@/components/knowledge/NoteDrawer.vue'
 import SearchResultItem from '@/components/knowledge/SearchResultItem.vue'
@@ -173,6 +198,13 @@ const sortOptions = [
 /* Pagination */
 const page = ref(0)
 const pageSize = ref(20)
+
+/* Density */
+const density = ref(localStorage.getItem('knowledge-density') || 'list')
+function setDensity(d) {
+  density.value = d
+  localStorage.setItem('knowledge-density', d)
+}
 
 /* Modal state */
 const showEditor = ref(false)
@@ -458,6 +490,37 @@ onMounted(async () => {
   min-width: 100px;
 }
 
+/* ===== Density toggle ===== */
+.density-toggle {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--color-surface);
+  border-radius: 8px;
+  padding: 2px;
+}
+.density-toggle button {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.density-toggle button:hover {
+  color: var(--color-text);
+}
+.density-toggle button.active {
+  background: var(--color-bg);
+  color: var(--color-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
 /* ===== Feed ===== */
 .feed {
   flex: 1;
@@ -476,6 +539,14 @@ onMounted(async () => {
   margin: 0 auto;
 }
 .search-results-list {
+  background: var(--color-surface);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+.feed-list {
+  max-width: 900px;
+  margin: 0 auto;
   background: var(--color-surface);
   border-radius: 12px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
