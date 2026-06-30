@@ -25,6 +25,7 @@ vi.mock('@/api/knowledge', () => ({
     reprocess: vi.fn(),
     getRelated: vi.fn().mockResolvedValue({ data: { data: [] } }),
     search: vi.fn().mockResolvedValue({ data: { data: [] } }),
+    searchRewrite: vi.fn().mockResolvedValue({ data: { data: [] } }),
     getProcessLogs: vi.fn(),
   }
 }))
@@ -87,6 +88,7 @@ describe('KnowledgeView', () => {
     localStorage.clear()
     knowledgeApi.list.mockResolvedValue({ data: { data: { records: [], total: 0 } } })
     knowledgeApi.search.mockResolvedValue({ data: { data: [] } })
+    knowledgeApi.searchRewrite.mockResolvedValue({ data: { data: [] } })
     knowledgeApi.getRelated.mockResolvedValue({ data: { data: [] } })
     knowledgeApi.getById.mockResolvedValue({ data: { data: {} } })
   })
@@ -354,5 +356,89 @@ describe('KnowledgeView', () => {
     await flush()
 
     expect(wrapper.find('.mock-drawer').exists()).toBe(true)
+  })
+
+  // ===== Header conditional rendering tests =====
+
+  it('shows sort select in browse mode', async () => {
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+    expect(wrapper.find('.sort-select').exists()).toBe(true)
+  })
+
+  it('hides sort select in search mode', async () => {
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+    expect(wrapper.find('.sort-select').exists()).toBe(true)
+
+    await wrapper.find('.search-input').setValue('架构')
+    await wrapper.find('.search-btn').trigger('click')
+    await flush()
+
+    expect(wrapper.find('.sort-select').exists()).toBe(false)
+  })
+
+  it('does not show deep search toggle in browse mode', async () => {
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+    expect(wrapper.find('.deep-toggle').exists()).toBe(false)
+  })
+
+  it('shows deep search toggle in search mode', async () => {
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+
+    await wrapper.find('.search-input').setValue('架构')
+    await wrapper.find('.search-btn').trigger('click')
+    await flush()
+
+    expect(wrapper.find('.deep-toggle').exists()).toBe(true)
+  })
+
+  it('calls basic search by default in search mode', async () => {
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+    knowledgeApi.search.mockClear()
+    knowledgeApi.searchRewrite.mockClear()
+
+    await wrapper.find('.search-input').setValue('架构')
+    await wrapper.find('.search-btn').trigger('click')
+    await flush()
+
+    expect(knowledgeApi.search).toHaveBeenCalled()
+    expect(knowledgeApi.searchRewrite).not.toHaveBeenCalled()
+  })
+
+  it('calls rewrite search when deep search toggle is enabled', async () => {
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+    knowledgeApi.search.mockClear()
+    knowledgeApi.searchRewrite.mockClear()
+
+    await wrapper.find('.search-input').setValue('架构')
+    await wrapper.find('.search-btn').trigger('click')
+    await flush()
+    knowledgeApi.search.mockClear()
+    knowledgeApi.searchRewrite.mockClear()
+
+    await wrapper.find('.deep-toggle').trigger('click')
+    await flush()
+
+    expect(knowledgeApi.searchRewrite).toHaveBeenCalled()
+    expect(knowledgeApi.search).not.toHaveBeenCalled()
+  })
+
+  it('persists deep search preference in localStorage', async () => {
+    const wrapper = mount(KnowledgeView, { global: { stubs } })
+    await flush()
+
+    await wrapper.find('.search-input').setValue('架构')
+    await wrapper.find('.search-btn').trigger('click')
+    await flush()
+
+    await wrapper.find('.deep-toggle').trigger('click')
+    await flush()
+
+    expect(localStorage.getItem('knowledge-deep-search')).toBe('true')
   })
 })

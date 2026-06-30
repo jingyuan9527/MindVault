@@ -49,6 +49,11 @@ describe('knowledgeApi', () => {
     expect(api.get).toHaveBeenCalledWith('/knowledge/search', { params: { q: 'test', topN: 20, offset: 10 } })
   })
 
+  it('searchRewrite calls GET /knowledge/search/rewrite with q param', () => {
+    knowledgeApi.searchRewrite('test query')
+    expect(api.get).toHaveBeenCalledWith('/knowledge/search/rewrite', { params: { q: 'test query' } })
+  })
+
   it('update calls PUT /knowledge/:id', () => {
     const data = { title: 'Updated' }
     knowledgeApi.update(1, data)

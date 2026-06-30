@@ -34,11 +34,24 @@
         />
 
         <n-select
+          v-if="!isSearchMode"
           v-model:value="sortBy"
           :options="sortOptions"
           class="sort-select"
           @update:value="onSortChange"
         />
+
+        <button
+          v-if="isSearchMode"
+          class="deep-toggle"
+          :class="{ active: deepSearch }"
+          @click="toggleDeepSearch"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          </svg>
+          <span>深度检索</span>
+        </button>
 
         <div class="density-toggle">
           <button class="density-list" :class="{ active: density === 'list' }" title="紧凑列表" @click="setDensity('list')">
@@ -206,6 +219,14 @@ function setDensity(d) {
   localStorage.setItem('knowledge-density', d)
 }
 
+/* Deep search */
+const deepSearch = ref(localStorage.getItem('knowledge-deep-search') === 'true')
+function toggleDeepSearch() {
+  deepSearch.value = !deepSearch.value
+  localStorage.setItem('knowledge-deep-search', String(deepSearch.value))
+  if (isSearchMode.value) fetchData()
+}
+
 /* Modal state */
 const showEditor = ref(false)
 const editingNote = ref(null)
@@ -233,6 +254,7 @@ async function fetchData() {
       keyword: keyword.value.trim(),
       topN: pageSize.value,
       offset: 0,
+      deep: deepSearch.value,
     })
   } else {
     await store.fetchItems({
@@ -496,6 +518,33 @@ onMounted(async () => {
 }
 .sort-select {
   min-width: 100px;
+}
+
+/* ===== Deep search toggle ===== */
+.deep-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.deep-toggle:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-secondary);
+}
+.deep-toggle.active {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
 }
 
 /* ===== Density toggle ===== */

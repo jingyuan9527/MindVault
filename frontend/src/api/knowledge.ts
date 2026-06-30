@@ -5,6 +5,7 @@ export const knowledgeApi = {
   list: (params) => client.get('/knowledge', { params }),
   getById: (id) => client.get(`/knowledge/${id}`),
   search: (q, params = {}) => client.get('/knowledge/search', { params: { q, ...params } }),
+  searchRewrite: (q, params = {}) => client.get('/knowledge/search/rewrite', { params: { q, ...params } }),
   update: (id, data) => client.put(`/knowledge/${id}`, data),
   delete: (id) => client.delete(`/knowledge/${id}`),
   parseUrl: (url) => client.post('/knowledge/parse-url', { url }),
